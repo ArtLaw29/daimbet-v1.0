@@ -3,10 +3,43 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Navbar from "./components/Navbar";
+import AuthPage from "./pages/AuthPage";
+import EventsPage from "./pages/EventsPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
+import KissMarryPage from "./pages/KissMarryPage";
+import ProposalsPage from "./pages/ProposalsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-primary font-display text-2xl">DAIMBet...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <AuthPage />;
+
+  return (
+    <>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<EventsPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/kiss-marry" element={<KissMarryPage />} />
+        <Route path="/proposals" element={<ProposalsPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -14,11 +47,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
