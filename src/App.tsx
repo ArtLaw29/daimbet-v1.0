@@ -10,6 +10,7 @@ import EventsPage from "./pages/EventsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import KissMarryPage from "./pages/KissMarryPage";
 import ProposalsPage from "./pages/ProposalsPage";
+import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ function AppRoutes() {
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/kiss-marry" element={<KissMarryPage />} />
         <Route path="/proposals" element={<ProposalsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

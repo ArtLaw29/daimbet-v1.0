@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { Trophy, Flame, Heart, MessageSquarePlus, LogOut } from 'lucide-react';
+import { Trophy, Flame, Heart, MessageSquarePlus, LogOut, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
@@ -12,7 +12,7 @@ const navItems = [
 ];
 
 export default function Navbar() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, isAdmin } = useAuth();
   const location = useLocation();
 
   return (
@@ -38,6 +38,19 @@ export default function Navbar() {
               {item.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/admin'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Admin
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -68,6 +81,17 @@ export default function Navbar() {
             {item.label}
           </Link>
         ))}
+        {isAdmin && (
+          <Link
+            to="/admin"
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 text-xs ${
+              location.pathname === '/admin' ? 'text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            Admin
+          </Link>
+        )}
       </div>
     </nav>
   );
