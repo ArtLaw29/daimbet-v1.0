@@ -12,6 +12,7 @@ import KissMarryPage from "./pages/KissMarryPage";
 import ProposalsPage from "./pages/ProposalsPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const queryClient = new QueryClient();
 
@@ -26,7 +27,14 @@ function AppRoutes() {
     );
   }
 
-  if (!user) return <AuthPage />;
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="*" element={<AuthPage />} />
+      </Routes>
+    );
+  }
 
   return (
     <>
@@ -37,6 +45,7 @@ function AppRoutes() {
         <Route path="/kiss-marry" element={<KissMarryPage />} />
         <Route path="/proposals" element={<ProposalsPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

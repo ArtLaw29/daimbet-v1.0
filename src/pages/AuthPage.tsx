@@ -13,6 +13,19 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) toast.error(error.message);
+    else toast.success('Email de réinitialisation envoyé ! Vérifie ta boîte mail 📧');
+    setLoading(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +127,34 @@ export default function AuthPage() {
             <Button type="submit" className="w-full gold-gradient font-semibold" disabled={loading}>
               {loading ? '...' : isLogin ? 'Se connecter' : "S'inscrire"}
             </Button>
+            {isLogin && (
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Mot de passe oublié ?
+              </button>
+            )}
           </form>
+
+          {showForgot && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-sm text-muted-foreground mb-3">Entre ton email pour recevoir un lien de réinitialisation :</p>
+              <form onSubmit={handleForgotPassword} className="space-y-3">
+                <Input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="ton@email.com"
+                  required
+                />
+                <Button type="submit" variant="outline" className="w-full" disabled={loading}>
+                  {loading ? '...' : 'Envoyer le lien'}
+                </Button>
+              </form>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
