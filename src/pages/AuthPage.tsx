@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
+import { PROMO_NAMES, isValidEssecEmail } from '@/lib/pari-mutuel';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -36,6 +37,18 @@ export default function AuthPage() {
       if (error) toast.error(error.message);
       else toast.success('Bienvenue sur DAIMBet ! 🦌');
     } else {
+      // Validate ESSEC email
+      if (!isValidEssecEmail(email)) {
+        toast.error('Seuls les emails au format prénom.nom@essec.edu sont acceptés ! 🎓');
+        setLoading(false);
+        return;
+      }
+      if (!displayName) {
+        toast.error('Choisis ton prénom dans la liste ! 🦌');
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -45,7 +58,7 @@ export default function AuthPage() {
         },
       });
       if (error) toast.error(error.message);
-      else toast.success('Compte créé ! Vérifie ton email pour confirmer.');
+      else toast.success('Compte créé ! Vérifie ton email pour confirmer. 📧');
     }
     setLoading(false);
   };
@@ -91,14 +104,19 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="displayName">Prénom / Pseudo</Label>
-                <Input
+                <Label htmlFor="displayName">Ton prénom</Label>
+                <select
                   id="displayName"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Ton prénom"
                   required={!isLogin}
-                />
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Choisis ton prénom...</option>
+                  {PROMO_NAMES.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
               </div>
             )}
             <div className="space-y-2">
@@ -108,7 +126,7 @@ export default function AuthPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ton@email.com"
+                placeholder="prénom.nom@essec.edu"
                 required
               />
             </div>
@@ -125,7 +143,7 @@ export default function AuthPage() {
               />
             </div>
             <Button type="submit" className="w-full gold-gradient font-semibold" disabled={loading}>
-              {loading ? '...' : isLogin ? 'Se connecter' : "S'inscrire"}
+              {loading ? '...' : isLogin ? 'Se connecter 🦌' : "S'inscrire 🎓"}
             </Button>
             {isLogin && (
               <button
@@ -146,7 +164,7 @@ export default function AuthPage() {
                   type="email"
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
-                  placeholder="ton@email.com"
+                  placeholder="prénom.nom@essec.edu"
                   required
                 />
                 <Button type="submit" variant="outline" className="w-full" disabled={loading}>
