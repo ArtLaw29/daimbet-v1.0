@@ -139,7 +139,7 @@ export default function AdminPage() {
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
 
-    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes, ticketsRes, notifRes, emailLogsRes, emailTodayRes] = await Promise.all([
+    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes, ticketsRes, notifRes, emailLogsRes, emailTodayRes, maintRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
       supabase.from('wagers').select('*').order('created_at', { ascending: false }),
@@ -150,6 +150,7 @@ export default function AdminPage() {
       supabase.from('admin_notifications').select('*').order('created_at', { ascending: false }),
       supabase.from('admin_emails_log').select('*').order('sent_at', { ascending: false }).limit(50),
       supabase.from('admin_emails_log').select('*', { count: 'exact', head: true }).gte('sent_at', todayStart.toISOString()).eq('status', 'succes'),
+      supabase.from('platform_settings').select('value').eq('key', 'maintenance_mode').single(),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
@@ -160,6 +161,7 @@ export default function AdminPage() {
     setAdminNotifications(notifRes.data || []);
     setEmailLogs(emailLogsRes.data || []);
     setEmailTodayCount(emailTodayRes.count ?? 0);
+    setMaintenanceMode(maintRes.data?.value === 'true');
     const props = propRes.data || [];
     setAdminProposals(props);
     // Fetch proposer names
