@@ -218,23 +218,37 @@ export default function BetDetailPage() {
               const optPool = pools[opt.id] || 0;
               const odds = totalPool > 0 && optPool > 0 ? calculatePariMutuelOdds(totalPool, optPool) : DEFAULT_ODDS;
               const pct = totalPool > 0 ? ((optPool / totalPool) * 100).toFixed(0) : '0';
+              const isResolved = bet.status === 'resolu';
+              const isWinnerOpt = isResolved && opt.is_winner === true;
+              const isLoserOpt = isResolved && opt.is_winner === false;
               return (
                 <div
                   key={opt.id}
                   onClick={() => isOpen && !isSuspended && !hasTierceWager && setSelectedOptionId(opt.id)}
                   className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${
-                    selectedOptionId === opt.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border/50 bg-secondary/50 hover:border-primary/30'
+                    isWinnerOpt
+                      ? 'border-green-500/50 bg-green-500/10'
+                      : isLoserOpt
+                        ? 'border-border/30 bg-secondary/30 opacity-60'
+                        : selectedOptionId === opt.id
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border/50 bg-secondary/50 hover:border-primary/30'
                   } ${isOpen && !isSuspended && !hasTierceWager ? 'cursor-pointer' : ''}`}
                 >
                   <div>
-                    <span className="font-medium">{opt.label}</span>
+                    <span className="font-medium">
+                      {isWinnerOpt && '✅ '}{opt.label}
+                      {isWinnerOpt && <span className="text-green-500 ml-1 text-sm font-semibold">a gagné !</span>}
+                    </span>
                     <div className="text-xs text-muted-foreground">{pct}% · {optPool} DC</div>
                   </div>
                   <div className="text-center">
-                    <span className="text-primary font-bold text-sm bg-primary/10 px-2 py-1 rounded">x{odds.toFixed(2)}</span>
-                    <span className="block text-[10px] text-muted-foreground">{isClosed ? 'Cote définitive' : 'Cote estimée'}</span>
+                    <span className={`font-bold text-sm px-2 py-1 rounded ${isWinnerOpt ? 'text-green-500 bg-green-500/10' : 'text-primary bg-primary/10'}`}>
+                      x{odds.toFixed(2)}
+                    </span>
+                    <span className="block text-[10px] text-muted-foreground">
+                      {isResolved ? 'Cote définitive' : isClosed ? 'Cote définitive' : 'Cote estimée'}
+                    </span>
                   </div>
                 </div>
               );
