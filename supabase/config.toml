@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.flag-gazette-message]
 verify_jwt = false
+
+[functions.km-vote]
+verify_jwt = false
