@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.activate-proposal]
 verify_jwt = false
+
+[functions.generate-report]
+verify_jwt = false
+
+[functions.admin-notify-email]
+verify_jwt = false
