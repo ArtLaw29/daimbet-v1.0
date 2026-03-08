@@ -198,6 +198,18 @@ export default function AdminPage() {
         setProposalProfiles(m);
       }
     }
+    // Tierce suggestions
+    const suggestions = suggestionsRes.data || [];
+    setTierceSuggestions(suggestions);
+    if (suggestions.length > 0) {
+      const sUids = [...new Set(suggestions.map((s: any) => s.suggested_by))];
+      const { data: sNames } = await supabase.from('profiles').select('user_id, display_name').in('user_id', sUids);
+      if (sNames) {
+        const sm: Record<string, string> = {};
+        sNames.forEach((p: any) => { sm[p.user_id] = p.display_name; });
+        setSuggestionProfiles(sm);
+      }
+    }
     setLoading(false);
   }, []);
 
