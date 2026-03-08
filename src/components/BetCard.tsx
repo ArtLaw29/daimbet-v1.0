@@ -1,10 +1,8 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Flame, Clock, CheckCircle, XCircle, TrendingUp, PauseCircle, Timer, Users } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { calculatePariMutuelOdds, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS } from '@/lib/pari-mutuel';
+import { calculatePariMutuelOdds, DEFAULT_ODDS } from '@/lib/pari-mutuel';
 import type { Tables } from '@/integrations/supabase/types';
 import { useCountdown } from '@/hooks/useCountdown';
 

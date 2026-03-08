@@ -331,14 +331,10 @@ export default function EventsPage() {
                     bet={bet}
                     pools={wagerPools[bet.id] || {}}
                     totalPool={betTotals[bet.id] || 0}
-                    betAmounts={betAmounts}
-                    onAmountChange={(optionId, amount) =>
-                      setBetAmounts(prev => ({ ...prev, [optionId]: amount }))
-                    }
-                    onPlaceWager={placeWager}
                     profileBalance={profile?.balance || 0}
                     userWager={userWagers[bet.id] || null}
                     wagerCount={wagerCounts[bet.id] || 0}
+                    onOpenBet={handleOpenBet}
                   />
                 </motion.div>
               ))}
