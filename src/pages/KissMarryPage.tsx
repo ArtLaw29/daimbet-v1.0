@@ -263,12 +263,7 @@ export default function KissMarryPage() {
           </div>
         )}
 
-        {/* Reveal button (for testing — admin triggers it) */}
-        {Object.keys(revealData).length > 0 && (
-          <Button variant="outline" className="w-full" onClick={startReveal}>
-            <Sparkles className="w-4 h-4 mr-2" /> Voir la révélation 🏆
-          </Button>
-        )}
+        {/* Reveal is now admin-controlled via platform_settings */}
       </div>
     );
   }
