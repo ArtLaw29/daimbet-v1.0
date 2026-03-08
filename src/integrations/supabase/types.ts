@@ -581,6 +581,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
       get_km_results: {
         Args: { p_month_year: string }
         Returns: {
@@ -595,6 +596,24 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      place_wager: {
+        Args: {
+          p_bet_id: string
+          p_montant_dc: number
+          p_option_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      recalculate_odds: { Args: { p_bet_id: string }; Returns: undefined }
+      resolve_bet: {
+        Args: { p_bet_id: string; p_winning_option_ids: string[] }
+        Returns: Json
+      }
+      retract_wager: {
+        Args: { p_user_id: string; p_wager_id: string }
+        Returns: Json
       }
     }
     Enums: {
