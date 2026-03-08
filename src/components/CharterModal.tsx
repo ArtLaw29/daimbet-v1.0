@@ -14,7 +14,7 @@ interface CharterModalProps {
 export default function CharterModal({ userId, onAccepted }: CharterModalProps) {
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(20);
+  const [countdown, setCountdown] = useState(15);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -59,7 +59,7 @@ export default function CharterModal({ userId, onAccepted }: CharterModalProps) 
             <p className="text-sm leading-relaxed text-foreground">
               🦌 <strong>Jordaim Belfort veille au grain.</strong> Tous les paris sont modérés, 
               leur résolution est assurée par l'admin, et une règle est sacrée sur DaimBet : 
-              <strong> on rigole ensemble, jamais aux dépens de quelqu'un</strong>. Les paris 
+              <strong> on rigole ensemble.</strong> Les paris 
               méchants ou humiliants n'ont pas leur place ici — et cette règle sera appliquée 
               sans exception.
             </p>
@@ -102,7 +102,7 @@ export default function CharterModal({ userId, onAccepted }: CharterModalProps) 
                   className="h-full bg-primary"
                   initial={{ width: '100%' }}
                   animate={{ width: '0%' }}
-                  transition={{ duration: 20, ease: 'linear' }}
+                  transition={{ duration: 15, ease: 'linear' }}
                 />
               </div>
             </div>
