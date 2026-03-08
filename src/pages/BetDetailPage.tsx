@@ -5,8 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, TrendingUp, Users, Timer, Plus } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Users, Timer } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { calculatePariMutuelOdds, calculateEstimatedNetGain, maxBetAmount, DEFAULT_ODDS, PROMO_NAMES } from '@/lib/pari-mutuel';
@@ -14,7 +13,6 @@ import { useCountdown } from '@/hooks/useCountdown';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { BetWithOptions } from '@/components/BetCard';
 import type { Tables } from '@/integrations/supabase/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 type WagerRow = Tables<'wagers'>;
 
