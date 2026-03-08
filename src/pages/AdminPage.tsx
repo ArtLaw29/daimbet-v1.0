@@ -130,6 +130,14 @@ export default function AdminPage() {
   const [nuclearSendingReport, setNuclearSendingReport] = useState(false);
   const [nuclearReportError, setNuclearReportError] = useState('');
 
+  // Nav config (tab visibility)
+  const [navConfig, setNavConfig] = useState<Record<string, boolean>>({});
+
+  // Retraction config
+  const [retractionStart, setRetractionStart] = useState(0);
+  const [retractionEnd, setRetractionEnd] = useState(9);
+  const [retractionSaving, setRetractionSaving] = useState(false);
+
   // Multi-winner resolution
   const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
 
