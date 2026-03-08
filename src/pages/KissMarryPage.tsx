@@ -113,6 +113,14 @@ export default function KissMarryPage() {
       return;
     }
 
+    // Validate unique names across categories
+    const selectedNames = Object.entries(selections).filter(([_, name]) => name).map(([_, name]) => name);
+    if (new Set(selectedNames).size !== selectedNames.length) {
+      toast.error('Choisis des prénoms différents pour chaque catégorie ! 🦌');
+      setSubmitting(false);
+      return;
+    }
+
     const votes = Object.entries(selections)
       .filter(([_, name]) => name)
       .map(([category, voted_prenom]) => ({ category, voted_prenom }));
