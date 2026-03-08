@@ -14,7 +14,7 @@ interface CharterModalProps {
 export default function CharterModal({ userId, onAccepted }: CharterModalProps) {
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [countdown, setCountdown] = useState(20);
+  const [countdown, setCountdown] = useState(15);
 
   useEffect(() => {
     if (countdown <= 0) return;
