@@ -10,7 +10,7 @@ import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, H
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
-import { calculateNetWinnings, calculateRake, calculateGrossWinnings, aggregateBetsByOption, STARTING_BALANCE, DEFAULT_ODDS } from '@/lib/pari-mutuel';
+import { calculateRake, calculateGrossWinnings, aggregateBetsByOption, STARTING_BALANCE, DEFAULT_ODDS } from '@/lib/pari-mutuel';
 
 type Profile = Tables<'profiles'>;
 

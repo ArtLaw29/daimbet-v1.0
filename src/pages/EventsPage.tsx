@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Flame, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { calculatePariMutuelOdds, aggregateBetsByOption, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS, STARTING_BALANCE } from '@/lib/pari-mutuel';
+import { calculatePariMutuelOdds, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS, STARTING_BALANCE } from '@/lib/pari-mutuel';
 
 interface EventOption {
   id: string;
