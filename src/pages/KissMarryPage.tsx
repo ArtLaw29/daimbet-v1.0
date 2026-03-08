@@ -284,8 +284,11 @@ export default function KissMarryPage() {
       </div>
       {INTRO_KISS_MARRY}
 
-      <p className="text-xs text-muted-foreground mb-4 text-center">
+      <p className="text-xs text-muted-foreground mb-2 text-center">
         Les catégories "Coup d'un soir" et "Plan Q" sont optionnelles — tu peux jouer sans elles.
+      </p>
+      <p className="text-xs text-primary/80 mb-4 text-center font-medium">
+        ⚠️ Choisis un prénom différent pour chaque catégorie !
       </p>
 
       <div className="space-y-5">

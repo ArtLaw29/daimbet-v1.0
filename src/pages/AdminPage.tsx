@@ -1946,6 +1946,45 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* ─── KISS/MARRY REVEAL ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Révélation Kiss/Marry</h3>
+              <p className="text-xs text-muted-foreground">
+                Active la révélation des résultats du mois pour tous les utilisateurs.
+              </p>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  className="flex-1 border-primary/50 text-primary hover:bg-primary/10"
+                  onClick={async () => {
+                    const now = new Date();
+                    const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                    const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', `km_reveal_${monthYear}`).maybeSingle();
+                    if (existing) {
+                      await supabase.from('platform_settings').update({ value: 'true', updated_at: new Date().toISOString() }).eq('key', `km_reveal_${monthYear}`);
+                    } else {
+                      await supabase.from('platform_settings').insert({ key: `km_reveal_${monthYear}`, value: 'true' });
+                    }
+                    toast.success('🏆 Révélation Kiss/Marry activée !');
+                  }}
+                >
+                  <Sparkles className="w-4 h-4 mr-2" /> Activer la révélation 🏆
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    const now = new Date();
+                    const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                    await supabase.from('platform_settings').update({ value: 'false', updated_at: new Date().toISOString() }).eq('key', `km_reveal_${monthYear}`);
+                    toast.success('Révélation désactivée');
+                  }}
+                >
+                  Désactiver
+                </Button>
+              </div>
+            </div>
+
             {/* ─── RETRACTION CONFIG ─── */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-display flex items-center gap-2"><RefreshCw className="w-4 h-4 text-primary" /> Option de rétractation</h3>
