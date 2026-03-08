@@ -77,7 +77,10 @@ export default function BetCard({ bet, pools, totalPool, profileBalance, userWag
   const hiddenCount = isTierce ? Math.max(0, sortedOptions.length - 3) : 0;
 
   return (
-    <div className={`rounded-xl border border-border bg-card p-5 card-glow ${status.cardClass || ''}`}>
+    <div
+      className={`rounded-xl border border-border bg-card p-5 card-glow cursor-pointer transition-colors hover:border-primary/30 ${status.cardClass || ''}`}
+      onClick={() => onOpenBet(bet)}
+    >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
