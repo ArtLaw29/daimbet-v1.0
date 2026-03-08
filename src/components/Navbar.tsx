@@ -93,11 +93,11 @@ export default function Navbar() {
   return (
     <>
       {/* ─── HEADER (top bar) ─── */}
-      <header className="sticky top-0 z-50 glass border-b border-border">
+      <header className="sticky top-0 z-50 glass border-b border-border" role="banner">
         <div className="container mx-auto flex items-center justify-between h-14 px-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <img src={daimcoinLogo} alt="DAIMBet" className="w-7 h-7 rounded-full" />
+          <Link to="/" className="flex items-center gap-2" aria-label="Accueil DaimBet">
+            <img src={daimcoinLogo} alt="Logo DaimBet" className="w-7 h-7 rounded-full" />
             <span className="font-display text-xl text-primary tracking-wider hidden sm:inline">DAIMBET</span>
           </Link>
 
