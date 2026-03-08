@@ -474,9 +474,20 @@ export default function AdminPage() {
     fetchAll();
   };
 
-  const resetUserPassword = async (userId: string) => {
-    // We need the user's email - we don't have it in profiles, so use admin API via edge function
-    toast.info('Fonction de réinitialisation de mot de passe disponible via le lien "Mot de passe oublié" sur la page de connexion.');
+  const resetUserPassword = async (userId: string, newPassword: string) => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+      body: { target_user_id: userId, new_password: newPassword },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || 'Erreur');
+    } else {
+      toast.success('Mot de passe réinitialisé ! Communique-le à l\'utilisateur.');
+      setResetPwValue('');
+    }
   };
 
   const triggerLiquidityInjection = async () => {
