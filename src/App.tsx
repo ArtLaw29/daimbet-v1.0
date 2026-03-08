@@ -57,6 +57,18 @@ function AppRoutes() {
     return count % 4 === 0;
   });
 
+  // Auto-accept charter silently for new users, show flash instead
+  useEffect(() => {
+    if (user && !hasAcceptedCharter && !isAdmin) {
+      supabase
+        .from('profiles')
+        .update({ has_accepted_charter: true })
+        .eq('user_id', user.id)
+        .then(() => refreshProfile());
+      setShowCharterFlash(true);
+    }
+  }, [user, hasAcceptedCharter, isAdmin]);
+
   useEffect(() => {
     if (showCharterFlash) {
       const timer = setTimeout(() => setShowCharterFlash(false), 5000);
