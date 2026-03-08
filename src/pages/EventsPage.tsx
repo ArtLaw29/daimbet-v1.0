@@ -23,10 +23,11 @@ const SORT_OPTIONS: { value: SortMode; label: string; icon: React.ElementType }[
 ];
 
 export default function EventsPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [bets, setBets] = useState<BetWithOptions[]>([]);
-  const [betAmounts, setBetAmounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [sheetBet, setSheetBet] = useState<BetWithOptions | null>(null);
   const [wagerPools, setWagerPools] = useState<Record<string, Record<string, number>>>({});
   const [betTotals, setBetTotals] = useState<Record<string, number>>({});
   const [wagerCounts, setWagerCounts] = useState<Record<string, number>>({});
