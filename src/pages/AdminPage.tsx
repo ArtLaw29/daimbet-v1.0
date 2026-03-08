@@ -526,8 +526,15 @@ export default function AdminPage() {
         <p className="text-muted-foreground mt-1">Panneau d'administration</p>
       </div>
 
+      {/* Maintenance banner */}
+      {maintenanceMode && (
+        <div className="mb-4 rounded-xl border border-destructive bg-destructive/10 p-3 text-center">
+          <p className="text-sm font-semibold text-destructive">🚨 Plateforme suspendue — Les utilisateurs voient l'écran de maintenance</p>
+        </div>
+      )}
+
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9 bg-secondary">
+        <TabsList className="grid w-full grid-cols-10 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
           <TabsTrigger value="proposals" className="font-display text-xs">
