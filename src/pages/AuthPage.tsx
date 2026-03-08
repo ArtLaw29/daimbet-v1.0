@@ -228,21 +228,6 @@ export default function AuthPage() {
           {mode === 'connexion' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="login-name">Ton prénom</Label>
-                <select
-                  id="login-name"
-                  value={selectedName}
-                  onChange={(e) => setSelectedName(e.target.value)}
-                  required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Choisis ton prénom...</option>
-                  {PROMO_NAMES.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
                   id="login-email"
