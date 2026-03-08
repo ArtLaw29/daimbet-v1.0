@@ -698,6 +698,85 @@ export default function AdminPage() {
           </form>
         </TabsContent>
 
+        {/* ═══════════════ PROPOSALS ═══════════════ */}
+        <TabsContent value="proposals">
+          <div className="space-y-4">
+            <h2 className="text-xl font-display">Propositions communautaires</h2>
+
+            {adminProposals.filter(p => p.status === 'en_attente').length === 0 && (
+              <p className="text-muted-foreground text-center py-8">Aucune proposition en attente.</p>
+            )}
+
+            {adminProposals.filter(p => p.status === 'en_attente').map(prop => (
+              <div key={prop.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold">{prop.title}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Par {proposalProfiles[prop.user_id] || 'Inconnu'} · {new Date(prop.created_at).toLocaleDateString('fr-FR')}
+                    </p>
+                    {prop.type && <p className="text-xs text-muted-foreground mt-0.5">Type : {prop.type}</p>}
+                    {prop.end_date_proposed && (
+                      <p className="text-xs text-muted-foreground">Fin proposée : {new Date(prop.end_date_proposed).toLocaleString('fr-FR')}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm">👍 {prop.votes_positive} · 👎 {prop.votes_negative}</p>
+                    <p className="text-[10px] text-muted-foreground">Seuil : 15👍 & &lt;5👎</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button size="sm" className="gold-gradient flex-1" onClick={async () => {
+                    // Accept: create bet from proposal
+                    const { data, error } = await supabase.functions.invoke('activate-proposal', {
+                      body: { proposal_id: prop.id },
+                    });
+                    if (error || data?.error) {
+                      // If threshold not met, force-activate by updating votes first
+                      await supabase.from('daimocratie_proposals').update({
+                        votes_positive: 15, votes_negative: 0,
+                      }).eq('id', prop.id);
+                      await supabase.functions.invoke('activate-proposal', { body: { proposal_id: prop.id } });
+                    }
+                    toast.success('Proposition validée et pari créé ! ✅');
+                    fetchAll();
+                  }}>
+                    <CheckCircle className="w-4 h-4 mr-1" /> Accepter
+                  </Button>
+                  <Button size="sm" variant="destructive" className="flex-1" onClick={async () => {
+                    await supabase.from('daimocratie_proposals').update({ status: 'rejete' as any }).eq('id', prop.id);
+                    toast.success('Proposition rejetée ❌');
+                    fetchAll();
+                  }}>
+                    <XCircle className="w-4 h-4 mr-1" /> Rejeter
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {/* Processed proposals */}
+            {adminProposals.filter(p => p.status !== 'en_attente').length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-display text-muted-foreground mb-3">Historique</h3>
+                {adminProposals.filter(p => p.status !== 'en_attente').map(prop => (
+                  <div key={prop.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/50 mb-2">
+                    <div>
+                      <span className="text-sm">{prop.title}</span>
+                      <span className="text-xs text-muted-foreground ml-2">par {proposalProfiles[prop.user_id] || '?'}</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      prop.status === 'valide' ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'
+                    }`}>
+                      {prop.status === 'valide' ? '✅ Validé' : '❌ Rejeté'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         {/* ═══════════════ MANAGE ═══════════════ */}
         <TabsContent value="manage">
           <div className="space-y-4">
