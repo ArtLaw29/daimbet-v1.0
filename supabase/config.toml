@@ -1,1 +1,4 @@
 project_id = "aiffhgbzoxglfewdutea"
+
+[functions.check-auto-close]
+verify_jwt = false
