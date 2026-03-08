@@ -476,9 +476,17 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 bg-secondary">
+        <TabsList className="grid w-full grid-cols-7 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
+          <TabsTrigger value="proposals" className="font-display text-xs">
+            <Vote className="w-4 h-4 mr-1" /> Votes
+            {adminProposals.filter(p => p.status === 'en_attente').length > 0 && (
+              <span className="ml-1 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full">
+                {adminProposals.filter(p => p.status === 'en_attente').length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="results" className="font-display text-xs"><History className="w-4 h-4 mr-1" /> Archive</TabsTrigger>
           <TabsTrigger value="users" className="font-display text-xs"><Users className="w-4 h-4 mr-1" /> Joueurs</TabsTrigger>
           <TabsTrigger value="gazette" className="font-display text-xs">
