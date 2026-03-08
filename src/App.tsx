@@ -6,8 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
 import { useEffect, useState, lazy, Suspense } from "react";
-import { motion } from "framer-motion";
-import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "./components/Navbar";
 
@@ -50,9 +48,7 @@ function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceChecked, setMaintenanceChecked] = useState(false);
-  const [showCharterFlash, setShowCharterFlash] = useState(false);
-
-  // Auto-accept charter silently for new users, always show flash on first login
+  // Auto-accept charter silently for new users
   useEffect(() => {
     if (user && !hasAcceptedCharter && !isAdmin) {
       supabase
@@ -60,26 +56,8 @@ function AppRoutes() {
         .update({ has_accepted_charter: true })
         .eq('user_id', user.id)
         .then(() => refreshProfile());
-      setShowCharterFlash(true);
     }
   }, [user, hasAcceptedCharter, isAdmin]);
-
-  // Show flash every 5 logins for returning users
-  useEffect(() => {
-    if (!user || isAdmin) return;
-    const count = parseInt(localStorage.getItem('daimbet_login_count') || '0', 10) + 1;
-    localStorage.setItem('daimbet_login_count', String(count));
-    if (count % 5 === 0) {
-      setShowCharterFlash(true);
-    }
-  }, [user, isAdmin]);
-
-  useEffect(() => {
-    if (showCharterFlash) {
-      const timer = setTimeout(() => setShowCharterFlash(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showCharterFlash]);
 
   useEffect(() => {
     const checkMaintenance = async () => {
@@ -137,38 +115,6 @@ function AppRoutes() {
   // ─── LOGGED IN ───
   return (
     <>
-      {showCharterFlash && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.4, type: 'spring' }}
-            className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 card-glow shadow-2xl"
-          >
-            <div className="text-center mb-4">
-              <Shield className="w-10 h-10 mx-auto text-primary mb-2" />
-              <h2 className="text-xl font-display gold-text">📜 Rappel — Charte DaimBet</h2>
-            </div>
-            <div className="bg-secondary/50 rounded-xl p-4 border border-border/50">
-              <p className="text-sm leading-relaxed text-foreground">
-                🦌 <strong>On rigole ensemble, jamais aux dépens de quelqu'un.</strong> Les paris méchants ou humiliants n'ont pas leur place ici.
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">Rake de 5% • Résolution par l'admin • Bonne chance 💸</p>
-            </div>
-            <div className="mt-3 flex justify-center">
-              <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
-                <motion.div
-                  className="h-full bg-primary"
-                  initial={{ width: '100%' }}
-                  animate={{ width: '0%' }}
-                  transition={{ duration: 5, ease: 'linear' }}
-                />
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
       <Navbar />
       <ResolutionNotifier />
       <Suspense fallback={<PageLoader />}>
