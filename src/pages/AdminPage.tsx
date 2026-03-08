@@ -120,6 +120,9 @@ export default function AdminPage() {
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
   const [emailTodayCount, setEmailTodayCount] = useState(0);
 
+  // Kiss/Marry reveal
+  const [kmRevealStep, setKmRevealStep] = useState(0);
+
   // Maintenance
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [nuclearOpen, setNuclearOpen] = useState(false);
