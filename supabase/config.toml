@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.admin-notify-email]
 verify_jwt = false
+
+[functions.send-admin-email]
+verify_jwt = false
