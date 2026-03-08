@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,47 +82,96 @@ Deno.serve(async (req) => {
     }
 
     if (action === "execute_reset") {
-      await supabase.from("gazette_reactions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("gazette_messages").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("ticket_messages").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("tickets").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("daimocratie_votes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("daimocratie_proposals").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("tierce_suggestions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("wagers").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("bet_options").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("bets").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("kiss_marry_votes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("solde_history").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("liquidity_injections").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("admin_notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase.from("admin_emails_log").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      const errors: string[] = [];
 
+      const deletions = [
+        { table: "gazette_reactions", fk: false },
+        { table: "gazette_messages", fk: false },
+        { table: "ticket_messages", fk: false },
+        { table: "tickets", fk: false },
+        { table: "daimocratie_votes", fk: false },
+        { table: "daimocratie_proposals", fk: false },
+        { table: "tierce_suggestions", fk: false },
+        { table: "wagers", fk: false },
+        { table: "bet_options", fk: false },
+        { table: "bets", fk: false },
+        { table: "kiss_marry_votes", fk: false },
+        { table: "solde_history", fk: false },
+        { table: "liquidity_injections", fk: false },
+        { table: "admin_notifications", fk: false },
+        { table: "admin_emails_log", fk: false },
+      ];
+
+      // Delete all data from tables sequentially (order matters for FK)
+      for (const { table } of deletions) {
+        const { error } = await supabase.from(table).delete().gte("created_at", "1970-01-01");
+        if (error) {
+          console.error(`Delete ${table} error:`, error.message);
+          errors.push(`${table}: ${error.message}`);
+          // Try alternative delete
+          const { error: err2 } = await supabase.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+          if (err2) {
+            console.error(`Delete ${table} alt error:`, err2.message);
+          }
+        } else {
+          console.log(`Deleted all from ${table}`);
+        }
+      }
+
+      // Delete non-admin users
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
       const adminIds = (adminRoles ?? []).map((r: any) => r.user_id);
+      console.log(`Admin IDs preserved: ${adminIds.join(", ")}`);
 
       if (adminIds.length > 0) {
+        // Delete non-admin profiles
         const { data: allProfiles } = await supabase.from("profiles").select("user_id");
-        const nonAdminProfiles = (allProfiles ?? []).filter((p: any) => !adminIds.includes(p.user_id));
-        for (const p of nonAdminProfiles) {
-          await supabase.from("profiles").delete().eq("user_id", p.user_id);
-        }
-        const { data: allRoles } = await supabase.from("user_roles").select("id, user_id");
-        const nonAdminRoleIds = (allRoles ?? []).filter((r: any) => !adminIds.includes(r.user_id)).map((r: any) => r.id);
-        for (const rid of nonAdminRoleIds) {
-          await supabase.from("user_roles").delete().eq("id", rid);
-        }
-        const { data: { users: authUsers } } = await supabase.auth.admin.listUsers();
-        for (const u of (authUsers ?? [])) {
-          if (!adminIds.includes(u.id)) {
-            await supabase.auth.admin.deleteUser(u.id);
+        const nonAdminUserIds = (allProfiles ?? []).filter((p: any) => !adminIds.includes(p.user_id)).map((p: any) => p.user_id);
+        console.log(`Non-admin profiles to delete: ${nonAdminUserIds.length}`);
+
+        for (const uid of nonAdminUserIds) {
+          const { error } = await supabase.from("profiles").delete().eq("user_id", uid);
+          if (error) {
+            console.error(`Delete profile ${uid}:`, error.message);
+            errors.push(`profile ${uid}: ${error.message}`);
           }
+        }
+
+        // Delete non-admin roles
+        const { error: roleDelErr } = await supabase.from("user_roles").delete().eq("role", "user");
+        if (roleDelErr) {
+          console.error("Delete user roles:", roleDelErr.message);
+        }
+
+        // Delete non-admin auth users
+        const { data: { users: authUsers }, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+        if (listErr) {
+          console.error("List auth users error:", listErr.message);
+        } else {
+          const nonAdminAuthUsers = (authUsers ?? []).filter(u => !adminIds.includes(u.id));
+          console.log(`Non-admin auth users to delete: ${nonAdminAuthUsers.length}`);
+          for (const u of nonAdminAuthUsers) {
+            const { error } = await supabase.auth.admin.deleteUser(u.id);
+            if (error) {
+              console.error(`Delete auth user ${u.id}:`, error.message);
+              errors.push(`auth ${u.id}: ${error.message}`);
+            }
+          }
+        }
+
+        // Reset admin balance to 1000
+        for (const adminId of adminIds) {
+          await supabase.from("profiles").update({ balance: 1000, has_accepted_charter: true }).eq("user_id", adminId);
         }
       }
 
       await supabase.from("platform_settings").update({ value: "false" }).eq("key", "maintenance_mode");
 
-      return new Response(JSON.stringify({ success: true, message: "Réinitialisation totale effectuée" }), {
+      const resultMsg = errors.length > 0
+        ? `Réinitialisation effectuée avec ${errors.length} erreur(s): ${errors.slice(0, 5).join("; ")}`
+        : "Réinitialisation totale effectuée avec succès";
+
+      return new Response(JSON.stringify({ success: true, message: resultMsg, errors }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -131,6 +180,7 @@ Deno.serve(async (req) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    console.error("Nuclear reset error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
