@@ -14,179 +14,318 @@ export type Database = {
   }
   public: {
     Tables: {
-      bets: {
+      admin_emails_log: {
         Row: {
-          amount: number
-          created_at: string
-          event_id: string
+          body_preview: string | null
           id: string
-          option_id: string
-          potential_winnings: number
+          recipients_json: Json
+          sent_at: string
           status: string
-          user_id: string
+          subject: string
         }
         Insert: {
-          amount: number
-          created_at?: string
-          event_id: string
+          body_preview?: string | null
           id?: string
-          option_id: string
-          potential_winnings: number
+          recipients_json: Json
+          sent_at?: string
           status?: string
-          user_id: string
+          subject: string
         }
         Update: {
-          amount?: number
-          created_at?: string
-          event_id?: string
+          body_preview?: string | null
           id?: string
-          option_id?: string
-          potential_winnings?: number
+          recipients_json?: Json
+          sent_at?: string
           status?: string
-          user_id?: string
+          subject?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "bets_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bets_option_id_fkey"
-            columns: ["option_id"]
-            isOneToOne: false
-            referencedRelation: "event_options"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      event_options: {
+      bet_options: {
         Row: {
-          event_id: string
+          bet_id: string
+          bornes_info: string | null
+          cote_actuelle: number
           id: string
           is_winner: boolean | null
           label: string
-          odds: number
+          total_mises_dc: number
         }
         Insert: {
-          event_id: string
+          bet_id: string
+          bornes_info?: string | null
+          cote_actuelle?: number
           id?: string
           is_winner?: boolean | null
           label: string
-          odds?: number
+          total_mises_dc?: number
         }
         Update: {
-          event_id?: string
+          bet_id?: string
+          bornes_info?: string | null
+          cote_actuelle?: number
           id?: string
           is_winner?: boolean | null
           label?: string
-          odds?: number
+          total_mises_dc?: number
         }
         Relationships: [
           {
-            foreignKeyName: "event_options_event_id_fkey"
-            columns: ["event_id"]
+            foreignKeyName: "bet_options_bet_id_fkey"
+            columns: ["bet_id"]
             isOneToOne: false
-            referencedRelation: "events"
+            referencedRelation: "bets"
             referencedColumns: ["id"]
           },
         ]
       }
-      event_proposals: {
+      bets: {
         Row: {
-          created_at: string
-          description: string | null
-          downvotes: number
-          id: string
-          proposed_by: string
-          status: string
-          title: string
-          upvotes: number
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          downvotes?: number
-          id?: string
-          proposed_by: string
-          status?: string
-          title: string
-          upvotes?: number
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          downvotes?: number
-          id?: string
-          proposed_by?: string
-          status?: string
-          title?: string
-          upvotes?: number
-        }
-        Relationships: []
-      }
-      events: {
-        Row: {
-          category: string
-          closes_at: string | null
+          category: Database["public"]["Enums"]["bet_category"]
+          close_date: string | null
           created_at: string
           created_by: string | null
           description: string | null
+          emoji: string | null
+          end_date: string
           id: string
-          status: string
+          is_long_terme: boolean
+          max_winners: number
+          mise_max_pct: number
+          open_to_suggestions: boolean
+          resolution_mode: Database["public"]["Enums"]["resolution_mode"]
+          status: Database["public"]["Enums"]["bet_status"]
+          suppression_motif: string | null
           title: string
+          type: Database["public"]["Enums"]["bet_type"]
+          updated_at: string
         }
         Insert: {
-          category?: string
-          closes_at?: string | null
+          category?: Database["public"]["Enums"]["bet_category"]
+          close_date?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          emoji?: string | null
+          end_date: string
           id?: string
-          status?: string
+          is_long_terme?: boolean
+          max_winners?: number
+          mise_max_pct?: number
+          open_to_suggestions?: boolean
+          resolution_mode?: Database["public"]["Enums"]["resolution_mode"]
+          status?: Database["public"]["Enums"]["bet_status"]
+          suppression_motif?: string | null
           title: string
+          type?: Database["public"]["Enums"]["bet_type"]
+          updated_at?: string
         }
         Update: {
-          category?: string
-          closes_at?: string | null
+          category?: Database["public"]["Enums"]["bet_category"]
+          close_date?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          emoji?: string | null
+          end_date?: string
           id?: string
-          status?: string
+          is_long_terme?: boolean
+          max_winners?: number
+          mise_max_pct?: number
+          open_to_suggestions?: boolean
+          resolution_mode?: Database["public"]["Enums"]["resolution_mode"]
+          status?: Database["public"]["Enums"]["bet_status"]
+          suppression_motif?: string | null
           title?: string
+          type?: Database["public"]["Enums"]["bet_type"]
+          updated_at?: string
         }
         Relationships: []
       }
-      kiss_marry_votes: {
+      daimocratie_proposals: {
         Row: {
-          category: string
-          chosen_name: string
           created_at: string
+          end_date_proposed: string | null
           id: string
-          month: number
+          options_json: Json | null
+          status: Database["public"]["Enums"]["proposal_status"]
+          title: string
+          type: string | null
           user_id: string
-          year: number
+          votes_negative: number
+          votes_positive: number
         }
         Insert: {
-          category: string
-          chosen_name: string
           created_at?: string
+          end_date_proposed?: string | null
           id?: string
-          month: number
+          options_json?: Json | null
+          status?: Database["public"]["Enums"]["proposal_status"]
+          title: string
+          type?: string | null
           user_id: string
-          year: number
+          votes_negative?: number
+          votes_positive?: number
         }
         Update: {
-          category?: string
-          chosen_name?: string
+          created_at?: string
+          end_date_proposed?: string | null
+          id?: string
+          options_json?: Json | null
+          status?: Database["public"]["Enums"]["proposal_status"]
+          title?: string
+          type?: string | null
+          user_id?: string
+          votes_negative?: number
+          votes_positive?: number
+        }
+        Relationships: []
+      }
+      daimocratie_votes: {
+        Row: {
+          created_at: string
+          id: string
+          proposal_id: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
           created_at?: string
           id?: string
-          month?: number
+          proposal_id: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proposal_id?: string
           user_id?: string
-          year?: number
+          vote?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daimocratie_votes_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "daimocratie_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gazette_messages: {
+        Row: {
+          content: string
+          created_at: string
+          flag_reason: string | null
+          flag_score: number
+          flag_status: boolean
+          id: string
+          is_deleted: boolean
+          is_system_message: boolean
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          flag_reason?: string | null
+          flag_score?: number
+          flag_status?: boolean
+          id?: string
+          is_deleted?: boolean
+          is_system_message?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          flag_reason?: string | null
+          flag_score?: number
+          flag_status?: boolean
+          id?: string
+          is_deleted?: boolean
+          is_system_message?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      gazette_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gazette_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "gazette_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiss_marry_votes: {
+        Row: {
+          category: Database["public"]["Enums"]["km_category"]
+          created_at: string
+          id: string
+          month_year: string
+          voted_prenom: string
+          voter_hash: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["km_category"]
+          created_at?: string
+          id?: string
+          month_year: string
+          voted_prenom: string
+          voter_hash: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["km_category"]
+          created_at?: string
+          id?: string
+          month_year?: string
+          voted_prenom?: string
+          voter_hash?: string
+        }
+        Relationships: []
+      }
+      liquidity_injections: {
+        Row: {
+          amount_dc: number
+          id: string
+          triggered_at: string
+          triggered_by: string | null
+        }
+        Insert: {
+          amount_dc?: number
+          id?: string
+          triggered_at?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          amount_dc?: number
+          id?: string
+          triggered_at?: string
+          triggered_by?: string | null
         }
         Relationships: []
       }
@@ -196,7 +335,10 @@ export type Database = {
           balance: number
           created_at: string
           display_name: string
+          emoji: string | null
+          has_accepted_charter: boolean
           id: string
+          is_suspended: boolean
           updated_at: string
           user_id: string
         }
@@ -205,7 +347,10 @@ export type Database = {
           balance?: number
           created_at?: string
           display_name?: string
+          emoji?: string | null
+          has_accepted_charter?: boolean
           id?: string
+          is_suspended?: boolean
           updated_at?: string
           user_id: string
         }
@@ -214,40 +359,129 @@ export type Database = {
           balance?: number
           created_at?: string
           display_name?: string
+          emoji?: string | null
+          has_accepted_charter?: boolean
           id?: string
+          is_suspended?: boolean
           updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
-      proposal_votes: {
+      solde_history: {
+        Row: {
+          created_at: string
+          delta_dc: number
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta_dc: number
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delta_dc?: number
+          id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ticket_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sender: string
+          ticket_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sender: string
+          ticket_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sender?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
         Row: {
           created_at: string
           id: string
-          proposal_id: string
+          status: Database["public"]["Enums"]["ticket_status"]
+          subject: string
           user_id: string
-          vote_type: string
         }
         Insert: {
           created_at?: string
           id?: string
-          proposal_id: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject: string
           user_id: string
-          vote_type: string
         }
         Update: {
           created_at?: string
           id?: string
-          proposal_id?: string
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject?: string
           user_id?: string
-          vote_type?: string
+        }
+        Relationships: []
+      }
+      tierce_suggestions: {
+        Row: {
+          bet_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          prenom_suggested: string
+          status: Database["public"]["Enums"]["suggestion_status"]
+          suggested_by: string
+        }
+        Insert: {
+          bet_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          prenom_suggested: string
+          status?: Database["public"]["Enums"]["suggestion_status"]
+          suggested_by: string
+        }
+        Update: {
+          bet_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          prenom_suggested?: string
+          status?: Database["public"]["Enums"]["suggestion_status"]
+          suggested_by?: string
         }
         Relationships: [
           {
-            foreignKeyName: "proposal_votes_proposal_id_fkey"
-            columns: ["proposal_id"]
+            foreignKeyName: "tierce_suggestions_bet_id_fkey"
+            columns: ["bet_id"]
             isOneToOne: false
-            referencedRelation: "event_proposals"
+            referencedRelation: "bets"
             referencedColumns: ["id"]
           },
         ]
@@ -270,11 +504,70 @@ export type Database = {
         }
         Relationships: []
       }
+      wagers: {
+        Row: {
+          bet_id: string
+          cote_au_moment_mise: number
+          created_at: string
+          id: string
+          is_retracted: boolean
+          montant_dc: number
+          option_id: string
+          retracted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          bet_id: string
+          cote_au_moment_mise: number
+          created_at?: string
+          id?: string
+          is_retracted?: boolean
+          montant_dc: number
+          option_id: string
+          retracted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          bet_id?: string
+          cote_au_moment_mise?: number
+          created_at?: string
+          id?: string
+          is_retracted?: boolean
+          montant_dc?: number
+          option_id?: string
+          retracted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wagers_bet_id_fkey"
+            columns: ["bet_id"]
+            isOneToOne: false
+            referencedRelation: "bets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wagers_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "bet_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_km_results: {
+        Args: { p_month_year: string }
+        Returns: {
+          category: Database["public"]["Enums"]["km_category"]
+          vote_count: number
+          voted_prenom: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -285,6 +578,23 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      bet_category: "urgent" | "long_terme" | "culture_daim"
+      bet_status:
+        | "ouvert"
+        | "cloture_en_attente"
+        | "resolu"
+        | "suspendu"
+        | "supprime"
+      bet_type:
+        | "binaire"
+        | "over_under"
+        | "tranches_multiples"
+        | "tierce_du_daim"
+      km_category: "kiss" | "marry" | "coup_soir" | "plan_q"
+      proposal_status: "en_attente" | "valide" | "rejete"
+      resolution_mode: "admin" | "tirage_sort"
+      suggestion_status: "en_attente" | "approuve" | "rejete"
+      ticket_status: "ouvert" | "en_cours" | "resolu"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -413,6 +723,25 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      bet_category: ["urgent", "long_terme", "culture_daim"],
+      bet_status: [
+        "ouvert",
+        "cloture_en_attente",
+        "resolu",
+        "suspendu",
+        "supprime",
+      ],
+      bet_type: [
+        "binaire",
+        "over_under",
+        "tranches_multiples",
+        "tierce_du_daim",
+      ],
+      km_category: ["kiss", "marry", "coup_soir", "plan_q"],
+      proposal_status: ["en_attente", "valide", "rejete"],
+      resolution_mode: ["admin", "tirage_sort"],
+      suggestion_status: ["en_attente", "approuve", "rejete"],
+      ticket_status: ["ouvert", "en_cours", "resolu"],
     },
   },
 } as const
