@@ -268,7 +268,7 @@ export default function KissMarryPage() {
           </div>
         )}
 
-        {/* Reveal is now admin-controlled via platform_settings */}
+        {/* Reveal is automatic on 1st of month at 10h */}
       </div>
     );
   }
