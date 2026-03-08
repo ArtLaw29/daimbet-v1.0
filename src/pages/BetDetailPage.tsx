@@ -89,18 +89,15 @@ export default function BetDetailPage() {
     return () => { supabase.removeChannel(ch); };
   }, [id, fetchBet]);
 
-  if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
-  if (!bet) return <div className="text-center py-20 text-muted-foreground">Pari introuvable</div>;
-
-  const isOpen = bet.status === 'ouvert';
-  const isClosed = bet.status === 'cloture_en_attente';
-  const isSuspended = bet.status === 'suspendu';
-  const isLongTerm = bet.is_long_terme;
-  const isTierce = bet.type === 'tierce_du_daim';
+  const isOpen = bet?.status === 'ouvert';
+  const isClosed = bet?.status === 'cloture_en_attente';
+  const isSuspended = bet?.status === 'suspendu';
+  const isLongTerm = bet?.is_long_terme ?? false;
+  const isTierce = bet?.type === 'tierce_du_daim';
   const max = maxBetAmount(profile?.balance || 0, isLongTerm);
   const numAmount = parseInt(amount) || 0;
 
-  const selectedOption = bet.bet_options.find(o => o.id === selectedOptionId);
+  const selectedOption = bet?.bet_options.find(o => o.id === selectedOptionId);
   const selectedOdds = selectedOptionId
     ? (totalPool > 0 && (pools[selectedOptionId] || 0) > 0
       ? calculatePariMutuelOdds(totalPool, pools[selectedOptionId] || 0)
@@ -110,6 +107,23 @@ export default function BetDetailPage() {
   const profit = estimatedNet - numAmount;
   const canPlace = numAmount > 0 && numAmount <= max && numAmount <= (profile?.balance || 0) && !!selectedOptionId;
   const hasTierceWager = isTierce && myWagers.length > 0;
+
+  // Sort options for tiercé
+  const sortedOptions = useMemo(() => {
+    if (!bet) return [];
+    const opts = [...bet.bet_options];
+    if (!isTierce) return opts;
+    switch (tierceSort) {
+      case 'volume': return opts.sort((a, b) => (pools[b.id] || 0) - (pools[a.id] || 0));
+      case 'cote_asc': return opts.sort((a, b) => a.cote_actuelle - b.cote_actuelle);
+      case 'cote_desc': return opts.sort((a, b) => b.cote_actuelle - a.cote_actuelle);
+      case 'alpha': return opts.sort((a, b) => a.label.localeCompare(b.label));
+      default: return opts;
+    }
+  }, [bet?.bet_options, pools, tierceSort, isTierce]);
+
+  if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
+  if (!bet) return <div className="text-center py-20 text-muted-foreground">Pari introuvable</div>;
 
   const handlePlace = async () => {
     if (!canPlace || !selectedOptionId || !user) return;
