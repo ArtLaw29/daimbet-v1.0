@@ -69,8 +69,7 @@ export default function KissMarryPage() {
       catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
     }
 
-    // Store for potential reveal
-    setRevealData(catData);
+    // Don't store in revealData - that's only for reveal mode
 
     // Generate safe indices (max 2)
     const generated: string[] = [];
