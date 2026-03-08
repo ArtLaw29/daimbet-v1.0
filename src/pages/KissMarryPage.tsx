@@ -170,7 +170,7 @@ export default function KissMarryPage() {
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
   // REVEAL MODE
-  if (revealMode && Object.keys(revealData).length > 0) {
+  if (isRevealDay && Object.keys(revealData).length > 0) {
     const countdownNum = revealStep < 0 ? Math.abs(revealStep) : null;
     return (
       <div className="container mx-auto px-4 py-6 max-w-2xl pb-20 md:pb-6">
