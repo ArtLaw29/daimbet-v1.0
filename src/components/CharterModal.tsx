@@ -24,16 +24,22 @@ export default function CharterModal({ userId, onAccepted }: CharterModalProps) 
 
   const handleAccept = async () => {
     setLoading(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ has_accepted_charter: true })
-      .eq('user_id', userId);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ has_accepted_charter: true })
+        .eq('user_id', userId);
 
-    if (error) {
-      toast.error('Erreur lors de l\'acceptation de la charte');
-    } else {
-      toast.success('Bienvenue sur DAIMBet ! 🦌');
-      onAccepted();
+      if (error) {
+        console.error('Charter accept error:', error);
+        toast.error('Erreur lors de l\'acceptation de la charte');
+      } else {
+        toast.success('Bienvenue sur DAIMBet ! 🦌');
+        await onAccepted();
+      }
+    } catch (err) {
+      console.error('Charter accept exception:', err);
+      toast.error('Erreur inattendue');
     }
     setLoading(false);
   };
