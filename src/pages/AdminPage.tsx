@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar } from 'lucide-react';
+import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
-import { calculateRake, calculateGrossWinnings, STARTING_BALANCE, DEFAULT_ODDS } from '@/lib/pari-mutuel';
+import { STARTING_BALANCE, DEFAULT_ODDS, PROMO_NAMES } from '@/lib/pari-mutuel';
 
 type Profile = Tables<'profiles'>;
 type BetRow = Tables<'bets'>;
@@ -21,6 +25,22 @@ interface BetWithOptions extends BetRow {
   bet_options: BetOption[];
 }
 
+type BetType = 'binaire' | 'over_under' | 'tranches_multiples' | 'tierce_du_daim';
+type BetCategory = 'urgent' | 'long_terme' | 'culture_daim';
+
+const TYPE_OPTIONS: { value: BetType; label: string; emoji: string; desc: string }[] = [
+  { value: 'binaire', label: 'Binaire', emoji: '✅', desc: 'OUI / NON' },
+  { value: 'over_under', label: 'Over/Under', emoji: '📊', desc: 'Seuil + bornes' },
+  { value: 'tranches_multiples', label: 'Tranches', emoji: '📏', desc: '1-5 tranches' },
+  { value: 'tierce_du_daim', label: 'Tiercé', emoji: '🏇', desc: '6-20 candidats' },
+];
+
+const CATEGORY_OPTIONS: { value: BetCategory; label: string }[] = [
+  { value: 'urgent', label: '⚡ Urgent (max 30%)' },
+  { value: 'long_terme', label: '📅 Long terme (max 15%)' },
+  { value: 'culture_daim', label: '🎪 Culture Daim (max 30%)' },
+];
+
 export default function AdminPage() {
   const { user, isAdmin } = useAuth();
   const [bets, setBets] = useState<BetWithOptions[]>([]);
@@ -28,23 +48,41 @@ export default function AdminPage() {
   const [allWagers, setAllWagers] = useState<Wager[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Create form
+  // Create form state
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [newCategory, setNewCategory] = useState<string>('urgent');
+  const [newType, setNewType] = useState<BetType>('binaire');
+  const [newCategory, setNewCategory] = useState<BetCategory>('urgent');
   const [newEndDate, setNewEndDate] = useState('');
-  const [newCloseDate, setNewCloseDate] = useState('');
+  const [newEmoji, setNewEmoji] = useState('');
   const [options, setOptions] = useState([{ label: '' }, { label: '' }]);
+  const [publishMode, setPublishMode] = useState<'direct' | 'vote'>('direct');
+  const [openToSuggestions, setOpenToSuggestions] = useState(false);
+  const [resolutionMode, setResolutionMode] = useState<'admin' | 'tirage_sort'>('admin');
+  const [maxWinners, setMaxWinners] = useState(1);
+  // Over/Under
+  const [overUnderThreshold, setOverUnderThreshold] = useState('');
+  // Tiercé candidates
+  const [tierceCandidates, setTierceCandidates] = useState<string[]>([]);
+  const [newCandidate, setNewCandidate] = useState('');
+  // AI evaluation
+  const [aiScore, setAiScore] = useState<number | null>(null);
+  const [aiComment, setAiComment] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  // Delete motif
+  const [deleteMotif, setDeleteMotif] = useState('');
 
-  // Results filter
+  // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
 
-  useEffect(() => {
-    if (isAdmin) fetchAll();
-  }, [isAdmin]);
+  // Multi-winner resolution
+  const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
 
-  const fetchAll = async () => {
+  useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
+
+  const fetchAll = useCallback(async () => {
     const [betsRes, prRes, wagersRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
@@ -54,116 +92,217 @@ export default function AdminPage() {
     setProfiles(prRes.data || []);
     setAllWagers((wagersRes.data as Wager[]) || []);
     setLoading(false);
+  }, []);
+
+  // ─── COMPUTED CLOSE DATE PREVIEW ───
+  const computedCloseDate = (() => {
+    if (!newEndDate) return null;
+    const end = new Date(newEndDate);
+    const now = new Date();
+    const diff = end.getTime() - now.getTime();
+    if (newCategory === 'urgent' && newTitle.toLowerCase().includes('retard')) {
+      return new Date(end.getTime() - 4 * 3600000);
+    }
+    if (diff < 3600000) return new Date(end.getTime() - 20 * 60000);
+    return new Date(end.getTime() - 15 * 60000);
+  })();
+
+  // ─── AI EVALUATION ───
+  const evaluateBet = async () => {
+    setAiLoading(true);
+    setAiScore(null);
+    setAiComment('');
+    try {
+      const optLabels = newType === 'tierce_du_daim'
+        ? tierceCandidates
+        : newType === 'binaire'
+          ? ['OUI', 'NON']
+          : options.filter(o => o.label.trim()).map(o => o.label);
+
+      const resp = await supabase.functions.invoke('evaluate-bet', {
+        body: { title: newTitle, type: newType, category: newCategory, options: optLabels },
+      });
+      if (resp.data) {
+        setAiScore(resp.data.score);
+        setAiComment(resp.data.comment || 'Évaluation indisponible');
+      }
+    } catch {
+      setAiComment('Évaluation indisponible');
+    }
+    setAiLoading(false);
+  };
+
+  // ─── BUILD OPTIONS FOR TYPE ───
+  const buildOptions = (): { label: string; bornes_info?: string }[] => {
+    switch (newType) {
+      case 'binaire':
+        return [{ label: 'OUI' }, { label: 'NON' }];
+      case 'over_under':
+        return [
+          { label: `Over ${overUnderThreshold}`, bornes_info: `≥ ${overUnderThreshold} (borne inclusive)` },
+          { label: `Under ${overUnderThreshold}`, bornes_info: `< ${overUnderThreshold}` },
+        ];
+      case 'tranches_multiples':
+        return options.filter(o => o.label.trim()).map(o => ({ label: o.label.trim() }));
+      case 'tierce_du_daim':
+        return tierceCandidates.map(c => ({ label: c }));
+      default:
+        return options.filter(o => o.label.trim()).map(o => ({ label: o.label.trim() }));
+    }
   };
 
   // ─── CREATE BET ───
   const createBet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    const validOptions = options.filter((o) => o.label.trim());
-    if (validOptions.length < 2) {
-      toast.error('Il faut au moins 2 options');
-      return;
+
+    const builtOptions = buildOptions();
+    if (newType === 'tierce_du_daim' && builtOptions.length < 6) {
+      toast.error('Le Tiercé du Daim nécessite au moins 6 candidats'); return;
     }
-    if (!newEndDate) {
-      toast.error('La date de fin du pari est obligatoire');
-      return;
+    if (newType === 'tierce_du_daim' && builtOptions.length > 20) {
+      toast.error('Maximum 20 candidats pour le Tiercé'); return;
     }
+    if (builtOptions.length < 2) { toast.error('Il faut au moins 2 options'); return; }
+    if (!newEndDate) { toast.error('La date de fin est obligatoire'); return; }
 
     const isLongTerme = newCategory === 'long_terme';
 
-    const { data: bet, error } = await supabase
-      .from('bets')
-      .insert({
-        title: newTitle.trim(),
-        description: newDesc.trim() || null,
-        category: newCategory as any,
-        created_by: user.id,
-        end_date: new Date(newEndDate).toISOString(),
-        close_date: newCloseDate ? new Date(newCloseDate).toISOString() : null,
-        is_long_terme: isLongTerme,
-        mise_max_pct: isLongTerme ? 15 : 30,
-      })
-      .select()
-      .single();
+    const betData: any = {
+      title: newTitle.trim(),
+      description: newDesc.trim() || null,
+      category: newCategory,
+      type: newType,
+      created_by: user.id,
+      end_date: new Date(newEndDate).toISOString(),
+      is_long_terme: isLongTerme,
+      mise_max_pct: isLongTerme ? 15 : 30,
+      resolution_mode: resolutionMode,
+      max_winners: maxWinners,
+      open_to_suggestions: newType === 'tierce_du_daim' ? openToSuggestions : false,
+    };
+    if (newEmoji) betData.emoji = newEmoji;
 
-    if (error || !bet) { toast.error('Erreur création'); return; }
+    const { data: bet, error } = await supabase.from('bets').insert(betData).select().single();
+    if (error || !bet) { toast.error(`Erreur création: ${error?.message}`); return; }
 
     await supabase.from('bet_options').insert(
-      validOptions.map((o) => ({ bet_id: bet.id, label: o.label.trim() }))
+      builtOptions.map(o => ({ bet_id: bet.id, label: o.label, bornes_info: (o as any).bornes_info || null }))
     );
 
-    toast.success('Pari créé ! 🎉');
-    setNewTitle(''); setNewDesc(''); setNewEndDate(''); setNewCloseDate('');
+    // If vote mode → create proposal
+    if (publishMode === 'vote') {
+      await supabase.from('daimocratie_proposals').insert({
+        title: newTitle.trim(),
+        type: newType,
+        user_id: user.id,
+        options_json: builtOptions,
+        end_date_proposed: new Date(newEndDate).toISOString(),
+      });
+      // Set bet to suspended until approved
+      await supabase.from('bets').update({ status: 'suspendu' as any }).eq('id', bet.id);
+      toast.success('Pari soumis au vote communautaire 🗳️');
+    } else {
+      // Gazette message
+      await supabase.from('gazette_messages').insert({
+        content: `📢 Nouveau pari : "${bet.title}" — Les mises sont ouvertes ! 🔥`,
+        is_system_message: true,
+      });
+      toast.success('Pari publié ! 🟢');
+    }
+
+    // Reset form
+    setNewTitle(''); setNewDesc(''); setNewEndDate(''); setNewEmoji('');
     setOptions([{ label: '' }, { label: '' }]);
+    setTierceCandidates([]); setOverUnderThreshold('');
+    setAiScore(null); setAiComment('');
+    setMaxWinners(1); setOpenToSuggestions(false);
+    setResolutionMode('admin');
     fetchAll();
   };
 
-  // ─── CLOSE BETS (Clôture) ───
+  // ─── ACTIONS ───
   const closeBet = async (betId: string) => {
     await supabase.from('bets').update({ status: 'cloture_en_attente' as any }).eq('id', betId);
-    toast.success('Mises clôturées ! Les cotes sont figées. 🔒');
+    const bet = bets.find(b => b.id === betId);
+    await supabase.from('gazette_messages').insert({
+      content: `🔒 Mises closes : "${bet?.title}" — Résultat à venir !`,
+      is_system_message: true,
+    });
+    toast.success('Mises clôturées 🔒');
     fetchAll();
   };
 
-  // ─── RESOLVE BET (Résolution — Pari Mutuel avec rake) ───
-  const resolveBet = async (betId: string, winnerOptionId: string) => {
-    const betWagers = allWagers.filter(w => w.bet_id === betId && !w.is_retracted);
-    const totalPool = betWagers.reduce((s, w) => s + w.montant_dc, 0);
-    const totalOnWinner = betWagers.filter(w => w.option_id === winnerOptionId).reduce((s, w) => s + w.montant_dc, 0);
+  const suspendBet = async (betId: string, suspend: boolean) => {
+    await supabase.from('bets').update({ status: (suspend ? 'suspendu' : 'ouvert') as any }).eq('id', betId);
+    const bet = bets.find(b => b.id === betId);
+    await supabase.from('gazette_messages').insert({
+      content: suspend
+        ? `⏸️ Pari suspendu par Jordaim Belfort : "${bet?.title}"`
+        : `▶️ Pari réactivé : "${bet?.title}" — Les mises reprennent !`,
+      is_system_message: true,
+    });
+    toast.success(suspend ? 'Pari suspendu ⏸️' : 'Pari réactivé ▶️');
+    fetchAll();
+  };
+
+  const resolveBet = async (betId: string) => {
+    const winners = selectedWinners[betId];
+    if (!winners || winners.size === 0) { toast.error('Sélectionne au moins une option gagnante'); return; }
+    const winnerIds = Array.from(winners);
+
+    const { data, error } = await supabase.rpc('resolve_bet', {
+      p_bet_id: betId,
+      p_winning_option_ids: winnerIds,
+    });
+    if (error) { toast.error(`Erreur: ${error.message}`); return; }
+    const result = data as { error?: string };
+    if (result.error) { toast.error(result.error); return; }
 
     const bet = bets.find(b => b.id === betId);
-    if (!bet) return;
-
-    // Mark winner option
-    for (const opt of bet.bet_options) {
-      await supabase.from('bet_options').update({ is_winner: opt.id === winnerOptionId }).eq('id', opt.id);
-    }
-
-    // Resolve bet
-    await supabase.from('bets').update({ status: 'resolu' as any }).eq('id', betId);
-
-    // Pay winners with pari mutuel + rake
-    let totalRake = 0;
-    const winningWagers = betWagers.filter(w => w.option_id === winnerOptionId);
-    for (const wager of winningWagers) {
-      const gross = calculateGrossWinnings(wager.montant_dc, totalOnWinner, totalPool);
-      const rake = calculateRake(gross, wager.montant_dc);
-      const net = Math.round(gross - rake);
-      totalRake += rake;
-
-      const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', wager.user_id).single();
-      if (prof) {
-        await supabase.from('profiles').update({ balance: prof.balance + net }).eq('user_id', wager.user_id);
-      }
-      // Log in solde_history
-      await supabase.from('solde_history').insert({ user_id: wager.user_id, delta_dc: net, reason: `Gain pari: ${bet.title}` });
-    }
-
-    // Log losses
-    const losingWagers = betWagers.filter(w => w.option_id !== winnerOptionId);
-    for (const wager of losingWagers) {
-      await supabase.from('solde_history').insert({ user_id: wager.user_id, delta_dc: -wager.montant_dc, reason: `Perte pari: ${bet.title}` });
-    }
-
-    toast.success(`Pari résolu ! 🏆 Cagnotte : ${totalPool} DC · Rake prélevé : ${totalRake} DC`);
+    const winnerLabels = bet?.bet_options.filter(o => winnerIds.includes(o.id)).map(o => o.label).join(', ');
+    toast.success(`Pari résolu ! 🏆 Gagnant(s) : ${winnerLabels}`);
+    setSelectedWinners(prev => { const n = { ...prev }; delete n[betId]; return n; });
     fetchAll();
   };
 
-  // ─── CANCEL BET & REFUND ───
-  const cancelBet = async (betId: string) => {
-    const betWagers = allWagers.filter(w => w.bet_id === betId && !w.is_retracted);
+  const triggerTirage = async (betId: string) => {
+    const bet = bets.find(b => b.id === betId);
+    if (!bet) return;
+    toast.info('🎲 Tirage au sort en cours...');
+    const { data, error } = await supabase.functions.invoke('tirage-sort', {
+      body: { bet_id: betId, max_winners: bet.max_winners },
+    });
+    if (error) { toast.error('Erreur tirage au sort'); return; }
+    if (data?.error) { toast.error(data.error); return; }
+    toast.success(`🎲 Tirage au sort terminé ! Gagnant(s) : ${data.winners}`);
+    fetchAll();
+  };
 
+  const cancelBet = async (betId: string, motif: string) => {
+    if (!motif.trim()) { toast.error('Le motif de suppression est obligatoire'); return; }
+    const bet = bets.find(b => b.id === betId);
+    if (bet?.status === 'resolu') { toast.error('Impossible de supprimer un pari résolu'); return; }
+
+    // Refund all wagers
+    const betWagers = allWagers.filter(w => w.bet_id === betId && !w.is_retracted);
     for (const wager of betWagers) {
       const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', wager.user_id).single();
       if (prof) {
         await supabase.from('profiles').update({ balance: prof.balance + wager.montant_dc }).eq('user_id', wager.user_id);
       }
-      await supabase.from('solde_history').insert({ user_id: wager.user_id, delta_dc: wager.montant_dc, reason: `Remboursement: pari annulé` });
+      await supabase.from('solde_history').insert({
+        user_id: wager.user_id, delta_dc: wager.montant_dc, reason: 'Remboursement: pari annulé',
+      });
     }
 
-    await supabase.from('bets').update({ status: 'supprime' as any, suppression_motif: 'Annulé par Jordaim Belfort' }).eq('id', betId);
-    toast.success(`Pari annulé et ${betWagers.length} mises remboursées ! 💰`);
+    await supabase.from('bets').update({ status: 'supprime' as any, suppression_motif: motif }).eq('id', betId);
+    await supabase.from('gazette_messages').insert({
+      content: `❌ Pari annulé : "${bet?.title}" — Toutes les mises ont été remboursées.`,
+      is_system_message: true,
+    });
+    toast.success(`Pari annulé, ${betWagers.length} mises remboursées 💰`);
+    setDeleteMotif('');
     fetchAll();
   };
 
@@ -172,7 +311,7 @@ export default function AdminPage() {
     for (const p of profiles) {
       await supabase.from('profiles').update({ balance: STARTING_BALANCE }).eq('user_id', p.user_id);
     }
-    toast.success(`Tous les soldes réinitialisés à ${STARTING_BALANCE} DC !`);
+    toast.success(`Soldes réinitialisés à ${STARTING_BALANCE} DC !`);
     fetchAll();
   };
 
@@ -180,6 +319,20 @@ export default function AdminPage() {
     await supabase.from('profiles').update({ balance: newBalance }).eq('user_id', userId);
     toast.success('Solde mis à jour');
     fetchAll();
+  };
+
+  // ─── TOGGLE WINNER ───
+  const toggleWinner = (betId: string, optionId: string, maxW: number) => {
+    setSelectedWinners(prev => {
+      const current = new Set(prev[betId] || []);
+      if (current.has(optionId)) {
+        current.delete(optionId);
+      } else {
+        if (current.size >= maxW) { toast.info(`Max ${maxW} gagnant(s)`); return prev; }
+        current.add(optionId);
+      }
+      return { ...prev, [betId]: current };
+    });
   };
 
   // ─── STATS ───
@@ -197,10 +350,11 @@ export default function AdminPage() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && !w.is_retracted;
   }).map(w => w.user_id)).size;
 
-  // ─── RESULTS FILTERING ───
+  // ─── FILTER ───
   const filteredBets = bets.filter(b => {
     if (filterStatus !== 'all' && b.status !== filterStatus) return false;
     if (filterCategory !== 'all' && b.category !== filterCategory) return false;
+    if (filterType !== 'all' && b.type !== filterType) return false;
     return true;
   });
 
@@ -219,176 +373,379 @@ export default function AdminPage() {
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
-  const openBets = bets.filter(b => b.status === 'ouvert' || b.status === 'cloture_en_attente');
+  const manageBets = bets.filter(b => ['ouvert', 'cloture_en_attente', 'suspendu'].includes(b.status));
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl">
       <div className="text-center mb-8">
         <Shield className="w-12 h-12 mx-auto text-primary mb-2" />
         <h1 className="text-4xl font-display gold-text">Jordaim Belfort</h1>
-        <p className="text-muted-foreground mt-1">Panneau d'administration – Pari Mutuel avec rake 5%</p>
+        <p className="text-muted-foreground mt-1">Panneau d'administration</p>
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
-          <TabsTrigger value="results" className="font-display text-xs"><History className="w-4 h-4 mr-1" /> Résultats</TabsTrigger>
+          <TabsTrigger value="results" className="font-display text-xs"><History className="w-4 h-4 mr-1" /> Archive</TabsTrigger>
           <TabsTrigger value="users" className="font-display text-xs"><Users className="w-4 h-4 mr-1" /> Joueurs</TabsTrigger>
           <TabsTrigger value="stats" className="font-display text-xs"><BarChart3 className="w-4 h-4 mr-1" /> Stats</TabsTrigger>
         </TabsList>
 
-        {/* ─── CREATE BET ─── */}
+        {/* ═══════════════ CREATE ═══════════════ */}
         <TabsContent value="create">
-          <form onSubmit={createBet} className="rounded-xl border border-border bg-card p-6 card-glow space-y-4">
+          <form onSubmit={createBet} className="rounded-xl border border-border bg-card p-6 card-glow space-y-5">
             <h2 className="text-xl font-display">Nouveau pari</h2>
-            <p className="text-xs text-muted-foreground">
-              Chronologie : Création → Mises ouvertes → Clôture → Fin du pari → Résolution → Archivage
-            </p>
-            <Input placeholder="Titre du pari" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required maxLength={200} />
-            <Textarea placeholder="Description (optionnel)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} rows={2} maxLength={500} />
-            <div className="grid grid-cols-2 gap-4">
+
+            {/* Type selection */}
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">Type de pari</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {TYPE_OPTIONS.map(t => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => {
+                      setNewType(t.value);
+                      if (t.value === 'binaire') setOptions([{ label: 'OUI' }, { label: 'NON' }]);
+                      if (t.value === 'over_under') setOptions([]);
+                      if (t.value === 'tranches_multiples') setOptions([{ label: '' }, { label: '' }]);
+                    }}
+                    className={`p-3 rounded-xl border text-center transition-colors ${
+                      newType === t.value ? 'border-primary bg-primary/10' : 'border-border bg-secondary/50 hover:border-primary/30'
+                    }`}
+                  >
+                    <span className="text-2xl block mb-1">{t.emoji}</span>
+                    <span className="text-sm font-semibold block">{t.label}</span>
+                    <span className="text-[10px] text-muted-foreground">{t.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Title + Emoji */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="md:col-span-3">
+                <Input placeholder="Titre du pari" value={newTitle} onChange={e => setNewTitle(e.target.value)} required maxLength={200} />
+              </div>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Catégorie</label>
-                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                  <option value="urgent">⚡ Urgent (max 30%)</option>
-                  <option value="long_terme">🔮 Long terme (max 15%)</option>
-                  <option value="culture_daim">🦌 Culture DAIM (max 30%)</option>
+                <Input placeholder="Emoji (auto)" value={newEmoji} onChange={e => setNewEmoji(e.target.value)} maxLength={4} />
+              </div>
+            </div>
+
+            <Textarea placeholder="Description (optionnel)" value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={2} maxLength={500} />
+
+            {/* Category + End date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1 block">Catégorie</Label>
+                <select value={newCategory} onChange={e => setNewCategory(e.target.value as BetCategory)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-sm text-muted-foreground mb-1 block">Fin du pari</label>
-                <Input type="datetime-local" value={newEndDate} onChange={(e) => setNewEndDate(e.target.value)} required />
+                <Label className="text-sm text-muted-foreground mb-1 block">Fin du pari</Label>
+                <Input type="datetime-local" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} required />
+                {computedCloseDate && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    🔒 Clôture auto : {computedCloseDate.toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
               </div>
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Clôture des mises (optionnel)</label>
-              <Input type="datetime-local" value={newCloseDate} onChange={(e) => setNewCloseDate(e.target.value)} />
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Options de pari (cote par défaut : {DEFAULT_ODDS})</label>
-              {options.map((opt, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <Input
-                    placeholder={`Option ${i + 1}`}
-                    value={opt.label}
-                    onChange={(e) => {
-                      const next = [...options];
-                      next[i].label = e.target.value;
-                      setOptions(next);
-                    }}
-                    className="flex-1"
-                  />
-                  {options.length > 2 && (
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setOptions(options.filter((_, j) => j !== i))}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  )}
+            {/* TYPE-SPECIFIC OPTIONS */}
+            {newType === 'over_under' && (
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1 block">Seuil Over/Under</Label>
+                <Input placeholder="Ex: 15 minutes" value={overUnderThreshold} onChange={e => setOverUnderThreshold(e.target.value)} />
+                <p className="text-xs text-muted-foreground mt-1">La borne OVER est inclusive (≥ seuil)</p>
+              </div>
+            )}
+
+            {newType === 'tranches_multiples' && (
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Tranches (1-5)</Label>
+                {options.map((opt, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <Input placeholder={`Tranche ${i + 1}`} value={opt.label}
+                      onChange={e => { const n = [...options]; n[i].label = e.target.value; setOptions(n); }}
+                      className="flex-1" />
+                    {options.length > 2 && (
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setOptions(options.filter((_, j) => j !== i))}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {options.length < 5 && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setOptions([...options, { label: '' }])}>
+                    <Plus className="w-3 h-3 mr-1" /> Ajouter tranche
+                  </Button>
+                )}
+                <div>
+                  <Label className="text-sm text-muted-foreground mb-1 block">Nb max de gagnants (1-5)</Label>
+                  <Input type="number" min={1} max={5} value={maxWinners} onChange={e => setMaxWinners(parseInt(e.target.value) || 1)} className="w-24" />
                 </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" onClick={() => setOptions([...options, { label: '' }])}>
-                <Plus className="w-3 h-3 mr-1" /> Ajouter une option
-              </Button>
+              </div>
+            )}
+
+            {newType === 'tierce_du_daim' && (
+              <div className="space-y-3">
+                <Label className="text-sm text-muted-foreground">Candidats (6-20)</Label>
+                <div className="flex gap-2">
+                  <select value={newCandidate} onChange={e => setNewCandidate(e.target.value)}
+                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <option value="">Choisir un prénom...</option>
+                    {PROMO_NAMES.filter(n => !tierceCandidates.includes(n)).map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <Button type="button" variant="outline" onClick={() => {
+                    if (newCandidate && tierceCandidates.length < 20) {
+                      setTierceCandidates([...tierceCandidates, newCandidate]);
+                      setNewCandidate('');
+                    }
+                  }} disabled={!newCandidate || tierceCandidates.length >= 20}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {tierceCandidates.map(c => (
+                    <span key={c} className="inline-flex items-center gap-1 text-xs bg-secondary px-2 py-1 rounded-full">
+                      {c}
+                      <button type="button" onClick={() => setTierceCandidates(tierceCandidates.filter(x => x !== c))} className="text-muted-foreground hover:text-destructive">×</button>
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">{tierceCandidates.length}/20 candidats</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground mb-1 block">Mode résolution</Label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setResolutionMode('admin')}
+                        className={`flex-1 p-2 rounded-lg border text-xs text-center transition-colors ${resolutionMode === 'admin' ? 'border-primary bg-primary/10' : 'border-border'}`}>
+                        🧠 Admin
+                      </button>
+                      <button type="button" onClick={() => setResolutionMode('tirage_sort')}
+                        className={`flex-1 p-2 rounded-lg border text-xs text-center transition-colors ${resolutionMode === 'tirage_sort' ? 'border-primary bg-primary/10' : 'border-border'}`}>
+                        🎲 Tirage
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground mb-1 block">Max gagnants (1-3)</Label>
+                    <Input type="number" min={1} max={3} value={maxWinners} onChange={e => setMaxWinners(parseInt(e.target.value) || 1)} className="w-24" />
+                  </div>
+                  <div className="flex items-center gap-2 pt-5">
+                    <Switch checked={openToSuggestions} onCheckedChange={setOpenToSuggestions} />
+                    <Label className="text-xs">Ouvert aux suggestions</Label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Publication mode */}
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">Mode de publication</Label>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setPublishMode('direct')}
+                  className={`flex-1 p-3 rounded-xl border text-center text-sm transition-colors ${publishMode === 'direct' ? 'border-primary bg-primary/10' : 'border-border'}`}>
+                  🟢 Publication directe
+                </button>
+                <button type="button" onClick={() => setPublishMode('vote')}
+                  className={`flex-1 p-3 rounded-xl border text-center text-sm transition-colors ${publishMode === 'vote' ? 'border-primary bg-primary/10' : 'border-border'}`}>
+                  🗳️ Soumettre au vote
+                </button>
+              </div>
             </div>
 
-            <Button type="submit" className="gold-gradient font-semibold w-full">Créer le pari 🦌</Button>
+            {/* AI Evaluation */}
+            <div className="bg-secondary/50 border border-border rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium flex items-center gap-1"><Sparkles className="w-4 h-4 text-primary" /> Évaluation IA</span>
+                <Button type="button" variant="outline" size="sm" onClick={evaluateBet} disabled={aiLoading || !newTitle.trim()}>
+                  {aiLoading ? 'Analyse...' : 'Évaluer'}
+                </Button>
+              </div>
+              {aiScore !== null && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <Progress value={aiScore} className="flex-1 h-2" />
+                    <span className={`text-sm font-bold ${aiScore >= 70 ? 'text-green-500' : aiScore >= 40 ? 'text-primary' : 'text-destructive'}`}>
+                      {aiScore}/100
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{aiComment}</p>
+                </div>
+              )}
+              {aiScore === null && aiComment && <p className="text-xs text-muted-foreground">{aiComment}</p>}
+            </div>
+
+            <Button type="submit" className="gold-gradient font-semibold w-full text-base h-12">
+              {publishMode === 'direct' ? 'Publier le pari 🟢' : 'Soumettre au vote 🗳️'}
+            </Button>
           </form>
         </TabsContent>
 
-        {/* ─── MANAGE BETS ─── */}
+        {/* ═══════════════ MANAGE ═══════════════ */}
         <TabsContent value="manage">
           <div className="space-y-4">
-            <h2 className="text-xl font-display">Paris actifs ({openBets.length})</h2>
-            {openBets.length === 0 && <p className="text-muted-foreground text-center py-8">Aucun pari actif.</p>}
-            {openBets.map((bet) => {
+            <h2 className="text-xl font-display">Paris actifs ({manageBets.length})</h2>
+            {manageBets.length === 0 && <p className="text-muted-foreground text-center py-8">Aucun pari actif.</p>}
+            {manageBets.map(bet => {
               const betWagers = allWagers.filter(w => w.bet_id === bet.id && !w.is_retracted);
               const totalPool = betWagers.reduce((s, w) => s + w.montant_dc, 0);
               const pools: Record<string, number> = {};
               betWagers.forEach(w => { pools[w.option_id] = (pools[w.option_id] || 0) + w.montant_dc; });
               const isClosed = bet.status === 'cloture_en_attente';
+              const isSuspended = bet.status === 'suspendu';
+              const isOpen = bet.status === 'ouvert';
+              const isTirage = bet.resolution_mode === 'tirage_sort';
+              const winners = selectedWinners[bet.id] || new Set();
+
+              const statusLabel = isClosed ? '🔒 Clôturé' : isSuspended ? '⏸️ Suspendu' : '🔥 Ouvert';
+              const statusColor = isClosed ? 'bg-muted text-muted-foreground' : isSuspended ? 'bg-amber-500/10 text-amber-500' : 'bg-primary/10 text-primary';
 
               return (
-                <motion.div key={bet.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-5">
+                <motion.div key={bet.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-xl border bg-card p-5 ${isSuspended ? 'border-amber-500/30' : 'border-border'}`}>
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-display tracking-wider">{bet.emoji || ''} {bet.title}</h3>
-                    <span className={`text-xs px-2 py-1 rounded-full ${isClosed ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
-                      {isClosed ? '🔒 Clôturé' : '🔥 Mises ouvertes'}
-                    </span>
+                    <div>
+                      <h3 className="text-lg font-display tracking-wider">{bet.emoji || ''} {bet.title}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {bet.type.replace(/_/g, ' ')} · {bet.category} · Max {bet.max_winners} gagnant(s)
+                        {bet.resolution_mode === 'tirage_sort' && ' · 🎲 Tirage'}
+                      </p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${statusColor}`}>{statusLabel}</span>
                   </div>
-                  {bet.description && <p className="text-sm text-muted-foreground mb-2">{bet.description}</p>}
-                  <p className="text-xs text-muted-foreground mb-1">Cagnotte : <span className="text-primary font-bold">{totalPool} DC</span> · {betWagers.length} mises</p>
 
-                  {bet.status === 'ouvert' && (
-                    <Button variant="outline" size="sm" className="mb-3 mr-2"
-                      onClick={() => { if (confirm('Clôturer les mises ? Les cotes seront figées.')) closeBet(bet.id); }}>
-                      🔒 Clôturer les mises
-                    </Button>
-                  )}
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Cagnotte : <span className="text-primary font-bold">{totalPool} DC</span> · {betWagers.length} mises · {new Set(betWagers.map(w => w.user_id)).size} parieurs
+                  </p>
 
-                  <p className="text-xs text-muted-foreground mb-2 mt-2">🏆 Résolution — Choisis le résultat gagnant :</p>
+                  {/* Action buttons */}
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {bet.bet_options.map((opt) => {
-                      const optPool = pools[opt.id] || 0;
-                      const odds = totalPool > 0 && optPool > 0 ? (totalPool / optPool).toFixed(2) : DEFAULT_ODDS.toFixed(2);
-                      return (
-                        <Button key={opt.id} variant="outline" size="sm"
-                          onClick={() => { if (confirm(`Confirmer "${opt.label}" comme résultat gagnant ?`)) resolveBet(bet.id, opt.id); }}
-                          className="hover:bg-primary/20 hover:border-primary">
-                          <Trophy className="w-3 h-3 mr-1" />
-                          {opt.label} (x{odds} · {optPool} DC)
+                    {isOpen && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => { if (confirm('Clôturer les mises ?')) closeBet(bet.id); }}>
+                          🔒 Clôturer
                         </Button>
-                      );
-                    })}
+                        <Button variant="outline" size="sm" onClick={() => suspendBet(bet.id, true)}>
+                          <Pause className="w-3 h-3 mr-1" /> Suspendre
+                        </Button>
+                      </>
+                    )}
+                    {isSuspended && (
+                      <Button variant="outline" size="sm" onClick={() => suspendBet(bet.id, false)}>
+                        <Play className="w-3 h-3 mr-1" /> Lever suspension
+                      </Button>
+                    )}
                   </div>
 
-                  <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                    onClick={() => { if (confirm('Annuler ce pari et rembourser toutes les mises ?')) cancelBet(bet.id); }}>
-                    <XCircle className="w-3 h-3 mr-1" /> Annuler & Rembourser
-                  </Button>
+                  {/* Resolution section */}
+                  <div className="border-t border-border pt-3 mt-2">
+                    <p className="text-xs text-muted-foreground mb-2 font-semibold">🏆 Résolution</p>
+
+                    {isTirage ? (
+                      <Button size="sm" className="gold-gradient mb-2" onClick={() => { if (confirm('Lancer le tirage au sort ?')) triggerTirage(bet.id); }}>
+                        <Dice6 className="w-4 h-4 mr-1" /> Déclencher le tirage au sort 🎲
+                      </Button>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Sélectionne {bet.max_winners > 1 ? `1-${bet.max_winners} options gagnantes` : "l'option gagnante"} :
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {bet.bet_options.map(opt => {
+                            const optPool = pools[opt.id] || 0;
+                            const odds = totalPool > 0 && optPool > 0 ? (totalPool / optPool).toFixed(2) : DEFAULT_ODDS.toFixed(2);
+                            const isSelected = winners.has(opt.id);
+                            return (
+                              <button key={opt.id} type="button"
+                                onClick={() => toggleWinner(bet.id, opt.id, bet.max_winners)}
+                                className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+                                  isSelected ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-border bg-secondary/50 text-muted-foreground hover:border-primary/30'
+                                }`}>
+                                <Trophy className="w-3 h-3 inline mr-1" />
+                                {opt.label} (x{odds} · {optPool} DC)
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <Button size="sm" className="gold-gradient" disabled={winners.size === 0}
+                          onClick={() => { if (confirm('Confirmer la résolution ?')) resolveBet(bet.id); }}>
+                          Résoudre ({winners.size} gagnant{winners.size > 1 ? 's' : ''})
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Delete section */}
+                  <div className="border-t border-border pt-3 mt-3">
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <Input placeholder="Motif de suppression (obligatoire)" value={deleteMotif} onChange={e => setDeleteMotif(e.target.value)} className="text-xs h-8" />
+                      </div>
+                      <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                        onClick={() => { if (confirm('Supprimer et rembourser ?')) cancelBet(bet.id, deleteMotif); }}>
+                        <XCircle className="w-3 h-3 mr-1" /> Supprimer
+                      </Button>
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}
           </div>
         </TabsContent>
 
-        {/* ─── RESULTS ─── */}
+        {/* ═══════════════ ARCHIVE ═══════════════ */}
         <TabsContent value="results">
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3 items-center">
-              <h2 className="text-xl font-display">Historique des paris</h2>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
-                <option value="all">Tous les statuts</option>
-                <option value="ouvert">Mises ouvertes</option>
+              <h2 className="text-xl font-display">Historique</h2>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                <option value="all">Tous statuts</option>
+                <option value="ouvert">Ouvert</option>
                 <option value="cloture_en_attente">Clôturé</option>
                 <option value="resolu">Résolu</option>
                 <option value="supprime">Supprimé</option>
+                <option value="suspendu">Suspendu</option>
               </select>
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
                 <option value="all">Toutes catégories</option>
-                <option value="urgent">⚡ Urgent</option>
-                <option value="long_terme">🔮 Long terme</option>
-                <option value="culture_daim">🦌 Culture DAIM</option>
+                {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+              <select value={filterType} onChange={e => setFilterType(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                <option value="all">Tous types</option>
+                {TYPE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
               </select>
             </div>
 
             {filteredBets.length === 0 && <p className="text-center text-muted-foreground py-8">Aucun résultat.</p>}
-            {filteredBets.map((bet) => {
+            {filteredBets.map(bet => {
               const betWagers = allWagers.filter(w => w.bet_id === bet.id && !w.is_retracted);
               const totalPool = betWagers.reduce((s, w) => s + w.montant_dc, 0);
               const date = new Date(bet.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-              const statusLabels: Record<string, string> = { ouvert: '🔥 Mises ouvertes', cloture_en_attente: '🔒 Clôturé', resolu: '✅ Résolu', supprime: '❌ Supprimé', suspendu: '⏸ Suspendu' };
+              const statusLabels: Record<string, string> = {
+                ouvert: '🔥 Ouvert', cloture_en_attente: '🔒 Clôturé', resolu: '✅ Résolu', supprime: '❌ Supprimé', suspendu: '⏸ Suspendu',
+              };
 
               return (
                 <div key={bet.id} className={`rounded-xl border bg-card p-4 ${bet.status === 'resolu' ? 'border-primary/30' : bet.status === 'supprime' ? 'border-destructive/30' : 'border-border'}`}>
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-display tracking-wider">{bet.title}</h3>
-                      <p className="text-xs text-muted-foreground">{date} · {statusLabels[bet.status] || bet.status} · Cagnotte : {totalPool} DC · {betWagers.length} mises</p>
+                      <h3 className="font-display tracking-wider">{bet.emoji || ''} {bet.title}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {date} · {statusLabels[bet.status] || bet.status} · {bet.type.replace(/_/g, ' ')} · Cagnotte : {totalPool} DC · {betWagers.length} mises
+                      </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {bet.bet_options.map((opt) => (
+                    {bet.bet_options.map(opt => (
                       <span key={opt.id} className={`text-xs px-2 py-1 rounded ${opt.is_winner ? 'bg-primary/20 text-primary font-bold' : 'bg-secondary text-muted-foreground'}`}>
                         {opt.label} {opt.is_winner && '✓'}
                       </span>
@@ -400,7 +757,7 @@ export default function AdminPage() {
           </div>
         </TabsContent>
 
-        {/* ─── USERS ─── */}
+        {/* ═══════════════ USERS ═══════════════ */}
         <TabsContent value="users">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -412,7 +769,8 @@ export default function AdminPage() {
               </Button>
             </div>
             {profiles.map((p, i) => (
-              <motion.div key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }} className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
+              <motion.div key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
                 <span className="text-sm text-muted-foreground w-8">#{i + 1}</span>
                 <div className="flex-1">
                   <span className="font-semibold">{p.display_name || 'Anonyme'}</span>
@@ -422,11 +780,10 @@ export default function AdminPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Input type="number" defaultValue={p.balance} className="w-24 h-8 text-center text-sm"
-                    onBlur={(e) => {
+                    onBlur={e => {
                       const val = parseInt(e.target.value);
                       if (!isNaN(val) && val !== p.balance) updateBalance(p.user_id, val);
-                    }}
-                  />
+                    }} />
                   <img src={daimcoinLogo} alt="" className="w-5 h-5 rounded-full" />
                 </div>
               </motion.div>
@@ -434,19 +791,19 @@ export default function AdminPage() {
           </div>
         </TabsContent>
 
-        {/* ─── STATS ─── */}
+        {/* ═══════════════ STATS ═══════════════ */}
         <TabsContent value="stats">
           <div className="space-y-4">
             <h2 className="text-xl font-display">Statistiques 📊</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
-                { label: 'Utilisateurs inscrits', value: totalUsers, emoji: '👥' },
+                { label: 'Utilisateurs', value: totalUsers, emoji: '👥' },
                 { label: 'Mises total', value: totalWagersCount, emoji: '🎰' },
                 { label: 'Mises ce mois', value: wagersThisMonth, emoji: '📅' },
-                { label: 'Parieurs actifs (mois)', value: activeBettors, emoji: '🔥' },
+                { label: 'Parieurs actifs', value: activeBettors, emoji: '🔥' },
                 { label: 'Mise moyenne', value: `${avgWagerSize} DC`, emoji: '💰' },
                 { label: 'Volume total', value: `${totalPoolAllTime} DC`, emoji: '📈' },
-              ].map((stat) => (
+              ].map(stat => (
                 <div key={stat.label} className="rounded-xl border border-border bg-card p-4 card-glow text-center">
                   <p className="text-2xl mb-1">{stat.emoji}</p>
                   <p className="text-2xl font-display text-primary">{stat.value}</p>
@@ -466,10 +823,7 @@ export default function AdminPage() {
                 });
                 return Object.entries(monthlyData).sort().reverse().map(([month, count]) => (
                   <div key={month} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
-                    <span className="font-medium flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      {month}
-                    </span>
+                    <span className="font-medium flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground" />{month}</span>
                     <span className="text-primary font-bold">{count} mises</span>
                   </div>
                 ));
