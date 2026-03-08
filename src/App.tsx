@@ -6,8 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
 import { useEffect, useState, lazy, Suspense } from "react";
-import { motion } from "framer-motion";
-import { Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "./components/Navbar";
 
