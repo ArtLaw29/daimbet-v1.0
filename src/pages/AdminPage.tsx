@@ -610,6 +610,7 @@ export default function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="messagerie" className="font-display text-xs"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
           <TabsTrigger value="maintenance" className="font-display text-xs"><Power className="w-4 h-4 mr-1" /> Maint.</TabsTrigger>
+          <TabsTrigger value="glossaire" className="font-display text-xs">📖 Lexique</TabsTrigger>
         </TabsList>
 
         {/* ═══════════════ CREATE ═══════════════ */}
