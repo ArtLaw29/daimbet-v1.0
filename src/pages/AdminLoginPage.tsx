@@ -12,8 +12,9 @@ export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSetup, setIsSetup] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -22,6 +23,33 @@ export default function AdminLoginPage() {
       toast.error(error.message);
     } else {
       toast.success('Bienvenue, Jordaim Belfort ! 🦌👑');
+    }
+    setLoading(false);
+  };
+
+  const handleSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    setLoading(true);
+
+    const { data, error } = await supabase.functions.invoke('seed-admin', {
+      body: { email, password },
+    });
+
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || 'Erreur lors de la création');
+    } else {
+      toast.success('Compte admin créé ! Connexion en cours...');
+      // Auto-login after creation
+      const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (loginErr) {
+        toast.error('Compte créé mais connexion échouée : ' + loginErr.message);
+      } else {
+        toast.success('Bienvenue, Jordaim Belfort ! 🦌👑');
+      }
     }
     setLoading(false);
   };
@@ -50,7 +78,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 card-glow">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={isSetup ? handleSetup : handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="admin-email">Email administrateur</Label>
               <Input
@@ -75,9 +103,17 @@ export default function AdminLoginPage() {
               />
             </div>
             <Button type="submit" className="w-full gold-gradient font-semibold" disabled={loading}>
-              {loading ? '...' : 'Connexion Admin 👑'}
+              {loading ? '...' : isSetup ? 'Créer le compte Admin 🛡️' : 'Connexion Admin 👑'}
             </Button>
           </form>
+
+          <button
+            type="button"
+            onClick={() => setIsSetup(!isSetup)}
+            className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-primary transition-colors"
+          >
+            {isSetup ? '← Retour à la connexion' : 'Première fois ? Créer le compte admin'}
+          </button>
         </div>
       </motion.div>
     </div>
