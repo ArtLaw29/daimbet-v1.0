@@ -105,6 +105,15 @@ export default function AdminPage() {
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveMonth, setArchiveMonth] = useState<string>('all');
 
+  // Messagerie
+  const [emailRecipients, setEmailRecipients] = useState<string[]>([]);
+  const [emailRecipientInput, setEmailRecipientInput] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [emailTodayCount, setEmailTodayCount] = useState(0);
+
   // Multi-winner resolution
   const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
 
