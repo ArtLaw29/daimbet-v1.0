@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Flag, Search } from 'lucide-react';
+import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Flag, Search, Vote } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -23,6 +23,7 @@ type BetRow = Tables<'bets'>;
 type BetOption = Tables<'bet_options'>;
 type Wager = Tables<'wagers'>;
 type GazetteMessage = Tables<'gazette_messages'>;
+type Proposal = Tables<'daimocratie_proposals'>;
 
 interface BetWithOptions extends BetRow {
   bet_options: BetOption[];
@@ -51,6 +52,8 @@ export default function AdminPage() {
   const [allWagers, setAllWagers] = useState<Wager[]>([]);
   const [loading, setLoading] = useState(true);
   const [gazetteMessages, setGazetteMessages] = useState<GazetteMessage[]>([]);
+  const [adminProposals, setAdminProposals] = useState<Proposal[]>([]);
+  const [proposalProfiles, setProposalProfiles] = useState<Record<string, string>>({});
 
   // Create form state
   const [newTitle, setNewTitle] = useState('');
@@ -95,18 +98,31 @@ export default function AdminPage() {
   useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
 
   const fetchAll = useCallback(async () => {
-    const [betsRes, prRes, wagersRes, injRes, gazRes] = await Promise.all([
+    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
       supabase.from('wagers').select('*').order('created_at', { ascending: false }),
       supabase.from('liquidity_injections').select('*').order('triggered_at', { ascending: false }),
       supabase.from('gazette_messages').select('*').order('created_at', { ascending: false }),
+      supabase.from('daimocratie_proposals').select('*').order('created_at', { ascending: false }),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
     setAllWagers((wagersRes.data as Wager[]) || []);
     setInjections(injRes.data || []);
     setGazetteMessages(gazRes.data || []);
+    const props = propRes.data || [];
+    setAdminProposals(props);
+    // Fetch proposer names
+    if (props.length > 0) {
+      const uids = [...new Set(props.map(p => p.user_id))];
+      const { data: pNames } = await supabase.from('profiles').select('user_id, display_name').in('user_id', uids);
+      if (pNames) {
+        const m: Record<string, string> = {};
+        pNames.forEach(p => { m[p.user_id] = p.display_name; });
+        setProposalProfiles(m);
+      }
+    }
     setLoading(false);
   }, []);
 
@@ -460,9 +476,17 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6 bg-secondary">
+        <TabsList className="grid w-full grid-cols-7 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
+          <TabsTrigger value="proposals" className="font-display text-xs">
+            <Vote className="w-4 h-4 mr-1" /> Votes
+            {adminProposals.filter(p => p.status === 'en_attente').length > 0 && (
+              <span className="ml-1 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full">
+                {adminProposals.filter(p => p.status === 'en_attente').length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="results" className="font-display text-xs"><History className="w-4 h-4 mr-1" /> Archive</TabsTrigger>
           <TabsTrigger value="users" className="font-display text-xs"><Users className="w-4 h-4 mr-1" /> Joueurs</TabsTrigger>
           <TabsTrigger value="gazette" className="font-display text-xs">
@@ -672,6 +696,85 @@ export default function AdminPage() {
               {publishMode === 'direct' ? 'Publier le pari 🟢' : 'Soumettre au vote 🗳️'}
             </Button>
           </form>
+        </TabsContent>
+
+        {/* ═══════════════ PROPOSALS ═══════════════ */}
+        <TabsContent value="proposals">
+          <div className="space-y-4">
+            <h2 className="text-xl font-display">Propositions communautaires</h2>
+
+            {adminProposals.filter(p => p.status === 'en_attente').length === 0 && (
+              <p className="text-muted-foreground text-center py-8">Aucune proposition en attente.</p>
+            )}
+
+            {adminProposals.filter(p => p.status === 'en_attente').map(prop => (
+              <div key={prop.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold">{prop.title}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Par {proposalProfiles[prop.user_id] || 'Inconnu'} · {new Date(prop.created_at).toLocaleDateString('fr-FR')}
+                    </p>
+                    {prop.type && <p className="text-xs text-muted-foreground mt-0.5">Type : {prop.type}</p>}
+                    {prop.end_date_proposed && (
+                      <p className="text-xs text-muted-foreground">Fin proposée : {new Date(prop.end_date_proposed).toLocaleString('fr-FR')}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm">👍 {prop.votes_positive} · 👎 {prop.votes_negative}</p>
+                    <p className="text-[10px] text-muted-foreground">Seuil : 15👍 & &lt;5👎</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button size="sm" className="gold-gradient flex-1" onClick={async () => {
+                    // Accept: create bet from proposal
+                    const { data, error } = await supabase.functions.invoke('activate-proposal', {
+                      body: { proposal_id: prop.id },
+                    });
+                    if (error || data?.error) {
+                      // If threshold not met, force-activate by updating votes first
+                      await supabase.from('daimocratie_proposals').update({
+                        votes_positive: 15, votes_negative: 0,
+                      }).eq('id', prop.id);
+                      await supabase.functions.invoke('activate-proposal', { body: { proposal_id: prop.id } });
+                    }
+                    toast.success('Proposition validée et pari créé ! ✅');
+                    fetchAll();
+                  }}>
+                    <CheckCircle className="w-4 h-4 mr-1" /> Accepter
+                  </Button>
+                  <Button size="sm" variant="destructive" className="flex-1" onClick={async () => {
+                    await supabase.from('daimocratie_proposals').update({ status: 'rejete' as any }).eq('id', prop.id);
+                    toast.success('Proposition rejetée ❌');
+                    fetchAll();
+                  }}>
+                    <XCircle className="w-4 h-4 mr-1" /> Rejeter
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {/* Processed proposals */}
+            {adminProposals.filter(p => p.status !== 'en_attente').length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-display text-muted-foreground mb-3">Historique</h3>
+                {adminProposals.filter(p => p.status !== 'en_attente').map(prop => (
+                  <div key={prop.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/50 mb-2">
+                    <div>
+                      <span className="text-sm">{prop.title}</span>
+                      <span className="text-xs text-muted-foreground ml-2">par {proposalProfiles[prop.user_id] || '?'}</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      prop.status === 'valide' ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'
+                    }`}>
+                      {prop.status === 'valide' ? '✅ Validé' : '❌ Rejeté'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         {/* ═══════════════ MANAGE ═══════════════ */}
