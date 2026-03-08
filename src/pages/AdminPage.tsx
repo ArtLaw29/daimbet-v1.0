@@ -1357,9 +1357,14 @@ export default function AdminPage() {
                         <><Ban className="w-3 h-3 mr-1" /> Suspendre le compte</>
                       )}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => resetUserPassword(selectedUser.user_id)}>
-                      <RefreshCw className="w-3 h-3 mr-1" /> Réinitialiser le mot de passe
-                    </Button>
+                    <div className="flex gap-2">
+                      <Input type="text" placeholder="Nouveau mot de passe" value={resetPwValue}
+                        onChange={e => setResetPwValue(e.target.value)} className="flex-1 h-8 text-sm" />
+                      <Button variant="outline" size="sm" disabled={resetPwValue.length < 6}
+                        onClick={() => resetUserPassword(selectedUser.user_id, resetPwValue)}>
+                        <RefreshCw className="w-3 h-3 mr-1" /> Reset
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
