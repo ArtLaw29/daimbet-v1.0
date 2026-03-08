@@ -522,7 +522,14 @@ export default function AdminPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="stats" className="font-display text-xs"><BarChart3 className="w-4 h-4 mr-1" /> Stats</TabsTrigger>
+          <TabsTrigger value="stats" className="font-display text-xs">
+            <BarChart3 className="w-4 h-4 mr-1" /> Stats
+            {adminNotifications.filter(n => !n.is_read).length > 0 && (
+              <span className="ml-1 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full">
+                {adminNotifications.filter(n => !n.is_read).length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         {/* ═══════════════ CREATE ═══════════════ */}
