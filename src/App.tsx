@@ -2,9 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Navbar from "./components/Navbar";
+import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import EventsPage from "./pages/EventsPage";
@@ -29,23 +30,25 @@ function AppRoutes() {
     );
   }
 
+  // ─── NOT LOGGED IN ───
   if (!user) {
     return (
       <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/connexion" element={<AuthPage />} />
+        <Route path="/inscription" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="*" element={<AuthPage />} />
+        <Route path="*" element={<LandingPage />} />
       </Routes>
     );
   }
 
-  // Charter modal — non-dismissable, must accept before accessing the app
-  // Admin users skip the charter
+  // ─── CHARTER MODAL (non-dismissable, admin skips) ───
   if (!hasAcceptedCharter && !isAdmin) {
     return (
       <>
         <CharterModal userId={user.id} onAccepted={refreshProfile} />
-        {/* Still render reset-password route in case they're on it */}
         <Routes>
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<div />} />
@@ -54,11 +57,15 @@ function AppRoutes() {
     );
   }
 
+  // ─── LOGGED IN ───
   return (
     <>
       <Navbar />
       <Routes>
         <Route path="/" element={<EventsPage />} />
+        {/* Redirect landing/auth routes to feed when already logged in */}
+        <Route path="/connexion" element={<Navigate to="/" replace />} />
+        <Route path="/inscription" element={<Navigate to="/" replace />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
         <Route path="/kiss-marry" element={<KissMarryPage />} />
         <Route path="/proposals" element={<ProposalsPage />} />
