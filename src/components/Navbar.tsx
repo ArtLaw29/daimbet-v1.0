@@ -154,6 +154,7 @@ export default function Navbar() {
               <Link
                 key={tab.to}
                 to={tab.to}
+                aria-label={tab.label}
                 className={`flex flex-col items-center gap-0.5 px-1 py-1 min-w-0 ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
