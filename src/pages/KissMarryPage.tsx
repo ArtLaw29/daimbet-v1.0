@@ -141,11 +141,13 @@ export default function KissMarryPage() {
   };
 
   // Auto-fetch reveal data when revealMode activates
+  // Auto-reveal: on the 1st of the month at 10h, fetch LAST month's results
   useEffect(() => {
-    if (!revealMode || Object.keys(revealData).length > 0) return;
+    if (!isRevealDay || revealStarted) return;
+    setRevealStarted(true);
     (async () => {
-      const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
-      if (!data) return;
+      const { data } = await supabase.rpc('get_km_results', { p_month_year: revealMonthYear });
+      if (!data || data.length === 0) return;
       const catData: Record<string, { name: string; count: number }[]> = {};
       for (const row of data as any[]) {
         if (!catData[row.category]) catData[row.category] = [];
@@ -163,7 +165,7 @@ export default function KissMarryPage() {
       setTimeout(() => setRevealStep(2), 8000);
       setTimeout(() => setRevealStep(3), 10500);
     })();
-  }, [revealMode, monthYear, revealData]);
+  }, [isRevealDay, revealMonthYear, revealStarted]);
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
