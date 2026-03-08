@@ -207,34 +207,6 @@ export default function ProfilePage() {
     await Promise.all([fetchAll(), refreshProfile()]);
   };
 
-  const sendContact = async () => {
-    if (!user || !contactSubject || !contactMessage.trim()) return;
-    setSendingContact(true);
-
-    const { error } = await supabase.from('tickets').insert({
-      user_id: user.id,
-      subject: contactSubject,
-    });
-
-    if (!error) {
-      // Add the message to the ticket
-      const { data: ticket } = await supabase.from('tickets').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
-      if (ticket) {
-        await supabase.from('ticket_messages').insert({
-          ticket_id: ticket.id,
-          sender: 'user',
-          content: contactMessage.trim(),
-        });
-      }
-      toast.success('✅ Message envoyé ! Tu recevras une réponse bientôt.');
-      setContactSubject('');
-      setContactMessage('');
-      setShowContact(false);
-    } else {
-      toast.error('Erreur lors de l\'envoi');
-    }
-    setSendingContact(false);
-  };
 
   const resetPassword = async () => {
     if (!user?.email) return;
