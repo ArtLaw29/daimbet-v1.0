@@ -19,8 +19,6 @@ import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Wager = Tables<'wagers'>;
-type Bet = Tables<'bets'>;
-type BetOption = Tables<'bet_options'>;
 type SoldeHistory = Tables<'solde_history'>;
 
 interface ActiveWager extends Wager {
