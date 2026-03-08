@@ -894,16 +894,15 @@ export default function AdminPage() {
         {/* ═══════════════ ARCHIVE ═══════════════ */}
         <TabsContent value="results">
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-3 items-center">
-              <h2 className="text-xl font-display">Historique</h2>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
-                <option value="all">Tous statuts</option>
-                <option value="ouvert">Ouvert</option>
-                <option value="cloture_en_attente">Clôturé</option>
-                <option value="resolu">Résolu</option>
-                <option value="supprime">Supprimé</option>
-                <option value="suspendu">Suspendu</option>
-              </select>
+            <h2 className="text-xl font-display">📜 Archives</h2>
+
+            {/* Filters row */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="relative flex-1 min-w-[150px]">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input placeholder="Rechercher..." value={archiveSearch} onChange={e => setArchiveSearch(e.target.value)}
+                  className="pl-8 h-8 text-xs" />
+              </div>
               <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
                 <option value="all">Toutes catégories</option>
                 {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
@@ -912,37 +911,118 @@ export default function AdminPage() {
                 <option value="all">Tous types</option>
                 {TYPE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
               </select>
+              <select value={archiveMonth} onChange={e => setArchiveMonth(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                <option value="all">Tous mois</option>
+                {(() => {
+                  const months = new Set<string>();
+                  bets.filter(b => b.status === 'resolu' || b.status === 'supprime').forEach(b => {
+                    const d = new Date(b.updated_at);
+                    months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                  });
+                  return [...months].sort().reverse().map(m => (
+                    <option key={m} value={m}>{new Date(m + '-01').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</option>
+                  ));
+                })()}
+              </select>
             </div>
 
-            {filteredBets.length === 0 && <p className="text-center text-muted-foreground py-8">Aucun résultat.</p>}
-            {filteredBets.map(bet => {
-              const betWagers = allWagers.filter(w => w.bet_id === bet.id && !w.is_retracted);
-              const totalPool = betWagers.reduce((s, w) => s + w.montant_dc, 0);
-              const date = new Date(bet.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-              const statusLabels: Record<string, string> = {
-                ouvert: '🔥 Ouvert', cloture_en_attente: '🔒 Clôturé', resolu: '✅ Résolu', supprime: '❌ Supprimé', suspendu: '⏸ Suspendu',
-              };
+            {/* Resolved bets */}
+            {(() => {
+              const resolvedBets = bets.filter(b => {
+                if (b.status !== 'resolu') return false;
+                if (filterCategory !== 'all' && b.category !== filterCategory) return false;
+                if (filterType !== 'all' && b.type !== filterType) return false;
+                if (archiveMonth !== 'all') {
+                  const d = new Date(b.updated_at);
+                  const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  if (m !== archiveMonth) return false;
+                }
+                if (archiveSearch && !b.title.toLowerCase().includes(archiveSearch.toLowerCase())) return false;
+                return true;
+              });
 
+              return resolvedBets.length === 0
+                ? <p className="text-center text-muted-foreground py-8">Aucun pari résolu trouvé.</p>
+                : resolvedBets.map(bet => {
+                    const betWagers = allWagers.filter(w => w.bet_id === bet.id && !w.is_retracted);
+                    const totalPool = betWagers.reduce((s, w) => s + w.montant_dc, 0);
+                    const uniqueBettors = new Set(betWagers.map(w => w.user_id)).size;
+                    const winnerOptionIds = bet.bet_options.filter(o => o.is_winner).map(o => o.id);
+                    const correctBettors = new Set(betWagers.filter(w => winnerOptionIds.includes(w.option_id)).map(w => w.user_id)).size;
+                    const correctPct = uniqueBettors > 0 ? Math.round((correctBettors / uniqueBettors) * 100) : 0;
+                    const catLabels: Record<string, string> = { urgent: '⚡ URGENT', long_terme: '📅 LONG TERME', culture_daim: '🎪 CULTURE DAIM' };
+
+                    return (
+                      <div key={bet.id} className="rounded-xl border border-primary/20 bg-card p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-display tracking-[0.08em] font-semibold">{bet.emoji || '🎯'} {bet.title}</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {catLabels[bet.category] || bet.category} · Résolu le {new Date(bet.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                          </div>
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">✅ Résolu</span>
+                        </div>
+
+                        {/* Options with final odds */}
+                        <div className="flex flex-wrap gap-2">
+                          {bet.bet_options.map(opt => {
+                            const optPool = betWagers.filter(w => w.option_id === opt.id).reduce((s, w) => s + w.montant_dc, 0);
+                            return (
+                              <div key={opt.id} className={`text-xs px-3 py-1.5 rounded-lg border ${
+                                opt.is_winner ? 'bg-primary/15 border-primary/30 text-primary font-bold' : 'bg-secondary border-border text-muted-foreground'
+                              }`}>
+                                {opt.label} {opt.is_winner && '🏆'} · ×{opt.cote_actuelle.toFixed(2)} · {optPool} DC
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                          <div className="rounded bg-secondary/50 p-2">
+                            <p className="font-bold text-primary">{totalPool} DC</p>
+                            <p className="text-muted-foreground">Volume total</p>
+                          </div>
+                          <div className="rounded bg-secondary/50 p-2">
+                            <p className="font-bold">{uniqueBettors}</p>
+                            <p className="text-muted-foreground">Parieurs</p>
+                          </div>
+                          <div className="rounded bg-secondary/50 p-2">
+                            <p className="font-bold text-primary">{correctPct}%</p>
+                            <p className="text-muted-foreground">Bons prophètes</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+            })()}
+
+            {/* Cancelled bets section */}
+            {(() => {
+              const cancelledBets = bets.filter(b => b.status === 'supprime');
+              if (cancelledBets.length === 0) return null;
               return (
-                <div key={bet.id} className={`rounded-xl border bg-card p-4 ${bet.status === 'resolu' ? 'border-primary/30' : bet.status === 'supprime' ? 'border-destructive/30' : 'border-border'}`}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-display tracking-wider">{bet.emoji || ''} {bet.title}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {date} · {statusLabels[bet.status] || bet.status} · {bet.type.replace(/_/g, ' ')} · Cagnotte : {totalPool} DC · {betWagers.length} mises
+                <>
+                  <div className="flex items-center gap-3 mt-6">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs text-muted-foreground font-display">❌ Paris supprimés</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {cancelledBets.map(bet => (
+                    <div key={bet.id} className="rounded-xl border border-destructive/20 bg-card p-4">
+                      <h3 className="font-display tracking-wider text-sm">{bet.emoji || ''} {bet.title}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Supprimé le {new Date(bet.updated_at).toLocaleDateString('fr-FR')}
                       </p>
+                      {bet.suppression_motif && (
+                        <p className="text-xs text-destructive mt-1">Motif : {bet.suppression_motif}</p>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {bet.bet_options.map(opt => (
-                      <span key={opt.id} className={`text-xs px-2 py-1 rounded ${opt.is_winner ? 'bg-primary/20 text-primary font-bold' : 'bg-secondary text-muted-foreground'}`}>
-                        {opt.label} {opt.is_winner && '✓'}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                  ))}
+                </>
               );
-            })}
+            })()}
           </div>
         </TabsContent>
 
