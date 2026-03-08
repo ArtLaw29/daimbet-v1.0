@@ -7,8 +7,8 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   LogOut, MessageSquarePlus, Coins, History, XCircle, Shield, Clock,
-  Send, ChevronDown, ChevronUp, Lock, TrendingUp, TrendingDown, KeyRound,
-  Ticket, Plus, MessageCircle,
+  Send, ChevronDown, ChevronUp, TrendingUp, TrendingDown, KeyRound,
+  Ticket, Plus,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
