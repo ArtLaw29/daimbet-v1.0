@@ -162,25 +162,14 @@ export default function BetCard({ bet, pools, totalPool, profileBalance, userWag
           const optionPool = pools[option.id] || 0;
           const liveOdds = totalPool > 0 && optionPool > 0 ? calculatePariMutuelOdds(totalPool, optionPool) : DEFAULT_ODDS;
           const percentage = totalPool > 0 ? ((optionPool / totalPool) * 100).toFixed(0) : '0';
-          const currentBetAmount = betAmounts[option.id] || 10;
-          const estimatedNet = calculateEstimatedNetGain(currentBetAmount, liveOdds);
 
           return (
-            <div key={option.id} className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
+            <div key={option.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
               <div className="flex-1 min-w-[120px]">
                 <span className="font-medium">{option.label}</span>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  {optionPool > 0 ? (
-                    <>{percentage}% des mises · {optionPool} DC</>
-                  ) : (
-                    <>Aucune mise pour l'instant</>
-                  )}
+                  {optionPool > 0 ? <>{percentage}% · {optionPool} DC</> : <>Aucune mise</>}
                 </div>
-                {isOpen && (
-                  <div className="text-xs text-primary/80 mt-0.5">
-                    Gain estimé (après rake 5%) : {estimatedNet} DC
-                  </div>
-                )}
               </div>
               <div className="text-center">
                 <span className="text-primary font-bold text-sm px-2 py-1 rounded bg-primary/10 block">
@@ -190,26 +179,6 @@ export default function BetCard({ bet, pools, totalPool, profileBalance, userWag
                   {isClosed ? 'Cote définitive' : 'Cote estimée'}
                 </span>
               </div>
-              {isOpen && !isSuspended && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={maxBetAmount(profileBalance, isLongTerm)}
-                    value={betAmounts[option.id] || 10}
-                    onChange={(e) => onAmountChange(option.id, parseInt(e.target.value) || 0)}
-                    className="w-20 h-8 text-center text-sm"
-                  />
-                  <img src={daimcoinLogo} alt="" className="w-4 h-4 rounded-full" />
-                  <Button
-                    size="sm"
-                    className="gold-gradient text-xs font-semibold"
-                    onClick={() => onPlaceWager(bet.id, option.id)}
-                  >
-                    Parier
-                  </Button>
-                </div>
-              )}
             </div>
           );
         })}
