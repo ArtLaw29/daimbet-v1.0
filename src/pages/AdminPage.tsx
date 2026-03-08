@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Flag, Search, Vote } from 'lucide-react';
+import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Flag, Search, Vote, Ticket } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
 import { STARTING_BALANCE, DEFAULT_ODDS, PROMO_NAMES } from '@/lib/pari-mutuel';
+import TicketThread from '@/components/TicketThread';
 
 type Profile = Tables<'profiles'>;
 type BetRow = Tables<'bets'>;
@@ -54,6 +55,12 @@ export default function AdminPage() {
   const [gazetteMessages, setGazetteMessages] = useState<GazetteMessage[]>([]);
   const [adminProposals, setAdminProposals] = useState<Proposal[]>([]);
   const [proposalProfiles, setProposalProfiles] = useState<Record<string, string>>({});
+
+  // Tickets
+  const [adminTickets, setAdminTickets] = useState<any[]>([]);
+  const [adminTicketMessages, setAdminTicketMessages] = useState<Record<string, any[]>>({});
+  const [activeAdminTicketId, setActiveAdminTicketId] = useState<string | null>(null);
+  const [ticketSortBy, setTicketSortBy] = useState<'date' | 'status' | 'name'>('date');
 
   // Create form state
   const [newTitle, setNewTitle] = useState('');
@@ -100,19 +107,21 @@ export default function AdminPage() {
   useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
 
   const fetchAll = useCallback(async () => {
-    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes] = await Promise.all([
+    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes, ticketsRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
       supabase.from('wagers').select('*').order('created_at', { ascending: false }),
       supabase.from('liquidity_injections').select('*').order('triggered_at', { ascending: false }),
       supabase.from('gazette_messages').select('*').order('created_at', { ascending: false }),
       supabase.from('daimocratie_proposals').select('*').order('created_at', { ascending: false }),
+      supabase.from('tickets').select('*').order('created_at', { ascending: false }),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
     setAllWagers((wagersRes.data as Wager[]) || []);
     setInjections(injRes.data || []);
     setGazetteMessages(gazRes.data || []);
+    setAdminTickets(ticketsRes.data || []);
     const props = propRes.data || [];
     setAdminProposals(props);
     // Fetch proposer names
@@ -478,7 +487,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7 bg-secondary">
+        <TabsList className="grid w-full grid-cols-8 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
           <TabsTrigger value="proposals" className="font-display text-xs">
@@ -491,6 +500,14 @@ export default function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="results" className="font-display text-xs"><History className="w-4 h-4 mr-1" /> Archive</TabsTrigger>
           <TabsTrigger value="users" className="font-display text-xs"><Users className="w-4 h-4 mr-1" /> Joueurs</TabsTrigger>
+          <TabsTrigger value="tickets" className="font-display text-xs">
+            <Ticket className="w-4 h-4 mr-1" /> Tickets
+            {adminTickets.filter(t => t.status === 'ouvert').length > 0 && (
+              <span className="ml-1 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full">
+                {adminTickets.filter(t => t.status === 'ouvert').length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="gazette" className="font-display text-xs">
             <MessageSquare className="w-4 h-4 mr-1" /> Gazette
             {gazetteMessages.filter(m => m.flag_status && !m.is_deleted).length > 0 && (
@@ -1184,6 +1201,71 @@ export default function AdminPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        </TabsContent>
+
+        {/* ═══════════════ TICKETS ═══════════════ */}
+        <TabsContent value="tickets">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-display">🎫 Tickets ({adminTickets.length})</h2>
+              <select value={ticketSortBy} onChange={e => setTicketSortBy(e.target.value as any)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                <option value="date">📅 Par date</option>
+                <option value="status">🔄 Par statut</option>
+                <option value="name">🔤 Par nom</option>
+              </select>
+            </div>
+
+            {activeAdminTicketId ? (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <TicketThread
+                  ticketId={activeAdminTicketId}
+                  subject={adminTickets.find(t => t.id === activeAdminTicketId)?.subject || ''}
+                  status={adminTickets.find(t => t.id === activeAdminTicketId)?.status || 'ouvert'}
+                  isAdmin
+                  onBack={() => { setActiveAdminTicketId(null); fetchAll(); }}
+                  onStatusChange={fetchAll}
+                />
+              </div>
+            ) : (
+              <>
+                {adminTickets.length === 0 && <p className="text-muted-foreground text-center py-8">Aucun ticket.</p>}
+                {[...adminTickets].sort((a, b) => {
+                  if (ticketSortBy === 'status') {
+                    const order: Record<string, number> = { ouvert: 0, en_cours: 1, resolu: 2 };
+                    return (order[a.status] ?? 9) - (order[b.status] ?? 9);
+                  }
+                  if (ticketSortBy === 'name') {
+                    const na = profiles.find(p => p.user_id === a.user_id)?.display_name || '';
+                    const nb = profiles.find(p => p.user_id === b.user_id)?.display_name || '';
+                    return na.localeCompare(nb);
+                  }
+                  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                }).map(t => {
+                  const userName = profiles.find(p => p.user_id === t.user_id)?.display_name || 'Inconnu';
+                  const statusColors: Record<string, string> = {
+                    ouvert: 'bg-primary/10 text-primary',
+                    en_cours: 'bg-yellow-500/10 text-yellow-600',
+                    resolu: 'bg-muted text-muted-foreground',
+                  };
+                  return (
+                    <div key={t.id} onClick={() => setActiveAdminTicketId(t.id)}
+                      className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card cursor-pointer hover:border-primary/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">{t.subject}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {userName} · {new Date(t.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[t.status] || ''}`}>
+                        {t.status === 'ouvert' ? '🟢 Ouvert' : t.status === 'en_cours' ? '🟡 En cours' : '✅ Résolu'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
         </TabsContent>
 
         {/* ═══════════════ GAZETTE ═══════════════ */}

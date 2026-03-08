@@ -2,24 +2,23 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   LogOut, MessageSquarePlus, Coins, History, XCircle, Shield, Clock,
-  Send, ChevronDown, ChevronUp, Lock, TrendingUp, TrendingDown, KeyRound,
+  Send, ChevronDown, ChevronUp, TrendingUp, TrendingDown, KeyRound,
+  Ticket, Plus,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProposalForm from '@/components/ProposalForm';
+import TicketThread from '@/components/TicketThread';
 import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Wager = Tables<'wagers'>;
-type Bet = Tables<'bets'>;
-type BetOption = Tables<'bet_options'>;
 type SoldeHistory = Tables<'solde_history'>;
 
 interface ActiveWager extends Wager {
@@ -64,16 +63,22 @@ export default function ProfilePage() {
   const [showActive, setShowActive] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [showSolde, setShowSolde] = useState(false);
+  const [showTickets, setShowTickets] = useState(false);
+
+  // Tickets
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
+  const [showNewTicket, setShowNewTicket] = useState(false);
+  const [newTicketSubject, setNewTicketSubject] = useState('');
+  const [newTicketMessage, setNewTicketMessage] = useState('');
+  const [creatingTicket, setCreatingTicket] = useState(false);
+  const unreadTickets = tickets.filter(t => t.admin_replied_at && t.user_last_seen_at && new Date(t.admin_replied_at) > new Date(t.user_last_seen_at)).length;
 
   // Retraction
   const [retractingId, setRetractingId] = useState<string | null>(null);
   const [retractConfirm, setRetractConfirm] = useState<ActiveWager | null>(null);
 
-  // Contact
-  const [showContact, setShowContact] = useState(false);
-  const [contactSubject, setContactSubject] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
-  const [sendingContact, setSendingContact] = useState(false);
+  // Contact (removed — replaced by tickets)
 
   // Password reset
   const [resettingPw, setResettingPw] = useState(false);
@@ -84,13 +89,15 @@ export default function ProfilePage() {
 
   const fetchAll = async () => {
     if (!user) return;
-    const [wagersRes, betsRes, optionsRes, histRes, configRes] = await Promise.all([
+    const [wagersRes, betsRes, optionsRes, histRes, configRes, ticketsRes] = await Promise.all([
       supabase.from('wagers').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('bets').select('*'),
       supabase.from('bet_options').select('*'),
       supabase.from('solde_history').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
       supabase.from('retraction_config').select('*').limit(1).single(),
+      supabase.from('tickets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
+    setTickets(ticketsRes.data || []);
 
     const wagers = wagersRes.data || [];
     const bets = betsRes.data || [];
@@ -200,34 +207,6 @@ export default function ProfilePage() {
     await Promise.all([fetchAll(), refreshProfile()]);
   };
 
-  const sendContact = async () => {
-    if (!user || !contactSubject || !contactMessage.trim()) return;
-    setSendingContact(true);
-
-    const { error } = await supabase.from('tickets').insert({
-      user_id: user.id,
-      subject: contactSubject,
-    });
-
-    if (!error) {
-      // Add the message to the ticket
-      const { data: ticket } = await supabase.from('tickets').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
-      if (ticket) {
-        await supabase.from('ticket_messages').insert({
-          ticket_id: ticket.id,
-          sender: 'user',
-          content: contactMessage.trim(),
-        });
-      }
-      toast.success('✅ Message envoyé ! Tu recevras une réponse bientôt.');
-      setContactSubject('');
-      setContactMessage('');
-      setShowContact(false);
-    } else {
-      toast.error('Erreur lors de l\'envoi');
-    }
-    setSendingContact(false);
-  };
 
   const resetPassword = async () => {
     if (!user?.email) return;
@@ -404,14 +383,68 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* ─── TICKETS ─── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <button onClick={() => setShowTickets(!showTickets)}
+          className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/30 transition-colors">
+          <span className="font-display text-sm flex items-center gap-2">
+            <Ticket className="w-4 h-4 text-muted-foreground" /> Mes tickets ({tickets.length})
+            {unreadTickets > 0 && (
+              <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full">{unreadTickets}</span>
+            )}
+          </span>
+          {showTickets ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {showTickets && !activeTicketId && (
+          <div className="px-4 pb-4 space-y-2">
+            <Button size="sm" variant="outline" onClick={() => setShowNewTicket(true)} className="w-full mb-2">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Nouveau ticket
+            </Button>
+            {tickets.length === 0 && <p className="text-sm text-muted-foreground text-center py-3">Aucun ticket</p>}
+            {tickets.map(t => {
+              const hasUnread = t.admin_replied_at && t.user_last_seen_at && new Date(t.admin_replied_at) > new Date(t.user_last_seen_at);
+              const statusColors: Record<string, string> = {
+                ouvert: 'bg-primary/10 text-primary',
+                en_cours: 'bg-yellow-500/10 text-yellow-600',
+                resolu: 'bg-muted text-muted-foreground',
+              };
+              return (
+                <button key={t.id} onClick={() => setActiveTicketId(t.id)}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/30 transition-colors flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                      {hasUnread && <span className="w-2 h-2 bg-destructive rounded-full flex-shrink-0" />}
+                      {t.subject}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[t.status] || ''}`}>
+                    {t.status === 'ouvert' ? 'Ouvert' : t.status === 'en_cours' ? 'En cours' : 'Résolu'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {showTickets && activeTicketId && (
+          <div className="px-4 pb-4">
+            <TicketThread
+              ticketId={activeTicketId}
+              subject={tickets.find(t => t.id === activeTicketId)?.subject || ''}
+              status={tickets.find(t => t.id === activeTicketId)?.status || 'ouvert'}
+              onBack={() => { setActiveTicketId(null); fetchAll(); }}
+              onStatusChange={fetchAll}
+            />
+          </div>
+        )}
+      </div>
+
       {/* ─── ACTIONS ─── */}
       <div className="space-y-3">
         <Button onClick={() => setShowProposalForm(true)} className="w-full gold-gradient font-semibold">
           <MessageSquarePlus className="w-4 h-4 mr-2" /> Soumettre une proposition 🗳️
-        </Button>
-
-        <Button variant="outline" className="w-full" onClick={() => setShowContact(true)}>
-          <Send className="w-4 h-4 mr-2" /> Contacter l'administrateur
         </Button>
 
         <div className="grid grid-cols-2 gap-3">
@@ -461,19 +494,19 @@ export default function ProfilePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Contact form */}
-      <Dialog open={showContact} onOpenChange={setShowContact}>
+      {/* New ticket dialog */}
+      <Dialog open={showNewTicket} onOpenChange={setShowNewTicket}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display">📨 Contacter l'administrateur</DialogTitle>
+            <DialogTitle className="font-display">🎫 Nouveau ticket</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ton message sera transmis à l'administrateur qui y répondra dans les meilleurs délais.
+              Jordaim Belfort te répondra dans les meilleurs délais.
             </p>
-            <Select value={contactSubject} onValueChange={setContactSubject}>
+            <Select value={newTicketSubject} onValueChange={setNewTicketSubject}>
               <SelectTrigger>
-                <SelectValue placeholder="Objet du message" />
+                <SelectValue placeholder="Objet" />
               </SelectTrigger>
               <SelectContent>
                 {CONTACT_SUBJECTS.map(s => (
@@ -482,14 +515,33 @@ export default function ProfilePage() {
               </SelectContent>
             </Select>
             <Textarea
-              placeholder="Décris ton message..."
-              value={contactMessage}
-              onChange={e => setContactMessage(e.target.value)}
+              placeholder="Décris ton problème..."
+              value={newTicketMessage}
+              onChange={e => setNewTicketMessage(e.target.value)}
               rows={4}
               maxLength={1000}
               required
             />
-            <Button onClick={sendContact} disabled={!contactSubject || !contactMessage.trim() || sendingContact}
+            <Button onClick={async () => {
+              if (!user || !newTicketSubject || !newTicketMessage.trim()) return;
+              setCreatingTicket(true);
+              const { data: ticket, error } = await supabase.from('tickets').insert({
+                user_id: user.id,
+                subject: newTicketSubject,
+              }).select().single();
+              if (error || !ticket) { toast.error('Erreur'); setCreatingTicket(false); return; }
+              await supabase.from('ticket_messages').insert({
+                ticket_id: ticket.id,
+                sender: 'user',
+                content: newTicketMessage.trim(),
+              });
+              toast.success('✅ Ton ticket a été envoyé. Jordaim Belfort te répondra dans les meilleurs délais.');
+              setNewTicketSubject('');
+              setNewTicketMessage('');
+              setShowNewTicket(false);
+              setCreatingTicket(false);
+              fetchAll();
+            }} disabled={!newTicketSubject || !newTicketMessage.trim() || creatingTicket}
               className="w-full gold-gradient">
               <Send className="w-4 h-4 mr-2" /> Envoyer
             </Button>
