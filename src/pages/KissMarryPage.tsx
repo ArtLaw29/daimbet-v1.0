@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Sparkles, Eye } from 'lucide-react';
+import { Lock, Eye } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { INTRO_KISS_MARRY } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
