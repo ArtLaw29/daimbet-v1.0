@@ -1001,7 +1001,94 @@ export default function AdminPage() {
           </AlertDialog>
         </TabsContent>
 
-        {/* ═══════════════ STATS ═══════════════ */}
+        {/* ═══════════════ GAZETTE ═══════════════ */}
+        <TabsContent value="gazette">
+          <div className="space-y-6">
+            {/* Moderation queue */}
+            {(() => {
+              const flaggedMessages = gazetteMessages.filter(m => m.flag_status && !m.is_deleted);
+              return flaggedMessages.length > 0 && (
+                <div className="space-y-3">
+                  <h2 className="text-xl font-display text-destructive">🚩 File de modération ({flaggedMessages.length})</h2>
+                  {flaggedMessages.sort((a, b) => b.flag_score - a.flag_score).map(msg => {
+                    const author = profiles.find(p => p.user_id === msg.user_id);
+                    return (
+                      <div key={msg.id} className="rounded-xl border border-destructive/30 bg-card p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm mb-1">{msg.content}</p>
+                            <p className="text-xs text-muted-foreground">
+                              👤 {author?.display_name || 'Système'} · {new Date(msg.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            <p className="text-xs mt-1">
+                              <span className={`font-bold ${msg.flag_score >= 80 ? 'text-destructive' : 'text-amber-500'}`}>
+                                Score : {msg.flag_score}/100
+                              </span>
+                              {msg.flag_reason && <span className="text-muted-foreground ml-2">— {msg.flag_reason}</span>}
+                            </p>
+                          </div>
+                          <div className="flex gap-1.5 shrink-0">
+                            <Button variant="outline" size="sm" className="text-xs"
+                              onClick={async () => {
+                                await supabase.from('gazette_messages').update({ flag_status: false }).eq('id', msg.id);
+                                toast.success('Flag ignoré ✅');
+                                fetchAll();
+                              }}>
+                              ✅ Ignorer
+                            </Button>
+                            <Button variant="outline" size="sm" className="text-xs text-destructive border-destructive/30"
+                              onClick={async () => {
+                                await supabase.from('gazette_messages').update({ is_deleted: true }).eq('id', msg.id);
+                                toast.success('Message supprimé 🗑️');
+                                fetchAll();
+                              }}>
+                              🗑️ Supprimer
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* All messages */}
+            <div className="space-y-3">
+              <h2 className="text-xl font-display">📰 Tous les messages ({gazetteMessages.filter(m => !m.is_deleted).length})</h2>
+              {gazetteMessages.filter(m => !m.is_deleted).map(msg => {
+                const author = profiles.find(p => p.user_id === msg.user_id);
+                return (
+                  <div key={msg.id} className={`rounded-xl border bg-card p-3 ${msg.flag_status ? 'border-destructive/20' : 'border-border'}`}>
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">{msg.content}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          👤 {msg.is_system_message ? '🤖 Système' : (author?.display_name || 'Anonyme')} · {new Date(msg.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {msg.flag_status && <span className="ml-2 text-destructive">🚩 {msg.flag_score}</span>}
+                          {msg.flag_score > 0 && !msg.flag_status && <span className="ml-2 text-muted-foreground/50">({msg.flag_score})</span>}
+                        </p>
+                      </div>
+                      {!msg.is_system_message && (
+                        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8"
+                          onClick={async () => {
+                            if (confirm('Supprimer ce message ?')) {
+                              await supabase.from('gazette_messages').update({ is_deleted: true }).eq('id', msg.id);
+                              toast.success('Message supprimé');
+                              fetchAll();
+                            }
+                          }}>
+                          <Trash2 className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="stats">
           <div className="space-y-4">
             <h2 className="text-xl font-display">Statistiques 📊</h2>
