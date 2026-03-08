@@ -26,12 +26,10 @@ interface BetCardProps {
   bet: BetWithOptions;
   pools: Record<string, number>;
   totalPool: number;
-  betAmounts: Record<string, number>;
-  onAmountChange: (optionId: string, amount: number) => void;
-  onPlaceWager: (betId: string, optionId: string) => void;
   profileBalance: number;
   userWager?: UserWager | null;
   wagerCount?: number;
+  onOpenBet: (bet: BetWithOptions) => void;
 }
 
 const STATUS_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string; cardClass?: string }> = {
