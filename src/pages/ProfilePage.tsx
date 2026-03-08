@@ -529,19 +529,19 @@ export default function ProfilePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Contact form */}
-      <Dialog open={showContact} onOpenChange={setShowContact}>
+      {/* New ticket dialog */}
+      <Dialog open={showNewTicket} onOpenChange={setShowNewTicket}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="font-display">📨 Contacter l'administrateur</DialogTitle>
+            <DialogTitle className="font-display">🎫 Nouveau ticket</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ton message sera transmis à l'administrateur qui y répondra dans les meilleurs délais.
+              Jordaim Belfort te répondra dans les meilleurs délais.
             </p>
-            <Select value={contactSubject} onValueChange={setContactSubject}>
+            <Select value={newTicketSubject} onValueChange={setNewTicketSubject}>
               <SelectTrigger>
-                <SelectValue placeholder="Objet du message" />
+                <SelectValue placeholder="Objet" />
               </SelectTrigger>
               <SelectContent>
                 {CONTACT_SUBJECTS.map(s => (
@@ -550,14 +550,33 @@ export default function ProfilePage() {
               </SelectContent>
             </Select>
             <Textarea
-              placeholder="Décris ton message..."
-              value={contactMessage}
-              onChange={e => setContactMessage(e.target.value)}
+              placeholder="Décris ton problème..."
+              value={newTicketMessage}
+              onChange={e => setNewTicketMessage(e.target.value)}
               rows={4}
               maxLength={1000}
               required
             />
-            <Button onClick={sendContact} disabled={!contactSubject || !contactMessage.trim() || sendingContact}
+            <Button onClick={async () => {
+              if (!user || !newTicketSubject || !newTicketMessage.trim()) return;
+              setCreatingTicket(true);
+              const { data: ticket, error } = await supabase.from('tickets').insert({
+                user_id: user.id,
+                subject: newTicketSubject,
+              }).select().single();
+              if (error || !ticket) { toast.error('Erreur'); setCreatingTicket(false); return; }
+              await supabase.from('ticket_messages').insert({
+                ticket_id: ticket.id,
+                sender: 'user',
+                content: newTicketMessage.trim(),
+              });
+              toast.success('✅ Ton ticket a été envoyé. Jordaim Belfort te répondra dans les meilleurs délais.');
+              setNewTicketSubject('');
+              setNewTicketMessage('');
+              setShowNewTicket(false);
+              setCreatingTicket(false);
+              fetchAll();
+            }} disabled={!newTicketSubject || !newTicketMessage.trim() || creatingTicket}
               className="w-full gold-gradient">
               <Send className="w-4 h-4 mr-2" /> Envoyer
             </Button>
