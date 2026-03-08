@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
@@ -17,6 +19,7 @@ import ProposalsPage from "./pages/ProposalsPage";
 import GazettePage from "./pages/GazettePage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
+import MaintenancePage from "./pages/MaintenancePage";
 import NotFound from "./pages/NotFound";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import CharterModal from "./components/CharterModal";
@@ -35,12 +38,37 @@ function GuardedRoute({ tabKey, children }: { tabKey: string; children: React.Re
 
 function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceChecked, setMaintenanceChecked] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    const checkMaintenance = async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single();
+      setMaintenanceMode(data?.value === 'true');
+      setMaintenanceChecked(true);
+    };
+    checkMaintenance();
+  }, []);
+
+  if (loading || !maintenanceChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-primary font-display text-2xl">DAIMBet...</div>
       </div>
+    );
+  }
+
+  // ─── MAINTENANCE MODE (admin routes always accessible) ───
+  if (maintenanceMode && !isAdmin) {
+    return (
+      <Routes>
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="*" element={<MaintenancePage />} />
+      </Routes>
     );
   }
 
