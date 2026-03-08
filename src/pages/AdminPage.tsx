@@ -55,6 +55,12 @@ export default function AdminPage() {
   const [adminProposals, setAdminProposals] = useState<Proposal[]>([]);
   const [proposalProfiles, setProposalProfiles] = useState<Record<string, string>>({});
 
+  // Tickets
+  const [adminTickets, setAdminTickets] = useState<any[]>([]);
+  const [adminTicketMessages, setAdminTicketMessages] = useState<Record<string, any[]>>({});
+  const [activeAdminTicketId, setActiveAdminTicketId] = useState<string | null>(null);
+  const [ticketSortBy, setTicketSortBy] = useState<'date' | 'status' | 'name'>('date');
+
   // Create form state
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
