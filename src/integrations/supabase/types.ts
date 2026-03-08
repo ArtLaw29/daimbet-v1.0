@@ -329,6 +329,27 @@ export type Database = {
         }
         Relationships: []
       }
+      nav_config: {
+        Row: {
+          id: string
+          is_visible: boolean
+          tab_key: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          is_visible?: boolean
+          tab_key: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          is_visible?: boolean
+          tab_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
