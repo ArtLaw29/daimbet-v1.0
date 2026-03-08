@@ -93,16 +93,16 @@ export default function Navbar() {
   return (
     <>
       {/* ─── HEADER (top bar) ─── */}
-      <header className="sticky top-0 z-50 glass border-b border-border">
+      <header className="sticky top-0 z-50 glass border-b border-border" role="banner">
         <div className="container mx-auto flex items-center justify-between h-14 px-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <img src={daimcoinLogo} alt="DAIMBet" className="w-7 h-7 rounded-full" />
+          <Link to="/" className="flex items-center gap-2" aria-label="Accueil DaimBet">
+            <img src={daimcoinLogo} alt="Logo DaimBet" className="w-7 h-7 rounded-full" />
             <span className="font-display text-xl text-primary tracking-wider hidden sm:inline">DAIMBET</span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1" aria-label="Navigation principale">
             {visibleNavTabs.map((tab) => (
               <Link
                 key={tab.to}
@@ -138,7 +138,7 @@ export default function Navbar() {
                 {rankText}
               </span>
             )}
-            <Button variant="ghost" size="icon" onClick={signOut} title="Déconnexion" className="hidden sm:flex">
+            <Button variant="ghost" size="icon" onClick={signOut} aria-label="Déconnexion" className="hidden sm:flex">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -146,7 +146,7 @@ export default function Navbar() {
       </header>
 
       {/* ─── BOTTOM NAV (mobile only) ─── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border" role="navigation" aria-label="Navigation mobile">
         <div className="flex justify-around py-1.5">
           {visibleNavTabs.map((tab) => {
             const isActive = location.pathname === tab.to;
@@ -154,6 +154,7 @@ export default function Navbar() {
               <Link
                 key={tab.to}
                 to={tab.to}
+                aria-label={tab.label}
                 className={`flex flex-col items-center gap-0.5 px-1 py-1 min-w-0 ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}

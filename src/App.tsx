@@ -5,25 +5,33 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "./components/Navbar";
-import LandingPage from "./pages/LandingPage";
-import AuthPage from "./pages/AuthPage";
-import AdminLoginPage from "./pages/AdminLoginPage";
-import EventsPage from "./pages/EventsPage";
-import BetDetailPage from "./pages/BetDetailPage";
-import LeaderboardPage from "./pages/LeaderboardPage";
-import KissMarryPage from "./pages/KissMarryPage";
-import ProposalsPage from "./pages/ProposalsPage";
-import GazettePage from "./pages/GazettePage";
-import ProfilePage from "./pages/ProfilePage";
-import AdminPage from "./pages/AdminPage";
-import MaintenancePage from "./pages/MaintenancePage";
-import NotFound from "./pages/NotFound";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+// Lazy-loaded pages for performance
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
+const EventsPage = lazy(() => import("./pages/EventsPage"));
+const BetDetailPage = lazy(() => import("./pages/BetDetailPage"));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const KissMarryPage = lazy(() => import("./pages/KissMarryPage"));
+const ProposalsPage = lazy(() => import("./pages/ProposalsPage"));
+const GazettePage = lazy(() => import("./pages/GazettePage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 import CharterModal from "./components/CharterModal";
 import ResolutionNotifier from "./components/ResolutionNotifier";
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-pulse text-primary font-display text-2xl">DAIMBet...</div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -65,24 +73,28 @@ function AppRoutes() {
   // ─── MAINTENANCE MODE (admin routes always accessible) ───
   if (maintenanceMode && !isAdmin) {
     return (
-      <Routes>
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="*" element={<MaintenancePage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="*" element={<MaintenancePage />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   // ─── NOT LOGGED IN ───
   if (!user) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/connexion" element={<AuthPage />} />
-        <Route path="/inscription" element={<AuthPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/connexion" element={<AuthPage />} />
+          <Route path="/inscription" element={<AuthPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="*" element={<LandingPage />} />
+        </Routes>
+      </Suspense>
     );
   }
 
@@ -91,10 +103,12 @@ function AppRoutes() {
     return (
       <>
         <CharterModal userId={user.id} onAccepted={refreshProfile} />
-        <Routes>
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="*" element={<div />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="*" element={<div />} />
+          </Routes>
+        </Suspense>
       </>
     );
   }
@@ -104,26 +118,28 @@ function AppRoutes() {
     <>
       <Navbar />
       <ResolutionNotifier />
-      <Routes>
-        <Route path="/" element={<EventsPage />} />
-        <Route path="/bet/:id" element={<BetDetailPage />} />
-        <Route path="/connexion" element={<Navigate to="/" replace />} />
-        <Route path="/inscription" element={<Navigate to="/" replace />} />
-        <Route path="/gazette" element={<GazettePage />} />
-        <Route path="/classement" element={
-          <GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute>
-        } />
-        <Route path="/kiss-marry" element={
-          <GuardedRoute tabKey="kiss-marry"><KissMarryPage /></GuardedRoute>
-        } />
-        <Route path="/profil" element={<ProfilePage />} />
-        <Route path="/proposals" element={<ProposalsPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin/login" element={<AdminPage />} />
-        <Route path="/archives" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<EventsPage />} />
+          <Route path="/bet/:id" element={<BetDetailPage />} />
+          <Route path="/connexion" element={<Navigate to="/" replace />} />
+          <Route path="/inscription" element={<Navigate to="/" replace />} />
+          <Route path="/gazette" element={<GazettePage />} />
+          <Route path="/classement" element={
+            <GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute>
+          } />
+          <Route path="/kiss-marry" element={
+            <GuardedRoute tabKey="kiss-marry"><KissMarryPage /></GuardedRoute>
+          } />
+          <Route path="/profil" element={<ProfilePage />} />
+          <Route path="/proposals" element={<ProposalsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/login" element={<AdminPage />} />
+          <Route path="/archives" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

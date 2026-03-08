@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -11,20 +11,31 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // ── Auth: verify JWT + admin role ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { data: roleCheck } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+    if (!roleCheck) {
+      return new Response(JSON.stringify({ error: "Accès refusé" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { period = "all", format = "json" } = await req.json().catch(() => ({}));
 
-    // Calculate date filter
     let dateFrom: string | null = null;
     const now = new Date();
-    if (period === "week") {
-      dateFrom = new Date(now.getTime() - 7 * 86400000).toISOString();
-    } else if (period === "month") {
-      dateFrom = new Date(now.getTime() - 30 * 86400000).toISOString();
-    }
+    if (period === "week") dateFrom = new Date(now.getTime() - 7 * 86400000).toISOString();
+    else if (period === "month") dateFrom = new Date(now.getTime() - 30 * 86400000).toISOString();
 
-    // Fetch all data in parallel
     const dateFilter = (query: any) => dateFrom ? query.gte("created_at", dateFrom) : query;
 
     const [betsRes, wagersRes, injectionsRes, gazetteRes, proposalsRes, soldeRes, profilesRes] = await Promise.all([
@@ -62,7 +73,6 @@ Deno.serve(async (req) => {
     };
 
     if (format === "csv") {
-      // Generate a simple CSV of bets
       const lines = ["type,title,status,category,created_at,updated_at"];
       for (const b of report.bets) {
         lines.push(`"${(b as any).type}","${(b as any).title.replace(/"/g, '""')}","${(b as any).status}","${(b as any).category}","${(b as any).created_at}","${(b as any).updated_at}"`);
