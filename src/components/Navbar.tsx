@@ -138,7 +138,7 @@ export default function Navbar() {
                 {rankText}
               </span>
             )}
-            <Button variant="ghost" size="icon" onClick={signOut} title="Déconnexion" className="hidden sm:flex">
+            <Button variant="ghost" size="icon" onClick={signOut} aria-label="Déconnexion" className="hidden sm:flex">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
