@@ -47,12 +47,16 @@ export default function KissMarryPage() {
     n.toLowerCase() !== (profile?.display_name || '').toLowerCase()
   );
 
-  const checkIfVoted = useCallback(() => {
+  const checkIfVoted = useCallback(async () => {
     const key = `km_voted_${monthYear}`;
     if (localStorage.getItem(key)) setHasVoted(true);
-    // Check reveal mode
-    const revealKey = `km_reveal_${monthYear}`;
-    if (localStorage.getItem(revealKey)) setRevealMode(true);
+    // Check reveal mode from platform_settings (admin-controlled)
+    const { data: revealSetting } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', `km_reveal_${monthYear}`)
+      .maybeSingle();
+    if (revealSetting?.value === 'true') setRevealMode(true);
     setLoading(false);
   }, [monthYear]);
 
