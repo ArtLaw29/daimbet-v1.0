@@ -50,7 +50,7 @@ const CATEGORY_OPTIONS: { value: BetCategory; label: string }[] = [
 ];
 
 export default function AdminPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [bets, setBets] = useState<BetWithOptions[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [allWagers, setAllWagers] = useState<Wager[]>([]);
