@@ -82,6 +82,11 @@ export default function BetDetailPage() {
       setWagerCount(userIds.size);
       setMyWagers(mine);
     }
+    // Fetch user's suggestions for this bet
+    if (user && data) {
+      const { data: sugs } = await supabase.from('tierce_suggestions').select('*').eq('bet_id', id).eq('suggested_by', user.id);
+      setMySuggestions(sugs || []);
+    }
     setLoading(false);
   }, [id, user]);
 
