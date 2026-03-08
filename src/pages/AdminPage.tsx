@@ -115,6 +115,21 @@ export default function AdminPage() {
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
   const [emailTodayCount, setEmailTodayCount] = useState(0);
 
+  // Maintenance
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [nuclearOpen, setNuclearOpen] = useState(false);
+  const [nuclearStep, setNuclearStep] = useState(1);
+  const [nuclearCheck1, setNuclearCheck1] = useState(false);
+  const [nuclearPhrase, setNuclearPhrase] = useState('');
+  const [nuclearReportSent, setNuclearReportSent] = useState(false);
+  const [nuclearReportCheck, setNuclearReportCheck] = useState(false);
+  const [nuclearCountdown, setNuclearCountdown] = useState(10);
+  const [nuclearCountdownDone, setNuclearCountdownDone] = useState(false);
+  const [nuclearExecuting, setNuclearExecuting] = useState(false);
+  const [nuclearDone, setNuclearDone] = useState(false);
+  const [nuclearSendingReport, setNuclearSendingReport] = useState(false);
+  const [nuclearReportError, setNuclearReportError] = useState('');
+
   // Multi-winner resolution
   const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
 
