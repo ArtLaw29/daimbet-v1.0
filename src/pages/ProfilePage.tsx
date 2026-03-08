@@ -418,14 +418,68 @@ export default function ProfilePage() {
         )}
       </div>
 
+      {/* ─── TICKETS ─── */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <button onClick={() => setShowTickets(!showTickets)}
+          className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/30 transition-colors">
+          <span className="font-display text-sm flex items-center gap-2">
+            <Ticket className="w-4 h-4 text-muted-foreground" /> Mes tickets ({tickets.length})
+            {unreadTickets > 0 && (
+              <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full">{unreadTickets}</span>
+            )}
+          </span>
+          {showTickets ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
+        {showTickets && !activeTicketId && (
+          <div className="px-4 pb-4 space-y-2">
+            <Button size="sm" variant="outline" onClick={() => setShowNewTicket(true)} className="w-full mb-2">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Nouveau ticket
+            </Button>
+            {tickets.length === 0 && <p className="text-sm text-muted-foreground text-center py-3">Aucun ticket</p>}
+            {tickets.map(t => {
+              const hasUnread = t.admin_replied_at && t.user_last_seen_at && new Date(t.admin_replied_at) > new Date(t.user_last_seen_at);
+              const statusColors: Record<string, string> = {
+                ouvert: 'bg-primary/10 text-primary',
+                en_cours: 'bg-yellow-500/10 text-yellow-600',
+                resolu: 'bg-muted text-muted-foreground',
+              };
+              return (
+                <button key={t.id} onClick={() => setActiveTicketId(t.id)}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/30 transition-colors flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                      {hasUnread && <span className="w-2 h-2 bg-destructive rounded-full flex-shrink-0" />}
+                      {t.subject}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(t.created_at).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[t.status] || ''}`}>
+                    {t.status === 'ouvert' ? 'Ouvert' : t.status === 'en_cours' ? 'En cours' : 'Résolu'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {showTickets && activeTicketId && (
+          <div className="px-4 pb-4">
+            <TicketThread
+              ticketId={activeTicketId}
+              subject={tickets.find(t => t.id === activeTicketId)?.subject || ''}
+              status={tickets.find(t => t.id === activeTicketId)?.status || 'ouvert'}
+              onBack={() => { setActiveTicketId(null); fetchAll(); }}
+              onStatusChange={fetchAll}
+            />
+          </div>
+        )}
+      </div>
+
       {/* ─── ACTIONS ─── */}
       <div className="space-y-3">
         <Button onClick={() => setShowProposalForm(true)} className="w-full gold-gradient font-semibold">
           <MessageSquarePlus className="w-4 h-4 mr-2" /> Soumettre une proposition 🗳️
-        </Button>
-
-        <Button variant="outline" className="w-full" onClick={() => setShowContact(true)}>
-          <Send className="w-4 h-4 mr-2" /> Contacter l'administrateur
         </Button>
 
         <div className="grid grid-cols-2 gap-3">
