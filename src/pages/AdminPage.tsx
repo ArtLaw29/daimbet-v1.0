@@ -150,7 +150,14 @@ export default function AdminPage() {
   // Multi-winner resolution
   const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
 
-  useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) { fetchAll(); fetchUserEmails(); } }, [isAdmin]);
+
+  const fetchUserEmails = async () => {
+    const { data, error } = await supabase.functions.invoke('get-user-emails');
+    if (!error && data?.emails) {
+      setUserEmails(data.emails);
+    }
+  };
 
   const fetchAll = useCallback(async () => {
     const todayStart = new Date();
