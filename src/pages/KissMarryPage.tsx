@@ -34,13 +34,19 @@ export default function KissMarryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [indices, setIndices] = useState<string[]>([]);
-  const [revealMode, setRevealMode] = useState(false);
+  const [revealStarted, setRevealStarted] = useState(false);
   const [revealStep, setRevealStep] = useState(-1);
   const [revealData, setRevealData] = useState<Record<string, { name: string; count: number }[]>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
 
   const now = new Date();
+  // Current voting month
   const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  // Reveal logic: on the 1st of each month at 10h, reveal LAST month's results
+  const isRevealDay = now.getDate() === 1 && now.getHours() >= 10;
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const revealMonthYear = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
 
   // Filter out user's own name
   const availableNames = PROMO_NAMES.filter(n =>
@@ -50,13 +56,6 @@ export default function KissMarryPage() {
   const checkIfVoted = useCallback(async () => {
     const key = `km_voted_${monthYear}`;
     if (localStorage.getItem(key)) setHasVoted(true);
-    // Check reveal mode from platform_settings (admin-controlled)
-    const { data: revealSetting } = await supabase
-      .from('platform_settings')
-      .select('value')
-      .eq('key', `km_reveal_${monthYear}`)
-      .maybeSingle();
-    if (revealSetting?.value === 'true') setRevealMode(true);
     setLoading(false);
   }, [monthYear]);
 
@@ -70,8 +69,7 @@ export default function KissMarryPage() {
       catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
     }
 
-    // Store for potential reveal
-    setRevealData(catData);
+    // Don't store in revealData - that's only for reveal mode
 
     // Generate safe indices (max 2)
     const generated: string[] = [];
@@ -143,11 +141,13 @@ export default function KissMarryPage() {
   };
 
   // Auto-fetch reveal data when revealMode activates
+  // Auto-reveal: on the 1st of the month at 10h, fetch LAST month's results
   useEffect(() => {
-    if (!revealMode || Object.keys(revealData).length > 0) return;
+    if (!isRevealDay || revealStarted) return;
+    setRevealStarted(true);
     (async () => {
-      const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
-      if (!data) return;
+      const { data } = await supabase.rpc('get_km_results', { p_month_year: revealMonthYear });
+      if (!data || data.length === 0) return;
       const catData: Record<string, { name: string; count: number }[]> = {};
       for (const row of data as any[]) {
         if (!catData[row.category]) catData[row.category] = [];
@@ -165,12 +165,12 @@ export default function KissMarryPage() {
       setTimeout(() => setRevealStep(2), 8000);
       setTimeout(() => setRevealStep(3), 10500);
     })();
-  }, [revealMode, monthYear, revealData]);
+  }, [isRevealDay, revealMonthYear, revealStarted]);
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
   // REVEAL MODE
-  if (revealMode && Object.keys(revealData).length > 0) {
+  if (isRevealDay && Object.keys(revealData).length > 0) {
     const countdownNum = revealStep < 0 ? Math.abs(revealStep) : null;
     return (
       <div className="container mx-auto px-4 py-6 max-w-2xl pb-20 md:pb-6">
@@ -268,7 +268,7 @@ export default function KissMarryPage() {
           </div>
         )}
 
-        {/* Reveal is now admin-controlled via platform_settings */}
+        {/* Reveal is automatic on 1st of month at 10h */}
       </div>
     );
   }
