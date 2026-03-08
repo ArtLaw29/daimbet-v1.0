@@ -101,6 +101,7 @@ export default function AdminPage() {
   const [balanceDelta, setBalanceDelta] = useState('');
   const [balanceMotif, setBalanceMotif] = useState('');
   const [userEmails, setUserEmails] = useState<Record<string, string>>({});
+  const [resetPwValue, setResetPwValue] = useState('');
   const [injecting, setInjecting] = useState(false);
   const [showInjectionModal, setShowInjectionModal] = useState(false);
   const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
@@ -473,9 +474,20 @@ export default function AdminPage() {
     fetchAll();
   };
 
-  const resetUserPassword = async (userId: string) => {
-    // We need the user's email - we don't have it in profiles, so use admin API via edge function
-    toast.info('Fonction de réinitialisation de mot de passe disponible via le lien "Mot de passe oublié" sur la page de connexion.');
+  const resetUserPassword = async (userId: string, newPassword: string) => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+      body: { target_user_id: userId, new_password: newPassword },
+    });
+    if (error || data?.error) {
+      toast.error(data?.error || error?.message || 'Erreur');
+    } else {
+      toast.success('Mot de passe réinitialisé ! Communique-le à l\'utilisateur.');
+      setResetPwValue('');
+    }
   };
 
   const triggerLiquidityInjection = async () => {
@@ -1345,9 +1357,14 @@ export default function AdminPage() {
                         <><Ban className="w-3 h-3 mr-1" /> Suspendre le compte</>
                       )}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => resetUserPassword(selectedUser.user_id)}>
-                      <RefreshCw className="w-3 h-3 mr-1" /> Réinitialiser le mot de passe
-                    </Button>
+                    <div className="flex gap-2">
+                      <Input type="text" placeholder="Nouveau mot de passe" value={resetPwValue}
+                        onChange={e => setResetPwValue(e.target.value)} className="flex-1 h-8 text-sm" />
+                      <Button variant="outline" size="sm" disabled={resetPwValue.length < 6}
+                        onClick={() => resetUserPassword(selectedUser.user_id, resetPwValue)}>
+                        <RefreshCw className="w-3 h-3 mr-1" /> Reset
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
