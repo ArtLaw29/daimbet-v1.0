@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -7,6 +8,7 @@ import { Timer, Tag, Flame } from 'lucide-react';
 import { calculateEstimatedNetGain, STARTING_BALANCE } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
+import BetBottomSheet from '@/components/BetBottomSheet';
 import ProposalCard from '@/components/ProposalCard';
 import type { Tables } from '@/integrations/supabase/types';
 
