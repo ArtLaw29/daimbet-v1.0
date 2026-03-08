@@ -1581,6 +1581,157 @@ export default function AdminPage() {
             </div>
           </div>
         </TabsContent>
+
+        {/* ═══════════════ MESSAGERIE ═══════════════ */}
+        <TabsContent value="messagerie">
+          <div className="space-y-6">
+            {/* Daily counter */}
+            <div className={`rounded-xl border p-3 flex items-center justify-between ${emailTodayCount >= 80 ? 'border-destructive/50 bg-destructive/5' : 'border-border bg-card'}`}>
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Emails envoyés aujourd'hui</span>
+              </div>
+              <span className={`text-sm font-display font-bold ${emailTodayCount >= 80 ? 'text-destructive' : 'text-primary'}`}>
+                {emailTodayCount} / 100
+              </span>
+            </div>
+            {emailTodayCount >= 80 && (
+              <p className="text-xs text-destructive flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Attention : tu approches de la limite journalière Resend (100/jour).</p>
+            )}
+
+            {/* Compose form */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h2 className="text-lg font-display flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> Composer un email</h2>
+
+              {/* Recipients */}
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1 block">Destinataire(s)</Label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {emailRecipients.map(r => (
+                    <span key={r} className="inline-flex items-center gap-1 text-xs bg-secondary px-2 py-1 rounded-full">
+                      {r}
+                      <button type="button" onClick={() => setEmailRecipients(emailRecipients.filter(x => x !== r))} className="text-muted-foreground hover:text-destructive">×</button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input placeholder="Email ou sélectionner ci-dessous" value={emailRecipientInput}
+                    onChange={e => setEmailRecipientInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && emailRecipientInput.includes('@')) {
+                        e.preventDefault();
+                        if (!emailRecipients.includes(emailRecipientInput.trim())) {
+                          setEmailRecipients([...emailRecipients, emailRecipientInput.trim()]);
+                        }
+                        setEmailRecipientInput('');
+                      }
+                    }}
+                    className="flex-1 h-9 text-sm" />
+                  <Button type="button" variant="outline" size="sm" onClick={() => {
+                    if (emailRecipientInput.includes('@') && !emailRecipients.includes(emailRecipientInput.trim())) {
+                      setEmailRecipients([...emailRecipients, emailRecipientInput.trim()]);
+                      setEmailRecipientInput('');
+                    }
+                  }}>Ajouter</Button>
+                </div>
+                {/* Quick-add from registered users */}
+                <div className="mt-2">
+                  <p className="text-[10px] text-muted-foreground mb-1">Sélection rapide (utilisateurs inscrits) :</p>
+                  <div className="flex flex-wrap gap-1">
+                    <Button type="button" variant="outline" size="sm" className="text-[10px] h-6 text-primary border-primary/30" onClick={() => {
+                      // We don't have emails from profiles, but users registered with ESSEC emails
+                      // Add all profiles as display_name@essec.edu pattern
+                      toast.info('Les emails des utilisateurs ne sont pas disponibles côté client. Utilise le champ de saisie.');
+                    }}>
+                      📋 Tous les inscrits
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1 block">Objet</Label>
+                <Input placeholder="Objet de l'email" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} className="h-9 text-sm" />
+              </div>
+
+              {/* Body */}
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1 block">Corps du message</Label>
+                <div className="flex gap-1 mb-1">
+                  <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2"
+                    onClick={() => setEmailBody(emailBody + '<b></b>')}>B</Button>
+                  <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2 italic"
+                    onClick={() => setEmailBody(emailBody + '<i></i>')}>I</Button>
+                  <Button type="button" variant="ghost" size="sm" className="h-6 text-[10px] px-2"
+                    onClick={() => setEmailBody(emailBody + '<ul><li></li></ul>')}>Liste</Button>
+                </div>
+                <Textarea placeholder="Corps de l'email (HTML basique supporté : <b>, <i>, <ul><li>)" value={emailBody}
+                  onChange={e => setEmailBody(e.target.value)} rows={6} className="text-sm" />
+              </div>
+
+              {/* Send warning */}
+              {emailRecipients.length > 0 && emailTodayCount + emailRecipients.length > 100 && (
+                <div className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>Attention : cet envoi porterait le total à {emailTodayCount + emailRecipients.length}/100 pour aujourd'hui. La limite Resend est de 100 emails/jour.</span>
+                </div>
+              )}
+
+              <Button className="gold-gradient w-full h-11 font-semibold" disabled={emailSending || emailRecipients.length === 0 || !emailSubject.trim() || !emailBody.trim()}
+                onClick={async () => {
+                  setEmailSending(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke('send-admin-email', {
+                      body: {
+                        recipients: emailRecipients,
+                        subject: emailSubject.trim(),
+                        body_html: emailBody,
+                      },
+                    });
+                    if (error) { toast.error('Erreur envoi email'); setEmailSending(false); return; }
+                    if (data?.error) { toast.error(data.error); setEmailSending(false); return; }
+                    toast.success(`✅ ${data.sent} email(s) envoyé(s)${data.failed > 0 ? `, ${data.failed} échec(s)` : ''}`);
+                    setEmailRecipients([]);
+                    setEmailSubject('');
+                    setEmailBody('');
+                    fetchAll();
+                  } catch {
+                    toast.error('Erreur inattendue');
+                  }
+                  setEmailSending(false);
+                }}>
+                {emailSending ? 'Envoi en cours...' : `Envoyer (${emailRecipients.length} destinataire${emailRecipients.length > 1 ? 's' : ''})`}
+              </Button>
+            </div>
+
+            {/* Email history */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <h3 className="text-sm font-display flex items-center gap-2"><History className="w-4 h-4 text-primary" /> Historique des envois</h3>
+              {emailLogs.length === 0 ? (
+                <p className="text-muted-foreground text-center text-sm py-6">Aucun email envoyé.</p>
+              ) : (
+                emailLogs.map((log: any) => (
+                  <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
+                    <span className={`shrink-0 text-sm ${log.status === 'succes' ? 'text-green-500' : 'text-destructive'}`}>
+                      {log.status === 'succes' ? '✅' : '❌'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{log.subject}</p>
+                      <p className="text-xs text-muted-foreground">
+                        → {Array.isArray(log.recipients_json) ? log.recipients_json.join(', ') : log.recipients_json}
+                      </p>
+                      {log.body_preview && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{log.body_preview.replace(/<[^>]+>/g, '').substring(0, 120)}...</p>}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      {new Date(log.sent_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
