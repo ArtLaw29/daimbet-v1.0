@@ -1,7 +1,7 @@
 export const PROMO_NAMES = [
   'Alexandre', 'Alexis', 'Alice', 'Anaïs', 'Angélique', 'Augustin',
   'Beatrice', 'Carla', 'Celia', 'Charles P.', 'Charles V.', 'Chris-Aurélien',
-  'Christophe', 'Ciryne', 'Clara', 'Dana', 'Eliot', 'Elma', 'Etienne',
+  'Christophe', 'Cyrine', 'Clara', 'Dana', 'Eliot', 'Elma', 'Etienne',
   'Garance', 'Ghali', 'Grégoire', 'Hania', 'Hanna', 'Ibtissam', 'Imane',
   'Inès', 'Issam', 'James-Marie', 'Jihane', 'Laura L.', 'Laura V.',
   'Laure', 'Louise', 'Léa', 'Luca', 'Maïlys', 'Manon', 'Mathilde',
