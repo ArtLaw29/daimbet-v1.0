@@ -998,9 +998,75 @@ export default function AdminPage() {
               );
             })}
           </div>
-        </TabsContent>
 
-        {/* ═══════════════ ARCHIVE ═══════════════ */}
+          {/* ─── TIERCE SUGGESTIONS ─── */}
+          {tierceSuggestions.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4 mt-6">
+              <h3 className="text-lg font-display flex items-center gap-2">
+                🏇 Suggestions Tiercé en attente
+                <span className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full">{tierceSuggestions.length}</span>
+              </h3>
+              {(() => {
+                // Group by bet_id
+                const grouped: Record<string, any[]> = {};
+                tierceSuggestions.forEach((s: any) => {
+                  if (!grouped[s.bet_id]) grouped[s.bet_id] = [];
+                  grouped[s.bet_id].push(s);
+                });
+                return Object.entries(grouped).map(([betId, suggestions]) => {
+                  const bet = bets.find(b => b.id === betId);
+                  return (
+                    <div key={betId} className="space-y-2">
+                      <p className="text-sm font-semibold text-muted-foreground">{bet?.emoji} {bet?.title || 'Pari inconnu'}</p>
+                      <p className="text-[10px] text-muted-foreground">{bet?.bet_options.length || 0}/20 options actuelles</p>
+                      {suggestions.map((s: any) => (
+                        <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
+                          <div>
+                            <p className="text-sm font-medium">{s.prenom_suggested}</p>
+                            {s.comment && <p className="text-xs text-muted-foreground">{s.comment}</p>}
+                            <p className="text-[10px] text-muted-foreground">
+                              Par {suggestionProfiles[s.suggested_by] || '?'} · {new Date(s.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="text-green-500 border-green-500/30 hover:bg-green-500/10"
+                              onClick={async () => {
+                                const currentBet = bets.find(b => b.id === betId);
+                                if (currentBet && currentBet.bet_options.length >= 20) {
+                                  toast.error('Ce pari a déjà 20 options — impossible d\'en ajouter.');
+                                  return;
+                                }
+                                // Add option to bet
+                                await supabase.from('bet_options').insert({
+                                  bet_id: betId,
+                                  label: s.prenom_suggested,
+                                  cote_actuelle: 1.10,
+                                });
+                                // Update suggestion status
+                                await supabase.from('tierce_suggestions').update({ status: 'approuve' as any }).eq('id', s.id);
+                                toast.success(`✅ ${s.prenom_suggested} ajouté au pari`);
+                                fetchAll();
+                              }}>
+                              ✅ Approuver
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                              onClick={async () => {
+                                await supabase.from('tierce_suggestions').update({ status: 'rejete' as any }).eq('id', s.id);
+                                toast.success('Suggestion rejetée');
+                                fetchAll();
+                              }}>
+                              ❌ Rejeter
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </TabsContent>
         <TabsContent value="results">
           <div className="space-y-4">
             <h2 className="text-xl font-display">📜 Archives</h2>
