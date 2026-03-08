@@ -130,6 +130,14 @@ export default function AdminPage() {
   const [nuclearSendingReport, setNuclearSendingReport] = useState(false);
   const [nuclearReportError, setNuclearReportError] = useState('');
 
+  // Nav config (tab visibility)
+  const [navConfig, setNavConfig] = useState<Record<string, boolean>>({});
+
+  // Retraction config
+  const [retractionStart, setRetractionStart] = useState(0);
+  const [retractionEnd, setRetractionEnd] = useState(9);
+  const [retractionSaving, setRetractionSaving] = useState(false);
+
   // Multi-winner resolution
   const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
 
@@ -139,7 +147,7 @@ export default function AdminPage() {
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
 
-    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes, ticketsRes, notifRes, emailLogsRes, emailTodayRes, maintRes] = await Promise.all([
+    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes, ticketsRes, notifRes, emailLogsRes, emailTodayRes, maintRes, navConfigRes, retractionRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
       supabase.from('wagers').select('*').order('created_at', { ascending: false }),
@@ -151,6 +159,8 @@ export default function AdminPage() {
       supabase.from('admin_emails_log').select('*').order('sent_at', { ascending: false }).limit(50),
       supabase.from('admin_emails_log').select('*', { count: 'exact', head: true }).gte('sent_at', todayStart.toISOString()).eq('status', 'succes'),
       supabase.from('platform_settings').select('value').eq('key', 'maintenance_mode').single(),
+      supabase.from('nav_config').select('tab_key, is_visible'),
+      supabase.from('retraction_config').select('*').limit(1).single(),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
@@ -162,6 +172,15 @@ export default function AdminPage() {
     setEmailLogs(emailLogsRes.data || []);
     setEmailTodayCount(emailTodayRes.count ?? 0);
     setMaintenanceMode(maintRes.data?.value === 'true');
+    if (navConfigRes.data) {
+      const nc: Record<string, boolean> = {};
+      navConfigRes.data.forEach((r: any) => { nc[r.tab_key] = r.is_visible; });
+      setNavConfig(nc);
+    }
+    if (retractionRes.data) {
+      setRetractionStart(retractionRes.data.start_hour);
+      setRetractionEnd(retractionRes.data.end_hour);
+    }
     const props = propRes.data || [];
     setAdminProposals(props);
     // Fetch proposer names
@@ -1807,6 +1826,100 @@ export default function AdminPage() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            </div>
+
+            {/* ─── TAB CONFIGURATION ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2"><Eye className="w-4 h-4 text-primary" /> Configuration des onglets</h3>
+              <div className="space-y-3">
+                {[
+                  { key: 'paris', label: '🎯 Paris', maskable: false, tooltip: 'Onglet obligatoire' },
+                  { key: 'gazette', label: '📰 Gazette', maskable: false, tooltip: 'Non masquable — canal de communication système' },
+                  { key: 'classement', label: '🏆 Classement', maskable: true },
+                  { key: 'kiss-marry', label: '💋 Kiss/Marry', maskable: true },
+                  { key: 'profil', label: '👤 Profil', maskable: false, tooltip: 'Onglet obligatoire' },
+                ].map((tab) => (
+                  <div key={tab.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 border border-border/50">
+                    <span className="text-sm">{tab.label}</span>
+                    <div className="flex items-center gap-2">
+                      {!tab.maskable && (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{tab.tooltip}</span>
+                      )}
+                      <Switch
+                        checked={tab.maskable ? navConfig[tab.key] !== false : true}
+                        disabled={!tab.maskable}
+                        onCheckedChange={async (checked) => {
+                          if (!tab.maskable) return;
+                          await supabase.from('nav_config').update({ is_visible: checked, updated_at: new Date().toISOString() }).eq('tab_key', tab.key);
+                          setNavConfig(prev => ({ ...prev, [tab.key]: checked }));
+                          toast.success(`Onglet ${tab.label} ${checked ? 'activé' : 'masqué'}`);
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ─── RETRACTION CONFIG ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2"><RefreshCw className="w-4 h-4 text-primary" /> Option de rétractation</h3>
+              <p className="text-xs text-muted-foreground">
+                Plage horaire actuelle : <span className="font-semibold text-foreground">{String(retractionStart).padStart(2, '0')}h00 → {String(retractionEnd).padStart(2, '0')}h00 CET</span>
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs">Début</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={retractionStart}
+                    onChange={e => setRetractionStart(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="h-9"
+                  />
+                </div>
+                <span className="text-muted-foreground mt-5">→</span>
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs">Fin</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={retractionEnd}
+                    onChange={e => setRetractionEnd(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <Button
+                disabled={retractionSaving || retractionStart === retractionEnd}
+                onClick={async () => {
+                  if (retractionStart === retractionEnd) {
+                    toast.error('L\'heure de début et de fin ne peuvent pas être identiques');
+                    return;
+                  }
+                  setRetractionSaving(true);
+                  await supabase.from('retraction_config').update({
+                    start_hour: retractionStart,
+                    end_hour: retractionEnd,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', (await supabase.from('retraction_config').select('id').limit(1).single()).data?.id || '');
+                  await supabase.from('gazette_messages').insert({
+                    content: `⏰ La fenêtre d'annulation des mises est désormais de ${String(retractionStart).padStart(2, '0')}h00 à ${String(retractionEnd).padStart(2, '0')}h00 CET.`,
+                    is_system_message: true,
+                  });
+                  toast.success('Plage de rétractation mise à jour');
+                  setRetractionSaving(false);
+                  fetchAll();
+                }}
+                className="w-full"
+              >
+                {retractionSaving ? 'Enregistrement...' : 'Enregistrer la nouvelle plage'}
+              </Button>
+              {retractionStart === retractionEnd && (
+                <p className="text-xs text-destructive">⚠️ L'heure de début et de fin ne peuvent pas être identiques.</p>
+              )}
             </div>
 
             {/* ─── NUCLEAR BUTTON ─── */}
