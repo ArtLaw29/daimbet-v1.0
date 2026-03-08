@@ -40,6 +40,13 @@ export default function BetDetailPage() {
   const [placing, setPlacing] = useState(false);
   const [tierceSort, setTierceSort] = useState<TierceSortMode>('volume');
 
+  // Suggestion state
+  const [showSuggestForm, setShowSuggestForm] = useState(false);
+  const [suggestPrenom, setSuggestPrenom] = useState('');
+  const [suggestComment, setSuggestComment] = useState('');
+  const [suggestSubmitting, setSuggestSubmitting] = useState(false);
+  const [mySuggestions, setMySuggestions] = useState<any[]>([]);
+
   const fetchBet = useCallback(async () => {
     if (!id) return;
     const { data, error } = await supabase
