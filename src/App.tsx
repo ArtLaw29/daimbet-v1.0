@@ -50,14 +50,9 @@ function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceChecked, setMaintenanceChecked] = useState(false);
-  const [showCharterFlash, setShowCharterFlash] = useState(() => {
-    if (isAdmin) return false;
-    const count = parseInt(localStorage.getItem('daimbet_login_count') || '0', 10) + 1;
-    localStorage.setItem('daimbet_login_count', String(count));
-    return count % 4 === 0;
-  });
+  const [showCharterFlash, setShowCharterFlash] = useState(false);
 
-  // Auto-accept charter silently for new users, show flash instead
+  // Auto-accept charter silently for new users, always show flash on first login
   useEffect(() => {
     if (user && !hasAcceptedCharter && !isAdmin) {
       supabase
@@ -68,6 +63,16 @@ function AppRoutes() {
       setShowCharterFlash(true);
     }
   }, [user, hasAcceptedCharter, isAdmin]);
+
+  // Show flash every 5 logins for returning users
+  useEffect(() => {
+    if (!user || isAdmin) return;
+    const count = parseInt(localStorage.getItem('daimbet_login_count') || '0', 10) + 1;
+    localStorage.setItem('daimbet_login_count', String(count));
+    if (count % 5 === 0) {
+      setShowCharterFlash(true);
+    }
+  }, [user, isAdmin]);
 
   useEffect(() => {
     if (showCharterFlash) {
