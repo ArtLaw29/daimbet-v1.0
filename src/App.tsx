@@ -26,7 +26,7 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
-import CharterModal from "./components/CharterModal";
+
 import ResolutionNotifier from "./components/ResolutionNotifier";
 
 const PageLoader = () => (
@@ -56,6 +56,18 @@ function AppRoutes() {
     localStorage.setItem('daimbet_login_count', String(count));
     return count % 4 === 0;
   });
+
+  // Auto-accept charter silently for new users, show flash instead
+  useEffect(() => {
+    if (user && !hasAcceptedCharter && !isAdmin) {
+      supabase
+        .from('profiles')
+        .update({ has_accepted_charter: true })
+        .eq('user_id', user.id)
+        .then(() => refreshProfile());
+      setShowCharterFlash(true);
+    }
+  }, [user, hasAcceptedCharter, isAdmin]);
 
   useEffect(() => {
     if (showCharterFlash) {
@@ -113,20 +125,6 @@ function AppRoutes() {
     );
   }
 
-  // ─── CHARTER MODAL ───
-  if (!hasAcceptedCharter && !isAdmin) {
-    return (
-      <>
-        <CharterModal userId={user.id} onAccepted={refreshProfile} />
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="*" element={<div />} />
-          </Routes>
-        </Suspense>
-      </>
-    );
-  }
 
 
 
