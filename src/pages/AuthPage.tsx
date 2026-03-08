@@ -173,7 +173,7 @@ export default function AuthPage() {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Compte créé ! Vérifie ton email pour confirmer. 📧');
+      toast.success('Bienvenue sur DAIMBet ! 🦌');
     }
     setLoading(false);
   };
