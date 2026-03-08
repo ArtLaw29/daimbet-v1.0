@@ -1203,6 +1203,71 @@ export default function AdminPage() {
           </AlertDialog>
         </TabsContent>
 
+        {/* ═══════════════ TICKETS ═══════════════ */}
+        <TabsContent value="tickets">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-display">🎫 Tickets ({adminTickets.length})</h2>
+              <select value={ticketSortBy} onChange={e => setTicketSortBy(e.target.value as any)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                <option value="date">📅 Par date</option>
+                <option value="status">🔄 Par statut</option>
+                <option value="name">🔤 Par nom</option>
+              </select>
+            </div>
+
+            {activeAdminTicketId ? (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <TicketThread
+                  ticketId={activeAdminTicketId}
+                  subject={adminTickets.find(t => t.id === activeAdminTicketId)?.subject || ''}
+                  status={adminTickets.find(t => t.id === activeAdminTicketId)?.status || 'ouvert'}
+                  isAdmin
+                  onBack={() => { setActiveAdminTicketId(null); fetchAll(); }}
+                  onStatusChange={fetchAll}
+                />
+              </div>
+            ) : (
+              <>
+                {adminTickets.length === 0 && <p className="text-muted-foreground text-center py-8">Aucun ticket.</p>}
+                {[...adminTickets].sort((a, b) => {
+                  if (ticketSortBy === 'status') {
+                    const order: Record<string, number> = { ouvert: 0, en_cours: 1, resolu: 2 };
+                    return (order[a.status] ?? 9) - (order[b.status] ?? 9);
+                  }
+                  if (ticketSortBy === 'name') {
+                    const na = profiles.find(p => p.user_id === a.user_id)?.display_name || '';
+                    const nb = profiles.find(p => p.user_id === b.user_id)?.display_name || '';
+                    return na.localeCompare(nb);
+                  }
+                  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                }).map(t => {
+                  const userName = profiles.find(p => p.user_id === t.user_id)?.display_name || 'Inconnu';
+                  const statusColors: Record<string, string> = {
+                    ouvert: 'bg-primary/10 text-primary',
+                    en_cours: 'bg-yellow-500/10 text-yellow-600',
+                    resolu: 'bg-muted text-muted-foreground',
+                  };
+                  return (
+                    <div key={t.id} onClick={() => setActiveAdminTicketId(t.id)}
+                      className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card cursor-pointer hover:border-primary/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">{t.subject}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {userName} · {new Date(t.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full whitespace-nowrap ${statusColors[t.status] || ''}`}>
+                        {t.status === 'ouvert' ? '🟢 Ouvert' : t.status === 'en_cours' ? '🟡 En cours' : '✅ Résolu'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </TabsContent>
+
         {/* ═══════════════ GAZETTE ═══════════════ */}
         <TabsContent value="gazette">
           <div className="space-y-6">
