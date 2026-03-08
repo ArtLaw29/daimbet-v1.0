@@ -23,6 +23,7 @@ type BetRow = Tables<'bets'>;
 type BetOption = Tables<'bet_options'>;
 type Wager = Tables<'wagers'>;
 type GazetteMessage = Tables<'gazette_messages'>;
+type Proposal = Tables<'daimocratie_proposals'>;
 
 interface BetWithOptions extends BetRow {
   bet_options: BetOption[];
