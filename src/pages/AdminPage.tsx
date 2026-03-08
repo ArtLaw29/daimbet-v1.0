@@ -1758,6 +1758,224 @@ export default function AdminPage() {
             </div>
           </div>
         </TabsContent>
+
+        {/* ═══════════════ MAINTENANCE ═══════════════ */}
+        <TabsContent value="maintenance">
+          <div className="space-y-6">
+            <h2 className="text-xl font-display">⚙️ Zone de maintenance</h2>
+
+            {/* Suspend/Reactivate */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display">Suspension de la plateforme</h3>
+              <p className="text-xs text-muted-foreground">
+                {maintenanceMode
+                  ? '🔴 La plateforme est actuellement suspendue. Les utilisateurs voient un écran de maintenance.'
+                  : '🟢 La plateforme est active et accessible à tous les utilisateurs.'}
+              </p>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant={maintenanceMode ? 'default' : 'outline'} className={maintenanceMode ? '' : 'text-destructive border-destructive/30'}>
+                    {maintenanceMode ? <><Play className="w-4 h-4 mr-2" /> Réactiver la plateforme</> : <><Pause className="w-4 h-4 mr-2" /> Suspendre la plateforme</>}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-display">
+                      {maintenanceMode ? '▶️ Réactiver la plateforme ?' : '⏸️ Suspendre la plateforme ?'}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {maintenanceMode
+                        ? 'La plateforme redeviendra accessible à tous les utilisateurs immédiatement.'
+                        : 'Tous les utilisateurs verront un écran de maintenance. Seul le portail admin restera accessible via /admin/login.'}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={async () => {
+                      const newVal = maintenanceMode ? 'false' : 'true';
+                      await supabase.from('platform_settings').update({ value: newVal, updated_at: new Date().toISOString() }).eq('key', 'maintenance_mode');
+                      if (newVal === 'true') {
+                        await supabase.from('gazette_messages').insert({ content: '🔧 DaimBet est temporairement en maintenance. On revient vite ! 🦌', is_system_message: true });
+                      } else {
+                        await supabase.from('gazette_messages').insert({ content: '🟢 DaimBet est de retour ! Les paris sont ouverts 🔥', is_system_message: true });
+                      }
+                      toast.success(newVal === 'true' ? 'Plateforme suspendue ⏸️' : 'Plateforme réactivée ▶️');
+                      fetchAll();
+                    }} className={maintenanceMode ? 'gold-gradient' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}>
+                      {maintenanceMode ? 'Réactiver' : 'Suspendre'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+
+            {/* ─── NUCLEAR BUTTON ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4 mt-12">
+              <div className="flex items-center gap-3">
+                <Bomb className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <h3 className="text-sm font-display text-muted-foreground">Réinitialisation totale</h3>
+                  <p className="text-[10px] text-muted-foreground">Supprime TOUTES les données sauf le compte admin. Irréversible.</p>
+                </div>
+              </div>
+
+              <Button variant="outline" size="sm" className="text-muted-foreground border-muted-foreground/20 hover:text-destructive hover:border-destructive/30"
+                onClick={() => { setNuclearOpen(true); setNuclearStep(1); setNuclearCheck1(false); setNuclearPhrase(''); setNuclearReportSent(false); setNuclearReportCheck(false); setNuclearCountdown(10); setNuclearCountdownDone(false); setNuclearDone(false); setNuclearReportError(''); }}>
+                Bouton nucléaire ☢️
+              </Button>
+            </div>
+          </div>
+
+          {/* ─── NUCLEAR MODAL ─── */}
+          <Dialog open={nuclearOpen} onOpenChange={open => { if (!open) { setNuclearOpen(false); setNuclearStep(1); } }}>
+            <DialogContent className="max-w-lg">
+              {nuclearDone ? (
+                <div className="text-center py-8 space-y-4">
+                  <h2 className="text-2xl font-display text-primary">Réinitialisation effectuée</h2>
+                  <p className="text-muted-foreground">La plateforme est vide.</p>
+                  <Button onClick={() => { setNuclearOpen(false); setNuclearDone(false); fetchAll(); }} className="gold-gradient">
+                    Retour au portail admin
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="font-display text-destructive">☢️ Réinitialisation totale — Étape {nuclearStep}/5</DialogTitle>
+                    <DialogDescription>Cette action est irréversible.</DialogDescription>
+                  </DialogHeader>
+
+                  {/* Step 1 */}
+                  {nuclearStep === 1 && (
+                    <div className="space-y-4">
+                      <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-xs space-y-1">
+                        <p className="font-semibold text-destructive">Sera supprimé :</p>
+                        <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                          <li>Tous les comptes utilisateurs (sauf admin)</li>
+                          <li>Tous les paris, options et mises</li>
+                          <li>L'historique des soldes</li>
+                          <li>La Gazette (messages + réactions)</li>
+                          <li>Les votes Kiss/Marry</li>
+                          <li>Les propositions Daim-ocratie</li>
+                          <li>Les tickets et réclamations</li>
+                          <li>Les injections de liquidités</li>
+                          <li>Les notifications et emails loggés</li>
+                        </ul>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <Checkbox checked={nuclearCheck1} onCheckedChange={v => setNuclearCheck1(!!v)} id="nuke1" />
+                        <label htmlFor="nuke1" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                          Je comprends que cette action est irréversible et supprimera tous les comptes, paris et données.
+                        </label>
+                      </div>
+                      <Button disabled={!nuclearCheck1} onClick={() => setNuclearStep(2)} className="w-full">
+                        Étape suivante →
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Step 2 */}
+                  {nuclearStep === 2 && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">Saisissez exactement la phrase suivante (sensible à la casse) :</p>
+                      <p className="text-center font-mono text-sm font-bold text-destructive bg-destructive/5 rounded-lg p-3">RÉINITIALISATION TOTALE DAIM</p>
+                      <Input value={nuclearPhrase} onChange={e => setNuclearPhrase(e.target.value)} placeholder="Saisir la phrase..." className="font-mono text-sm" />
+                      <Button disabled={nuclearPhrase !== 'RÉINITIALISATION TOTALE DAIM'} onClick={() => setNuclearStep(3)} className="w-full">
+                        Étape suivante →
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Step 3 */}
+                  {nuclearStep === 3 && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">Un rapport complet va être envoyé à B00831041@essec.edu avant la suppression.</p>
+                      {nuclearReportError && (
+                        <p className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-2">{nuclearReportError}</p>
+                      )}
+                      {!nuclearReportSent ? (
+                        <Button onClick={async () => {
+                          setNuclearSendingReport(true);
+                          setNuclearReportError('');
+                          const { data, error } = await supabase.functions.invoke('nuclear-reset', { body: { action: 'send_report' } });
+                          if (error || data?.error) {
+                            setNuclearReportError(data?.error || error?.message || "L'envoi du rapport a échoué. Veuillez réessayer avant de continuer.");
+                            setNuclearSendingReport(false);
+                            return;
+                          }
+                          setNuclearReportSent(true);
+                          setNuclearSendingReport(false);
+                          toast.success('Rapport envoyé à B00831041@essec.edu');
+                        }} disabled={nuclearSendingReport} className="w-full">
+                          {nuclearSendingReport ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi en cours...</> : '📧 Envoyer le rapport'}
+                        </Button>
+                      ) : (
+                        <>
+                          <p className="text-xs text-green-500">✅ Le rapport a été envoyé à votre adresse.</p>
+                          <div className="flex items-start gap-2">
+                            <Checkbox checked={nuclearReportCheck} onCheckedChange={v => setNuclearReportCheck(!!v)} id="nuke3" />
+                            <label htmlFor="nuke3" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                              J'ai reçu le rapport et je confirme vouloir continuer.
+                            </label>
+                          </div>
+                          <Button disabled={!nuclearReportCheck} onClick={() => {
+                            setNuclearStep(4);
+                            setNuclearCountdown(10);
+                            setNuclearCountdownDone(false);
+                            const timer = setInterval(() => {
+                              setNuclearCountdown(prev => {
+                                if (prev <= 1) { clearInterval(timer); setNuclearCountdownDone(true); return 0; }
+                                return prev - 1;
+                              });
+                            }, 1000);
+                          }} className="w-full">Étape suivante →</Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 4 */}
+                  {nuclearStep === 4 && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground text-center">Compte à rebours de sécurité</p>
+                      <div className="text-center">
+                        <p className="text-5xl font-display text-destructive">{nuclearCountdown}</p>
+                      </div>
+                      <Progress value={(10 - nuclearCountdown) * 10} className="h-3" />
+                      {!nuclearCountdownDone && <p className="text-xs text-muted-foreground text-center">Patientez {nuclearCountdown} seconde{nuclearCountdown > 1 ? 's' : ''}...</p>}
+                      <Button disabled={!nuclearCountdownDone} onClick={() => setNuclearStep(5)} className="w-full">
+                        {nuclearCountdownDone ? 'Continuer →' : 'Veuillez patienter...'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Step 5 */}
+                  {nuclearStep === 5 && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-center text-destructive font-bold">⚠️ DERNIÈRE CHANCE — POINT DE NON-RETOUR</p>
+                      <p className="text-xs text-muted-foreground text-center">Toutes les données seront supprimées définitivement.</p>
+                      <Button className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 h-12 text-base font-bold"
+                        disabled={nuclearExecuting}
+                        onClick={async () => {
+                          setNuclearExecuting(true);
+                          const { data, error } = await supabase.functions.invoke('nuclear-reset', { body: { action: 'execute_reset' } });
+                          if (error || data?.error) {
+                            toast.error(data?.error || error?.message || 'Erreur lors de la réinitialisation');
+                            setNuclearExecuting(false);
+                            return;
+                          }
+                          setNuclearDone(true);
+                          setNuclearExecuting(false);
+                          toast.success('Réinitialisation totale effectuée');
+                        }}>
+                        {nuclearExecuting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Réinitialisation en cours...</> : 'Confirmer la réinitialisation totale ☢️'}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
       </Tabs>
     </div>
   );
