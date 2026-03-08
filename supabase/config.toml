@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.nuclear-reset]
 verify_jwt = false
+
+[functions.seed-admin]
+verify_jwt = false
