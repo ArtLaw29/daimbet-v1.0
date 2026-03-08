@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Heart, Sparkles } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
+import { INTRO_KISS_MARRY } from '@/components/TabIntro';
 
 const CATEGORIES = ['kiss', 'marry', 'coup_soir', 'plan_q'] as const;
 
