@@ -57,6 +57,9 @@ export default function AdminPage() {
   const [adminProposals, setAdminProposals] = useState<Proposal[]>([]);
   const [proposalProfiles, setProposalProfiles] = useState<Record<string, string>>({});
 
+  // Notifications
+  const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
+
   // Tickets
   const [adminTickets, setAdminTickets] = useState<any[]>([]);
   const [adminTicketMessages, setAdminTicketMessages] = useState<Record<string, any[]>>({});
