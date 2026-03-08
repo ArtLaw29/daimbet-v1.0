@@ -103,29 +103,11 @@ export default function AuthPage() {
   // ─── CONNEXION ───
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedName) {
-      toast.error('Sélectionne ton prénom');
-      return;
-    }
     setLoading(true);
 
-    // Find email for this display_name
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('display_name', selectedName)
-      .single();
-
-    if (!profile) {
-      toast.error('Prénom ou mot de passe incorrect.');
-      setLoading(false);
-      return;
-    }
-
-    // We need the email to sign in. We'll use the email field the user provides.
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast.error('Prénom ou mot de passe incorrect.');
+      toast.error('Email ou mot de passe incorrect.');
     } else {
       toast.success('Bienvenue sur DAIMBet ! 🦌');
     }
@@ -245,21 +227,6 @@ export default function AuthPage() {
           {/* ─── CONNEXION ─── */}
           {mode === 'connexion' && (
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="login-name">Ton prénom</Label>
-                <select
-                  id="login-name"
-                  value={selectedName}
-                  onChange={(e) => setSelectedName(e.target.value)}
-                  required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Choisis ton prénom...</option>
-                  {PROMO_NAMES.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
