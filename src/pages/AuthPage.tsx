@@ -103,29 +103,11 @@ export default function AuthPage() {
   // ─── CONNEXION ───
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedName) {
-      toast.error('Sélectionne ton prénom');
-      return;
-    }
     setLoading(true);
 
-    // Find email for this display_name
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('display_name', selectedName)
-      .single();
-
-    if (!profile) {
-      toast.error('Prénom ou mot de passe incorrect.');
-      setLoading(false);
-      return;
-    }
-
-    // We need the email to sign in. We'll use the email field the user provides.
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast.error('Prénom ou mot de passe incorrect.');
+      toast.error('Email ou mot de passe incorrect.');
     } else {
       toast.success('Bienvenue sur DAIMBet ! 🦌');
     }
