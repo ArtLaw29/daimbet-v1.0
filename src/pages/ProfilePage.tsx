@@ -66,6 +66,16 @@ export default function ProfilePage() {
   const [showActive, setShowActive] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [showSolde, setShowSolde] = useState(false);
+  const [showTickets, setShowTickets] = useState(false);
+
+  // Tickets
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
+  const [showNewTicket, setShowNewTicket] = useState(false);
+  const [newTicketSubject, setNewTicketSubject] = useState('');
+  const [newTicketMessage, setNewTicketMessage] = useState('');
+  const [creatingTicket, setCreatingTicket] = useState(false);
+  const unreadTickets = tickets.filter(t => t.admin_replied_at && t.user_last_seen_at && new Date(t.admin_replied_at) > new Date(t.user_last_seen_at)).length;
 
   // Retraction
   const [retractingId, setRetractingId] = useState<string | null>(null);
