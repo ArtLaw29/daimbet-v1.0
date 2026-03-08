@@ -1267,7 +1267,7 @@ export default function AdminPage() {
                       {p.is_suspended && <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">Suspendu</span>}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {userWagers.length} mises · Inscrit le {new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      📧 {userEmails[p.user_id] || '—'} · {userWagers.length} mises · Inscrit le {new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
