@@ -2174,6 +2174,10 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
         </TabsContent>
+        {/* ═══════════════ GLOSSAIRE ═══════════════ */}
+        <TabsContent value="glossaire">
+          <AdminGlossary />
+        </TabsContent>
       </Tabs>
     </div>
   );
