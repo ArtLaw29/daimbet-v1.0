@@ -26,7 +26,7 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
-import CharterModal from "./components/CharterModal";
+
 import ResolutionNotifier from "./components/ResolutionNotifier";
 
 const PageLoader = () => (
