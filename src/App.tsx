@@ -73,24 +73,28 @@ function AppRoutes() {
   // ─── MAINTENANCE MODE (admin routes always accessible) ───
   if (maintenanceMode && !isAdmin) {
     return (
-      <Routes>
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="*" element={<MaintenancePage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="*" element={<MaintenancePage />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   // ─── NOT LOGGED IN ───
   if (!user) {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/connexion" element={<AuthPage />} />
-        <Route path="/inscription" element={<AuthPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="*" element={<LandingPage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/connexion" element={<AuthPage />} />
+          <Route path="/inscription" element={<AuthPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="*" element={<LandingPage />} />
+        </Routes>
+      </Suspense>
     );
   }
 
@@ -99,10 +103,12 @@ function AppRoutes() {
     return (
       <>
         <CharterModal userId={user.id} onAccepted={refreshProfile} />
-        <Routes>
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="*" element={<div />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="*" element={<div />} />
+          </Routes>
+        </Suspense>
       </>
     );
   }
@@ -112,26 +118,28 @@ function AppRoutes() {
     <>
       <Navbar />
       <ResolutionNotifier />
-      <Routes>
-        <Route path="/" element={<EventsPage />} />
-        <Route path="/bet/:id" element={<BetDetailPage />} />
-        <Route path="/connexion" element={<Navigate to="/" replace />} />
-        <Route path="/inscription" element={<Navigate to="/" replace />} />
-        <Route path="/gazette" element={<GazettePage />} />
-        <Route path="/classement" element={
-          <GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute>
-        } />
-        <Route path="/kiss-marry" element={
-          <GuardedRoute tabKey="kiss-marry"><KissMarryPage /></GuardedRoute>
-        } />
-        <Route path="/profil" element={<ProfilePage />} />
-        <Route path="/proposals" element={<ProposalsPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin/login" element={<AdminPage />} />
-        <Route path="/archives" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<EventsPage />} />
+          <Route path="/bet/:id" element={<BetDetailPage />} />
+          <Route path="/connexion" element={<Navigate to="/" replace />} />
+          <Route path="/inscription" element={<Navigate to="/" replace />} />
+          <Route path="/gazette" element={<GazettePage />} />
+          <Route path="/classement" element={
+            <GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute>
+          } />
+          <Route path="/kiss-marry" element={
+            <GuardedRoute tabKey="kiss-marry"><KissMarryPage /></GuardedRoute>
+          } />
+          <Route path="/profil" element={<ProfilePage />} />
+          <Route path="/proposals" element={<ProposalsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/login" element={<AdminPage />} />
+          <Route path="/archives" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }
