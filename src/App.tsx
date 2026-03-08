@@ -54,7 +54,7 @@ function AppRoutes() {
 
   useEffect(() => {
     if (showCharterFlash) {
-      const timer = setTimeout(() => setShowCharterFlash(false), 2000);
+      const timer = setTimeout(() => setShowCharterFlash(false), 5000);
       return () => clearTimeout(timer);
     }
   }, [showCharterFlash]);
@@ -154,7 +154,7 @@ function AppRoutes() {
                   className="h-full bg-primary"
                   initial={{ width: '100%' }}
                   animate={{ width: '0%' }}
-                  transition={{ duration: 2, ease: 'linear' }}
+                  transition={{ duration: 5, ease: 'linear' }}
                 />
               </div>
             </div>
