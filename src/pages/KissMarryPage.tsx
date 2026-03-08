@@ -34,7 +34,7 @@ export default function KissMarryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [indices, setIndices] = useState<string[]>([]);
-  const [revealMode, setRevealMode] = useState(false);
+  const [revealStarted, setRevealStarted] = useState(false);
   const [revealStep, setRevealStep] = useState(-1);
   const [revealData, setRevealData] = useState<Record<string, { name: string; count: number }[]>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
