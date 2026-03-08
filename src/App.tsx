@@ -75,6 +75,7 @@ function AppRoutes() {
   return (
     <>
       <Navbar />
+      <ResolutionNotifier />
       <Routes>
         <Route path="/" element={<EventsPage />} />
         <Route path="/bet/:id" element={<BetDetailPage />} />
