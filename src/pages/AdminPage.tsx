@@ -71,6 +71,14 @@ export default function AdminPage() {
   const [aiLoading, setAiLoading] = useState(false);
   // Delete motif
   const [deleteMotif, setDeleteMotif] = useState('');
+  // User management
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [userSortBy, setUserSortBy] = useState<'balance' | 'display_name' | 'created_at'>('balance');
+  const [balanceDelta, setBalanceDelta] = useState('');
+  const [balanceMotif, setBalanceMotif] = useState('');
+  const [injecting, setInjecting] = useState(false);
+  const [showInjectionModal, setShowInjectionModal] = useState(false);
+  const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
