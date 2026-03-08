@@ -19,7 +19,7 @@ export default function GazettePage() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<GazetteMessage[]>([]);
   const [reactions, setReactions] = useState<GazetteReaction[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = useState<{ user_id: string; display_name: string; emoji: string | null }[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
