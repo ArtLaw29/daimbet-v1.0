@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles } from 'lucide-react';
+import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
 import { STARTING_BALANCE, DEFAULT_ODDS, PROMO_NAMES } from '@/lib/pari-mutuel';
@@ -71,6 +73,14 @@ export default function AdminPage() {
   const [aiLoading, setAiLoading] = useState(false);
   // Delete motif
   const [deleteMotif, setDeleteMotif] = useState('');
+  // User management
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [userSortBy, setUserSortBy] = useState<'balance' | 'display_name' | 'created_at'>('balance');
+  const [balanceDelta, setBalanceDelta] = useState('');
+  const [balanceMotif, setBalanceMotif] = useState('');
+  const [injecting, setInjecting] = useState(false);
+  const [showInjectionModal, setShowInjectionModal] = useState(false);
+  const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -83,14 +93,16 @@ export default function AdminPage() {
   useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
 
   const fetchAll = useCallback(async () => {
-    const [betsRes, prRes, wagersRes] = await Promise.all([
+    const [betsRes, prRes, wagersRes, injRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
       supabase.from('wagers').select('*').order('created_at', { ascending: false }),
+      supabase.from('liquidity_injections').select('*').order('triggered_at', { ascending: false }),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
     setAllWagers((wagersRes.data as Wager[]) || []);
+    setInjections(injRes.data || []);
     setLoading(false);
   }, []);
 
@@ -321,6 +333,59 @@ export default function AdminPage() {
     fetchAll();
   };
 
+  const adjustBalanceWithMotif = async (userId: string, delta: number, motif: string) => {
+    if (!motif.trim()) { toast.error('Le motif est obligatoire'); return; }
+    const profile = profiles.find(p => p.user_id === userId);
+    if (!profile) return;
+    const newBal = profile.balance + delta;
+    await supabase.from('profiles').update({ balance: newBal }).eq('user_id', userId);
+    await supabase.from('solde_history').insert({ user_id: userId, delta_dc: delta, reason: motif.trim() });
+    toast.success(`Solde modifié : ${delta > 0 ? '+' : ''}${delta} DC`);
+    setBalanceDelta(''); setBalanceMotif('');
+    setSelectedUser({ ...profile, balance: newBal });
+    fetchAll();
+  };
+
+  const toggleSuspend = async (userId: string, suspend: boolean) => {
+    await supabase.from('profiles').update({ is_suspended: suspend }).eq('user_id', userId);
+    toast.success(suspend ? 'Utilisateur suspendu ⛔' : 'Utilisateur réactivé ✅');
+    const profile = profiles.find(p => p.user_id === userId);
+    if (profile) setSelectedUser({ ...profile, is_suspended: suspend });
+    fetchAll();
+  };
+
+  const resetUserPassword = async (userId: string) => {
+    // We need the user's email - we don't have it in profiles, so use admin API via edge function
+    toast.info('Fonction de réinitialisation de mot de passe disponible via le lien "Mot de passe oublié" sur la page de connexion.');
+  };
+
+  const triggerLiquidityInjection = async () => {
+    if (injecting) return;
+    setInjecting(true);
+    try {
+      const activeProfiles = profiles.filter(p => !p.is_suspended);
+      for (const p of activeProfiles) {
+        await supabase.from('profiles').update({ balance: p.balance + 250 }).eq('user_id', p.user_id);
+        await supabase.from('solde_history').insert({
+          user_id: p.user_id, delta_dc: 250, reason: 'Injection de liquidités',
+        });
+      }
+      await supabase.from('liquidity_injections').insert({
+        amount_dc: 250, triggered_by: user?.id,
+      });
+      await supabase.from('gazette_messages').insert({
+        content: '🪙 Bonne nouvelle — des DAIMcoins viennent d\'être ajoutés à tous les soldes !',
+        is_system_message: true,
+      });
+      toast.success(`Injection réussie ! +250 DC pour ${activeProfiles.length} utilisateurs 🪙`);
+      setShowInjectionModal(false);
+      fetchAll();
+    } catch (err) {
+      toast.error('Erreur lors de l\'injection');
+    }
+    setInjecting(false);
+  };
+
   // ─── TOGGLE WINNER ───
   const toggleWinner = (betId: string, optionId: string, maxW: number) => {
     setSelectedWinners(prev => {
@@ -350,7 +415,14 @@ export default function AdminPage() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && !w.is_retracted;
   }).map(w => w.user_id)).size;
 
-  // ─── FILTER ───
+  // ─── SORTED PROFILES ───
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    if (userSortBy === 'balance') return b.balance - a.balance;
+    if (userSortBy === 'display_name') return a.display_name.localeCompare(b.display_name);
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+
   const filteredBets = bets.filter(b => {
     if (filterStatus !== 'all' && b.status !== filterStatus) return false;
     if (filterCategory !== 'all' && b.category !== filterCategory) return false;
@@ -760,35 +832,161 @@ export default function AdminPage() {
         {/* ═══════════════ USERS ═══════════════ */}
         <TabsContent value="users">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            {/* Header with actions */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-display">Joueurs ({profiles.length})</h2>
-              <Button variant="outline" size="sm"
-                onClick={() => { if (confirm(`Réinitialiser TOUS les soldes à ${STARTING_BALANCE} DC ?`)) resetAllBalances(); }}
-                className="text-destructive border-destructive/30 hover:bg-destructive/10">
-                Réinitialiser tous les soldes
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <select value={userSortBy} onChange={e => setUserSortBy(e.target.value as any)}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                  <option value="balance">💰 Tri par solde</option>
+                  <option value="display_name">🔤 Tri par nom</option>
+                  <option value="created_at">📅 Tri par inscription</option>
+                </select>
+                <Button variant="outline" size="sm" onClick={() => setShowInjectionModal(true)} className="text-primary border-primary/30">
+                  <Coins className="w-3 h-3 mr-1" /> Injection +250 DC
+                </Button>
+                <Button variant="outline" size="sm"
+                  onClick={() => { if (confirm(`Réinitialiser TOUS les soldes à ${STARTING_BALANCE} DC ?`)) resetAllBalances(); }}
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                  <RefreshCw className="w-3 h-3 mr-1" /> Reset soldes
+                </Button>
+              </div>
             </div>
-            {profiles.map((p, i) => (
-              <motion.div key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
-                className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
-                <span className="text-sm text-muted-foreground w-8">#{i + 1}</span>
-                <div className="flex-1">
-                  <span className="font-semibold">{p.display_name || 'Anonyme'}</span>
-                  <span className="text-xs text-muted-foreground ml-2">
-                    {allWagers.filter(w => w.user_id === p.user_id && !w.is_retracted).length} mises
-                  </span>
+
+            {/* Injection history */}
+            {injections.length > 0 && (
+              <div className="bg-secondary/50 border border-border rounded-xl p-3">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">🪙 Historique des injections</p>
+                <div className="space-y-1">
+                  {injections.slice(0, 5).map(inj => (
+                    <div key={inj.id} className="flex justify-between text-xs text-muted-foreground">
+                      <span>{new Date(inj.triggered_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      <span className="text-primary font-semibold">+{inj.amount_dc} DC / joueur</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Input type="number" defaultValue={p.balance} className="w-24 h-8 text-center text-sm"
-                    onBlur={e => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val !== p.balance) updateBalance(p.user_id, val);
-                    }} />
-                  <img src={daimcoinLogo} alt="" className="w-5 h-5 rounded-full" />
-                </div>
-              </motion.div>
-            ))}
+              </div>
+            )}
+
+            {/* User list */}
+            {sortedProfiles.map((p, i) => {
+              const userWagers = allWagers.filter(w => w.user_id === p.user_id && !w.is_retracted);
+              return (
+                <motion.div key={p.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
+                  className={`flex items-center gap-4 p-4 rounded-xl border bg-card cursor-pointer hover:border-primary/30 transition-colors ${p.is_suspended ? 'border-destructive/30 opacity-60' : 'border-border'}`}
+                  onClick={() => { setSelectedUser(p); setBalanceDelta(''); setBalanceMotif(''); }}>
+                  <span className="text-sm text-muted-foreground w-8">#{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold truncate">{p.emoji || '🦌'} {p.display_name || 'Anonyme'}</span>
+                      {p.is_suspended && <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">Suspendu</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {userWagers.length} mises · Inscrit le {new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-display text-primary font-bold">{p.balance}</span>
+                    <img src={daimcoinLogo} alt="" className="w-5 h-5 rounded-full" />
+                  </div>
+                  <Eye className="w-4 h-4 text-muted-foreground" />
+                </motion.div>
+              );
+            })}
           </div>
+
+          {/* ─── USER DETAIL DIALOG ─── */}
+          <Dialog open={!!selectedUser} onOpenChange={open => { if (!open) setSelectedUser(null); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display tracking-wider">
+                  {selectedUser?.emoji || '🦌'} {selectedUser?.display_name || 'Anonyme'}
+                </DialogTitle>
+                <DialogDescription>
+                  {selectedUser?.is_suspended ? '⛔ Compte suspendu' : '✅ Compte actif'} · Inscrit le {selectedUser && new Date(selectedUser.created_at).toLocaleDateString('fr-FR')}
+                </DialogDescription>
+              </DialogHeader>
+
+              {selectedUser && (
+                <div className="space-y-4">
+                  {/* Current balance */}
+                  <div className="flex items-center justify-center gap-2 py-3 bg-secondary/50 rounded-xl">
+                    <span className="text-3xl font-display text-primary">{selectedUser.balance}</span>
+                    <img src={daimcoinLogo} alt="" className="w-7 h-7 rounded-full" />
+                  </div>
+
+                  {/* Bet stats */}
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                    <div className="bg-secondary/50 rounded-lg p-2">
+                      <p className="text-primary font-bold text-lg">{allWagers.filter(w => w.user_id === selectedUser.user_id && !w.is_retracted).length}</p>
+                      <p className="text-muted-foreground">Mises actives</p>
+                    </div>
+                    <div className="bg-secondary/50 rounded-lg p-2">
+                      <p className="text-primary font-bold text-lg">
+                        {allWagers.filter(w => w.user_id === selectedUser.user_id && !w.is_retracted).reduce((s, w) => s + w.montant_dc, 0)} DC
+                      </p>
+                      <p className="text-muted-foreground">Volume misé</p>
+                    </div>
+                  </div>
+
+                  {/* Balance adjustment */}
+                  <div className="border-t border-border pt-3">
+                    <p className="text-sm font-semibold mb-2">Modifier le solde</p>
+                    <div className="flex gap-2">
+                      <Input type="number" placeholder="Delta (ex: +100 ou -50)" value={balanceDelta}
+                        onChange={e => setBalanceDelta(e.target.value)} className="flex-1 h-9 text-sm" />
+                    </div>
+                    <Input placeholder="Motif obligatoire" value={balanceMotif}
+                      onChange={e => setBalanceMotif(e.target.value)} className="mt-2 h-9 text-sm" />
+                    {balanceDelta && !isNaN(Number(balanceDelta)) && selectedUser.balance + Number(balanceDelta) < 0 && (
+                      <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Le solde sera négatif ({selectedUser.balance + Number(balanceDelta)} DC)
+                      </p>
+                    )}
+                    <Button size="sm" className="mt-2 w-full" disabled={!balanceDelta || !balanceMotif.trim() || isNaN(Number(balanceDelta))}
+                      onClick={() => adjustBalanceWithMotif(selectedUser.user_id, Number(balanceDelta), balanceMotif)}>
+                      Appliquer {balanceDelta && !isNaN(Number(balanceDelta)) ? `(${Number(balanceDelta) > 0 ? '+' : ''}${balanceDelta} DC)` : ''}
+                    </Button>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="border-t border-border pt-3 flex flex-col gap-2">
+                    <Button variant="outline" size="sm" className={selectedUser.is_suspended ? '' : 'text-destructive border-destructive/30'}
+                      onClick={() => toggleSuspend(selectedUser.user_id, !selectedUser.is_suspended)}>
+                      {selectedUser.is_suspended ? (
+                        <><Play className="w-3 h-3 mr-1" /> Réactiver le compte</>
+                      ) : (
+                        <><Ban className="w-3 h-3 mr-1" /> Suspendre le compte</>
+                      )}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => resetUserPassword(selectedUser.user_id)}>
+                      <RefreshCw className="w-3 h-3 mr-1" /> Réinitialiser le mot de passe
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          {/* ─── INJECTION CONFIRMATION DIALOG ─── */}
+          <AlertDialog open={showInjectionModal} onOpenChange={setShowInjectionModal}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-display">🪙 Injection de liquidités</AlertDialogTitle>
+                <AlertDialogDescription>
+                  +250 DC seront ajoutés au solde de tous les utilisateurs actifs ({profiles.filter(p => !p.is_suspended).length} joueurs).
+                  Les utilisateurs suspendus ne recevront pas l'injection.
+                  Un message automatique sera publié dans La Gazette.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={injecting}>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={triggerLiquidityInjection} disabled={injecting} className="gold-gradient">
+                  {injecting ? 'Injection en cours...' : 'Confirmer l\'injection 🪙'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* ═══════════════ STATS ═══════════════ */}
