@@ -389,6 +389,27 @@ export type Database = {
         }
         Relationships: []
       }
+      retraction_config: {
+        Row: {
+          end_hour: number
+          id: string
+          start_hour: number
+          updated_at: string
+        }
+        Insert: {
+          end_hour?: number
+          id?: string
+          start_hour?: number
+          updated_at?: string
+        }
+        Update: {
+          end_hour?: number
+          id?: string
+          start_hour?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       solde_history: {
         Row: {
           created_at: string
