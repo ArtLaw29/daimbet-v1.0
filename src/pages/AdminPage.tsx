@@ -1828,6 +1828,100 @@ export default function AdminPage() {
               </AlertDialog>
             </div>
 
+            {/* ─── TAB CONFIGURATION ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2"><Eye className="w-4 h-4 text-primary" /> Configuration des onglets</h3>
+              <div className="space-y-3">
+                {[
+                  { key: 'paris', label: '🎯 Paris', maskable: false, tooltip: 'Onglet obligatoire' },
+                  { key: 'gazette', label: '📰 Gazette', maskable: false, tooltip: 'Non masquable — canal de communication système' },
+                  { key: 'classement', label: '🏆 Classement', maskable: true },
+                  { key: 'kiss-marry', label: '💋 Kiss/Marry', maskable: true },
+                  { key: 'profil', label: '👤 Profil', maskable: false, tooltip: 'Onglet obligatoire' },
+                ].map((tab) => (
+                  <div key={tab.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 border border-border/50">
+                    <span className="text-sm">{tab.label}</span>
+                    <div className="flex items-center gap-2">
+                      {!tab.maskable && (
+                        <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{tab.tooltip}</span>
+                      )}
+                      <Switch
+                        checked={tab.maskable ? navConfig[tab.key] !== false : true}
+                        disabled={!tab.maskable}
+                        onCheckedChange={async (checked) => {
+                          if (!tab.maskable) return;
+                          await supabase.from('nav_config').update({ is_visible: checked, updated_at: new Date().toISOString() }).eq('tab_key', tab.key);
+                          setNavConfig(prev => ({ ...prev, [tab.key]: checked }));
+                          toast.success(`Onglet ${tab.label} ${checked ? 'activé' : 'masqué'}`);
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ─── RETRACTION CONFIG ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2"><RefreshCw className="w-4 h-4 text-primary" /> Option de rétractation</h3>
+              <p className="text-xs text-muted-foreground">
+                Plage horaire actuelle : <span className="font-semibold text-foreground">{String(retractionStart).padStart(2, '0')}h00 → {String(retractionEnd).padStart(2, '0')}h00 CET</span>
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs">Début</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={retractionStart}
+                    onChange={e => setRetractionStart(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="h-9"
+                  />
+                </div>
+                <span className="text-muted-foreground mt-5">→</span>
+                <div className="flex-1 space-y-1">
+                  <Label className="text-xs">Fin</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={retractionEnd}
+                    onChange={e => setRetractionEnd(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <Button
+                disabled={retractionSaving || retractionStart === retractionEnd}
+                onClick={async () => {
+                  if (retractionStart === retractionEnd) {
+                    toast.error('L\'heure de début et de fin ne peuvent pas être identiques');
+                    return;
+                  }
+                  setRetractionSaving(true);
+                  await supabase.from('retraction_config').update({
+                    start_hour: retractionStart,
+                    end_hour: retractionEnd,
+                    updated_at: new Date().toISOString(),
+                  }).eq('id', (await supabase.from('retraction_config').select('id').limit(1).single()).data?.id || '');
+                  await supabase.from('gazette_messages').insert({
+                    content: `⏰ La fenêtre d'annulation des mises est désormais de ${String(retractionStart).padStart(2, '0')}h00 à ${String(retractionEnd).padStart(2, '0')}h00 CET.`,
+                    is_system_message: true,
+                  });
+                  toast.success('Plage de rétractation mise à jour');
+                  setRetractionSaving(false);
+                  fetchAll();
+                }}
+                className="w-full"
+              >
+                {retractionSaving ? 'Enregistrement...' : 'Enregistrer la nouvelle plage'}
+              </Button>
+              {retractionStart === retractionEnd && (
+                <p className="text-xs text-destructive">⚠️ L'heure de début et de fin ne peuvent pas être identiques.</p>
+              )}
+            </div>
+
             {/* ─── NUCLEAR BUTTON ─── */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4 mt-12">
               <div className="flex items-center gap-3">
