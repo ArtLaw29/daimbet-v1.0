@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
-import { calculatePariMutuelOdds, calculateEstimatedNetGain, maxBetAmount, DEFAULT_ODDS, RAKE_PERCENT } from '@/lib/pari-mutuel';
+import { calculatePariMutuelOdds, calculateEstimatedNetGain, maxBetAmount, DEFAULT_ODDS } from '@/lib/pari-mutuel';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { BetWithOptions } from '@/components/BetCard';
 

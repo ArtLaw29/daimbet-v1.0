@@ -76,6 +76,7 @@ function AppRoutes() {
       <Navbar />
       <Routes>
         <Route path="/" element={<EventsPage />} />
+        <Route path="/bet/:id" element={<BetDetailPage />} />
         <Route path="/connexion" element={<Navigate to="/" replace />} />
         <Route path="/inscription" element={<Navigate to="/" replace />} />
         <Route path="/gazette" element={<GazettePage />} />
