@@ -69,59 +69,28 @@ export default function EventsPage() {
     const amount = betAmounts[optionId] || 10;
     if (!user || !profile) return;
 
-    const bet = bets.find(b => b.id === betId);
-    if (!bet || bet.status !== 'ouvert') {
-      toast.error('Les mises sont clôturées pour ce pari');
-      return;
-    }
-
-    const isLongTerm = bet.is_long_terme;
-    const maxBet = maxBetAmount(profile.balance, isLongTerm);
-    const pctLabel = isLongTerm ? '15%' : '30%';
-
-    if (amount > maxBet) {
-      toast.error(`Mise max : ${maxBet} DC (${pctLabel} de ton capital) 💸`);
-      return;
-    }
-    if (amount > profile.balance) {
-      toast.error('Pas assez de DAIMcoins ! 💸');
-      return;
-    }
-    if (amount < 1) {
-      toast.error('Mise minimum : 1 DC');
-      return;
-    }
-
-    const totalPool = (betTotals[betId] || 0) + amount;
-    const optionPool = ((wagerPools[betId] || {})[optionId] || 0) + amount;
-    const estimatedOdds = calculatePariMutuelOdds(totalPool, optionPool);
-
-    const { error } = await supabase.from('wagers').insert({
-      user_id: user.id,
-      bet_id: betId,
-      option_id: optionId,
-      montant_dc: amount,
-      cote_au_moment_mise: estimatedOdds,
+    const { data, error } = await supabase.rpc('place_wager', {
+      p_user_id: user.id,
+      p_bet_id: betId,
+      p_option_id: optionId,
+      p_montant_dc: amount,
     });
 
     if (error) {
       toast.error('Erreur lors de la mise');
-    } else {
-      await supabase
-        .from('profiles')
-        .update({ balance: profile.balance - amount })
-        .eq('user_id', user.id);
-      
-      await supabase.from('solde_history').insert({
-        user_id: user.id,
-        delta_dc: -amount,
-        reason: `Mise sur: ${bet.title}`,
-      });
-
-      const estimatedNet = calculateEstimatedNetGain(amount, estimatedOdds);
-      toast.success(`Mise placée ! 🎰 Cote estimée : x${estimatedOdds.toFixed(2)} · Gain estimé (après rake 5%) : ${estimatedNet} DC`);
-      window.location.reload();
+      return;
     }
+
+    const result = data as { error?: string; success?: boolean; new_odds?: number };
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    const newOdds = result.new_odds || 1.10;
+    const estimatedNet = calculateEstimatedNetGain(amount, newOdds);
+    toast.success(`Mise placée ! 🎰 Cote : x${newOdds.toFixed(2)} · Gain estimé (après rake 5%) : ${estimatedNet} DC`);
+    window.location.reload();
   };
 
   const statusConfig: Record<string, { icon: React.ElementType; label: string; color: string }> = {
