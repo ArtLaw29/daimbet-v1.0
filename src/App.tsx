@@ -50,6 +50,14 @@ function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceChecked, setMaintenanceChecked] = useState(false);
+  const [showCharterFlash, setShowCharterFlash] = useState(true);
+
+  useEffect(() => {
+    if (showCharterFlash) {
+      const timer = setTimeout(() => setShowCharterFlash(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showCharterFlash]);
 
   useEffect(() => {
     const checkMaintenance = async () => {
