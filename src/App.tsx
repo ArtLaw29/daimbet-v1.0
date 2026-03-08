@@ -125,16 +125,6 @@ function AppRoutes() {
     );
   }
 
-  // ─── CHARTER (auto-accept silently for new users) ───
-  useEffect(() => {
-    if (user && !hasAcceptedCharter && !isAdmin) {
-      supabase
-        .from('profiles')
-        .update({ has_accepted_charter: true })
-        .eq('user_id', user.id)
-        .then(() => refreshProfile());
-    }
-  }, [user, hasAcceptedCharter, isAdmin]);
 
 
 
