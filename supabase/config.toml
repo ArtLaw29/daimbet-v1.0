@@ -2,3 +2,9 @@ project_id = "aiffhgbzoxglfewdutea"
 
 [functions.check-auto-close]
 verify_jwt = false
+
+[functions.tirage-sort]
+verify_jwt = false
+
+[functions.evaluate-bet]
+verify_jwt = false
