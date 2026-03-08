@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Flame, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp, PauseCircle, Timer } from 'lucide-react';
+import { Flame, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp, PauseCircle, Timer, Users } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { calculatePariMutuelOdds, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS } from '@/lib/pari-mutuel';
 import type { Tables } from '@/integrations/supabase/types';
@@ -15,6 +15,13 @@ export interface BetWithOptions extends BetRow {
   bet_options: BetOption[];
 }
 
+export interface UserWager {
+  bet_id: string;
+  option_id: string;
+  montant_dc: number;
+  option_label?: string;
+}
+
 interface BetCardProps {
   bet: BetWithOptions;
   pools: Record<string, number>;
@@ -23,6 +30,8 @@ interface BetCardProps {
   onAmountChange: (optionId: string, amount: number) => void;
   onPlaceWager: (betId: string, optionId: string) => void;
   profileBalance: number;
+  userWager?: UserWager | null;
+  wagerCount?: number;
 }
 
 const STATUS_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string; cardClass?: string }> = {
@@ -33,42 +42,62 @@ const STATUS_CONFIG: Record<string, { icon: React.ElementType; label: string; co
   supprime: { icon: XCircle, label: 'Supprimé', color: 'text-destructive' },
 };
 
+const CATEGORY_BADGES: Record<string, { label: string; class: string }> = {
+  urgent: { label: '⚡ URGENT', class: 'text-destructive bg-destructive/10' },
+  long_terme: { label: '📅 LONG TERME', class: 'text-accent bg-accent/10' },
+  culture_daim: { label: '🎪 CULTURE DAIM', class: 'text-primary bg-primary/10' },
+};
+
 function formatDate(dateStr: string | null) {
   if (!dateStr) return '—';
   return format(new Date(dateStr), "d MMM yyyy · HH'h'mm", { locale: fr });
 }
 
-export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountChange, onPlaceWager, profileBalance }: BetCardProps) {
+export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountChange, onPlaceWager, profileBalance, userWager, wagerCount = 0 }: BetCardProps) {
   const status = STATUS_CONFIG[bet.status] || STATUS_CONFIG.ouvert;
   const StatusIcon = status.icon;
   const isLongTerm = bet.is_long_terme;
   const isOpen = bet.status === 'ouvert';
   const isSuspended = bet.status === 'suspendu';
   const isClosed = bet.status === 'cloture_en_attente';
+  const isTierce = bet.type === 'tierce_du_daim';
 
   const closeDate = bet.close_date ? new Date(bet.close_date) : null;
   const countdown = useCountdown(isOpen && closeDate ? closeDate : null);
+
+  const categoryBadge = CATEGORY_BADGES[bet.category];
+  // For long terme with couple/love keywords, override badge
+  const displayBadge = isLongTerm && (bet.title.toLowerCase().includes('couple') || bet.title.toLowerCase().includes('amour'))
+    ? { label: '💕 LONG TERME', class: 'text-accent bg-accent/10' }
+    : categoryBadge;
+
+  // For Tiercé, show top 3 by pool volume, rest collapsed
+  const sortedOptions = isTierce
+    ? [...bet.bet_options].sort((a, b) => (pools[b.id] || 0) - (pools[a.id] || 0))
+    : bet.bet_options;
+  const visibleOptions = isTierce ? sortedOptions.slice(0, 3) : sortedOptions;
+  const hiddenCount = isTierce ? Math.max(0, sortedOptions.length - 3) : 0;
 
   return (
     <div className={`rounded-xl border border-border bg-card p-5 card-glow ${status.cardClass || ''}`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-display tracking-[0.08em]">
+          <h2 className="text-xl font-display tracking-[0.05em]">
             {bet.emoji || '🎲'} {bet.title}
           </h2>
           {bet.description && (
             <p className="text-sm text-muted-foreground mt-1">{bet.description}</p>
           )}
           <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {bet.category === 'urgent' && (
-              <span className="inline-flex items-center gap-1 text-xs text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">
-                <AlertTriangle className="w-3 h-3" /> Pari urgent
+            {displayBadge && (
+              <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full font-medium ${displayBadge.class}`}>
+                {displayBadge.label}
               </span>
             )}
-            {bet.is_long_terme && (
-              <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                🔮 Long terme · Max 15%
+            {isLongTerm && (
+              <span className="inline-flex items-center text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                Mise max 15%
               </span>
             )}
           </div>
@@ -93,7 +122,7 @@ export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountCha
         </div>
       )}
 
-      {/* Countdown for urgent bets close to closing */}
+      {/* Countdown */}
       {isOpen && countdown && countdown.isUrgent && (
         <div className="flex items-center gap-2 mb-3 bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2">
           <Timer className="w-4 h-4 text-destructive animate-pulse" />
@@ -109,18 +138,26 @@ export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountCha
         <span>🔒 Mises closes à : <span className="text-foreground">{formatDate(bet.close_date)}</span></span>
       </div>
 
-      {/* Pool info */}
-      {totalPool > 0 && (
-        <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-          <TrendingUp className="w-3.5 h-3.5" />
-          Cagnotte totale : <span className="text-primary font-bold">{totalPool}</span>
-          <img src={daimcoinLogo} alt="" className="w-3.5 h-3.5 rounded-full" />
-        </div>
-      )}
+      {/* Pool info + wager count */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-xs text-muted-foreground">
+        {totalPool > 0 && (
+          <span className="flex items-center gap-1">
+            <TrendingUp className="w-3.5 h-3.5" />
+            Cagnotte : <span className="text-primary font-bold">{totalPool}</span>
+            <img src={daimcoinLogo} alt="" className="w-3.5 h-3.5 rounded-full" />
+          </span>
+        )}
+        {wagerCount > 0 && (
+          <span className="flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" />
+            {wagerCount} parieur{wagerCount > 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
 
       {/* Options */}
       <div className="space-y-2">
-        {bet.bet_options.map((option) => {
+        {visibleOptions.map((option) => {
           const optionPool = pools[option.id] || 0;
           const liveOdds = totalPool > 0 && optionPool > 0 ? calculatePariMutuelOdds(totalPool, optionPool) : DEFAULT_ODDS;
           const percentage = totalPool > 0 ? ((optionPool / totalPool) * 100).toFixed(0) : '0';
@@ -176,6 +213,22 @@ export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountCha
           );
         })}
       </div>
+
+      {/* Tiercé: show hidden options count */}
+      {isTierce && hiddenCount > 0 && (
+        <p className="text-xs text-primary mt-2 text-center cursor-pointer hover:underline">
+          + {hiddenCount} autres options →
+        </p>
+      )}
+
+      {/* Personal wager indicator */}
+      {userWager && (
+        <div className="mt-3 pt-2 border-t border-border/50">
+          <p className="text-xs text-muted-foreground">
+            🦌 Tu as misé <span className="text-primary font-semibold">{userWager.montant_dc} DC</span> sur <span className="font-medium">{userWager.option_label || 'une option'}</span>
+          </p>
+        </div>
+      )}
     </div>
   );
 }
