@@ -174,7 +174,7 @@ export default function BetCard({ bet, pools, totalPool, profileBalance, userWag
                   x{liveOdds.toFixed(2)}
                 </span>
                 <span className="text-[10px] text-muted-foreground">
-                  {isClosed ? 'Cote définitive' : 'Cote estimée'}
+                  {isClosed ? 'Cote figée' : 'Cote estimée'}
                 </span>
               </div>
             </div>

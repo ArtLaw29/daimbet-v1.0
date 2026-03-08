@@ -23,7 +23,7 @@ export const INTRO_PARIS = (
     <ul className="mt-3 space-y-1 text-xs list-disc list-inside">
       <li>📊 <strong>Pari mutuel</strong> — les cotes évoluent en temps réel selon les mises</li>
       <li>💰 Mise max : <strong>30% du capital</strong> (15% pour les paris long terme)</li>
-      <li>🔒 Cote définitive figée à la <strong>clôture</strong> des mises</li>
+      <li>🔒 Cotes figées à la <strong>clôture</strong> des mises</li>
       <li>↩️ <strong>Droit de Remords</strong> — possibilité de rétractation avant clôture</li>
     </ul>
   </TabIntro>
