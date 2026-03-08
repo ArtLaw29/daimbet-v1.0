@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.evaluate-bet]
 verify_jwt = false
+
+[functions.flag-gazette-message]
+verify_jwt = false
