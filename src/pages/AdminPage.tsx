@@ -67,6 +67,10 @@ export default function AdminPage() {
   const [activeAdminTicketId, setActiveAdminTicketId] = useState<string | null>(null);
   const [ticketSortBy, setTicketSortBy] = useState<'date' | 'status' | 'name'>('date');
 
+  // Tierce suggestions
+  const [tierceSuggestions, setTierceSuggestions] = useState<any[]>([]);
+  const [suggestionProfiles, setSuggestionProfiles] = useState<Record<string, string>>({});
+
   // Create form state
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
