@@ -259,7 +259,7 @@ export default function BetDetailPage() {
                       x{odds.toFixed(2)}
                     </span>
                     <span className="block text-[10px] text-muted-foreground">
-                      {isResolved ? 'Cote définitive' : isClosed ? 'Cote définitive' : 'Cote estimée'}
+                      {isResolved ? 'Cote finale' : isClosed ? 'Cote figée' : 'Cote estimée'}
                     </span>
                   </div>
                 </div>
