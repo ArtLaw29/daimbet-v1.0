@@ -8,77 +8,73 @@ import { Input } from '@/components/ui/input';
 import { Flame, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { calculatePariMutuelOdds, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS, STARTING_BALANCE } from '@/lib/pari-mutuel';
+import type { Tables } from '@/integrations/supabase/types';
 
-interface EventOption {
-  id: string;
-  label: string;
-  odds: number;
-  is_winner: boolean | null;
-}
+type BetOption = Tables<'bet_options'>;
+type BetRow = Tables<'bets'>;
 
-interface BetEvent {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  category: string;
-  closes_at: string | null;
-  event_options: EventOption[];
+interface BetWithOptions extends BetRow {
+  bet_options: BetOption[];
 }
 
 export default function EventsPage() {
   const { user, profile } = useAuth();
-  const [events, setEvents] = useState<BetEvent[]>([]);
+  const [bets, setBets] = useState<BetWithOptions[]>([]);
   const [betAmounts, setBetAmounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [betPools, setBetPools] = useState<Record<string, Record<string, number>>>({});
-  const [eventTotals, setEventTotals] = useState<Record<string, number>>({});
+  const [wagerPools, setWagerPools] = useState<Record<string, Record<string, number>>>({});
+  const [betTotals, setBetTotals] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    fetchEvents();
+    fetchBets();
   }, []);
 
-  const fetchEvents = async () => {
+  const fetchBets = async () => {
     const { data, error } = await supabase
-      .from('events')
-      .select('*, event_options(*)')
-      .in('status', ['open', 'closed'])
+      .from('bets')
+      .select('*, bet_options(*)')
+      .in('status', ['ouvert', 'cloture_en_attente'])
       .order('created_at', { ascending: false });
     if (error) {
-      toast.error('Erreur chargement événements');
+      toast.error('Erreur chargement des paris');
     } else {
-      const evts = data as BetEvent[];
-      setEvents(evts);
-      if (evts.length > 0) {
-        const eventIds = evts.map(e => e.id);
-        const { data: bets } = await supabase
-          .from('bets')
-          .select('event_id, option_id, amount, status')
-          .in('event_id', eventIds);
-        if (bets) {
+      const items = (data as BetWithOptions[]) || [];
+      setBets(items);
+      if (items.length > 0) {
+        const betIds = items.map(b => b.id);
+        const { data: wagers } = await supabase
+          .from('wagers')
+          .select('bet_id, option_id, montant_dc, is_retracted')
+          .in('bet_id', betIds);
+        if (wagers) {
           const pools: Record<string, Record<string, number>> = {};
           const totals: Record<string, number> = {};
-          for (const bet of bets) {
-            if (bet.status === 'pending' || bet.status === 'won' || bet.status === 'lost') {
-              if (!pools[bet.event_id]) pools[bet.event_id] = {};
-              pools[bet.event_id][bet.option_id] = (pools[bet.event_id][bet.option_id] || 0) + bet.amount;
-              totals[bet.event_id] = (totals[bet.event_id] || 0) + bet.amount;
+          for (const w of wagers) {
+            if (!w.is_retracted) {
+              if (!pools[w.bet_id]) pools[w.bet_id] = {};
+              pools[w.bet_id][w.option_id] = (pools[w.bet_id][w.option_id] || 0) + w.montant_dc;
+              totals[w.bet_id] = (totals[w.bet_id] || 0) + w.montant_dc;
             }
           }
-          setBetPools(pools);
-          setEventTotals(totals);
+          setWagerPools(pools);
+          setBetTotals(totals);
         }
       }
     }
     setLoading(false);
   };
 
-  const placeBet = async (eventId: string, optionId: string) => {
+  const placeWager = async (betId: string, optionId: string) => {
     const amount = betAmounts[optionId] || 10;
     if (!user || !profile) return;
 
-    const event = events.find(e => e.id === eventId);
-    const isLongTerm = event?.category === 'long-term';
+    const bet = bets.find(b => b.id === betId);
+    if (!bet || bet.status !== 'ouvert') {
+      toast.error('Les mises sont clôturées pour ce pari');
+      return;
+    }
+
+    const isLongTerm = bet.is_long_terme;
     const maxBet = maxBetAmount(profile.balance, isLongTerm);
     const pctLabel = isLongTerm ? '15%' : '30%';
 
@@ -95,44 +91,49 @@ export default function EventsPage() {
       return;
     }
 
-    const totalPool = (eventTotals[eventId] || 0) + amount;
-    const optionPool = ((betPools[eventId] || {})[optionId] || 0) + amount;
+    const totalPool = (betTotals[betId] || 0) + amount;
+    const optionPool = ((wagerPools[betId] || {})[optionId] || 0) + amount;
     const estimatedOdds = calculatePariMutuelOdds(totalPool, optionPool);
-    const estimatedNet = calculateEstimatedNetGain(amount, estimatedOdds);
 
-    const { error } = await supabase.from('bets').insert({
+    const { error } = await supabase.from('wagers').insert({
       user_id: user.id,
-      event_id: eventId,
+      bet_id: betId,
       option_id: optionId,
-      amount,
-      potential_winnings: estimatedNet,
+      montant_dc: amount,
+      cote_au_moment_mise: estimatedOdds,
     });
 
     if (error) {
-      toast.error('Erreur lors du pari');
+      toast.error('Erreur lors de la mise');
     } else {
       await supabase
         .from('profiles')
         .update({ balance: profile.balance - amount })
         .eq('user_id', user.id);
-      toast.success(`Pari placé ! 🎰 Cote estimée : x${estimatedOdds.toFixed(2)} · Gain estimé (après rake 5%) : ${estimatedNet} DC`);
+      
+      await supabase.from('solde_history').insert({
+        user_id: user.id,
+        delta_dc: -amount,
+        reason: `Mise sur: ${bet.title}`,
+      });
+
+      const estimatedNet = calculateEstimatedNetGain(amount, estimatedOdds);
+      toast.success(`Mise placée ! 🎰 Cote estimée : x${estimatedOdds.toFixed(2)} · Gain estimé (après rake 5%) : ${estimatedNet} DC`);
       window.location.reload();
     }
   };
 
   const statusConfig: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-    open: { icon: Flame, label: 'Mises ouvertes 🔥', color: 'text-primary' },
-    closed: { icon: Clock, label: 'Mises clôturées', color: 'text-muted-foreground' },
-    resolved: { icon: CheckCircle, label: 'Résolu ✅', color: 'text-success' },
-    cancelled: { icon: XCircle, label: 'Annulé', color: 'text-destructive' },
+    ouvert: { icon: Flame, label: 'Mises ouvertes 🔥', color: 'text-primary' },
+    cloture_en_attente: { icon: Clock, label: 'Mises clôturées', color: 'text-muted-foreground' },
+    resolu: { icon: CheckCircle, label: 'Résolu ✅', color: 'text-success' },
+    supprime: { icon: XCircle, label: 'Supprimé', color: 'text-destructive' },
   };
 
   const categoryEmojis: Record<string, string> = {
-    bet: '🎲',
-    poll: '📊',
-    fun: '😂',
-    'long-term': '🔮',
     urgent: '⚡',
+    long_terme: '🔮',
+    culture_daim: '🦌',
   };
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
@@ -149,31 +150,31 @@ export default function EventsPage() {
 
       <div className="bg-secondary/30 border border-border rounded-lg p-3 mb-6 text-center">
         <p className="text-sm text-muted-foreground">
-          🔄 Les {STARTING_BALANCE} DC sont <span className="text-primary font-semibold">réinitialisés chaque mois</span>. 
-          Mise max : <span className="text-primary font-semibold">30% du capital</span> (15% pour les paris long terme). 
+          🔄 Les {STARTING_BALANCE} DC sont <span className="text-primary font-semibold">réinitialisés chaque mois</span>.
+          Mise max : <span className="text-primary font-semibold">30% du capital</span> (15% pour les paris long terme).
           Rake : <span className="text-primary font-semibold">5% sur les gains nets</span>.
         </p>
       </div>
 
-      {events.length === 0 && (
+      {bets.length === 0 && (
         <div className="text-center py-16 text-muted-foreground">
-          <p className="text-lg">Aucun événement pour le moment.</p>
+          <p className="text-lg">Aucun pari pour le moment.</p>
           <p className="text-sm mt-1">Propose-en un dans l'onglet "Proposer" !</p>
         </div>
       )}
 
       <div className="space-y-6">
-        {events.map((event, i) => {
-          const status = statusConfig[event.status] || statusConfig.open;
+        {bets.map((bet, i) => {
+          const status = statusConfig[bet.status] || statusConfig.ouvert;
           const StatusIcon = status.icon;
-          const emoji = categoryEmojis[event.category] || '🎲';
-          const totalPool = eventTotals[event.id] || 0;
-          const pools = betPools[event.id] || {};
-          const isLongTerm = event.category === 'long-term';
+          const emoji = categoryEmojis[bet.category] || '🎲';
+          const totalPool = betTotals[bet.id] || 0;
+          const pools = wagerPools[bet.id] || {};
+          const isLongTerm = bet.is_long_terme;
 
           return (
             <motion.div
-              key={event.id}
+              key={bet.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
@@ -182,17 +183,17 @@ export default function EventsPage() {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h2 className="text-xl font-display tracking-wider">
-                    {emoji} {event.title}
+                    {emoji} {bet.emoji || ''} {bet.title}
                   </h2>
-                  {event.description && (
-                    <p className="text-sm text-muted-foreground mt-1">{event.description}</p>
+                  {bet.description && (
+                    <p className="text-sm text-muted-foreground mt-1">{bet.description}</p>
                   )}
-                  {event.category === 'urgent' && (
+                  {bet.category === 'urgent' && (
                     <span className="inline-flex items-center gap-1 text-xs text-destructive bg-destructive/10 px-2 py-0.5 rounded-full mt-1">
                       <AlertTriangle className="w-3 h-3" /> Pari urgent
                     </span>
                   )}
-                  {event.category === 'long-term' && (
+                  {bet.is_long_terme && (
                     <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full mt-1">
                       🔮 Pari long terme · Mise max 15%
                     </span>
@@ -213,28 +214,25 @@ export default function EventsPage() {
               )}
 
               <div className="space-y-2">
-                {event.event_options.map((option) => {
+                {bet.bet_options.map((option) => {
                   const optionPool = pools[option.id] || 0;
-                  const liveOdds = totalPool > 0 ? calculatePariMutuelOdds(totalPool, optionPool) : DEFAULT_ODDS;
+                  const liveOdds = totalPool > 0 && optionPool > 0 ? calculatePariMutuelOdds(totalPool, optionPool) : DEFAULT_ODDS;
                   const percentage = totalPool > 0 ? ((optionPool / totalPool) * 100).toFixed(0) : '0';
                   const currentBetAmount = betAmounts[option.id] || 10;
                   const estimatedNet = calculateEstimatedNetGain(currentBetAmount, liveOdds);
 
                   return (
-                    <div
-                      key={option.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50"
-                    >
+                    <div key={option.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
                       <div className="flex-1">
                         <span className="font-medium">{option.label}</span>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {totalPool > 0 ? (
+                          {optionPool > 0 ? (
                             <>{percentage}% des mises · {optionPool} DC</>
                           ) : (
                             <>Aucune mise pour l'instant</>
                           )}
                         </div>
-                        {event.status === 'open' && (
+                        {bet.status === 'ouvert' && (
                           <div className="text-xs text-primary/80 mt-0.5">
                             Gain estimé (après rake de 5%) : {estimatedNet} DC
                           </div>
@@ -246,7 +244,7 @@ export default function EventsPage() {
                         </span>
                         <span className="text-[10px] text-muted-foreground">Cote estimée</span>
                       </div>
-                      {event.status === 'open' && (
+                      {bet.status === 'ouvert' && (
                         <div className="flex items-center gap-2">
                           <Input
                             type="number"
@@ -262,7 +260,7 @@ export default function EventsPage() {
                           <Button
                             size="sm"
                             className="gold-gradient text-xs font-semibold"
-                            onClick={() => placeBet(event.id, option.id)}
+                            onClick={() => placeWager(bet.id, option.id)}
                           >
                             Parier
                           </Button>

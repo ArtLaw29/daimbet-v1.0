@@ -5,82 +5,67 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Heart, Sparkles } from 'lucide-react';
+import { PROMO_NAMES } from '@/lib/pari-mutuel';
 
-const PRENOMS = [
-  'Adam', 'Adrien', 'Alexandre', 'Alice', 'Alix', 'Amandine', 'Antoine', 'Arthur', 'Bastien', 'Benjamin',
-  'Camille', 'Charles', 'Charlotte', 'Clara', 'Clément', 'Corentin', 'Damien', 'David', 'Émilie', 'Emma',
-  'Étienne', 'Florian', 'Gabriel', 'Guillaume', 'Hugo', 'Inès', 'Jade', 'Julien', 'Justine', 'Léa',
-  'Léo', 'Lola', 'Louis', 'Louise', 'Lucas', 'Manon', 'Marc', 'Marie', 'Mathieu', 'Maxime',
-  'Nathan', 'Nicolas', 'Noah', 'Olivia', 'Paul', 'Pierre', 'Raphaël', 'Romain', 'Sarah', 'Simon',
-  'Sophie', 'Théo', 'Thomas', 'Valentin', 'Victor', 'Victoire', 'Yanis', 'Zoé', 'Elise', 'Margot',
-];
-
-const CATEGORIES_SIMPLE = ['kiss', 'marry'] as const;
-const CATEGORIES_EXTENDED = ['kiss', 'coup_un_soir', 'plan_q', 'marry'] as const;
+const CATEGORIES = ['kiss', 'marry', 'coup_soir', 'plan_q'] as const;
 
 const CATEGORY_LABELS: Record<string, { label: string; emoji: string }> = {
   kiss: { label: 'Kiss 💋', emoji: '💋' },
   marry: { label: 'Marry 💍', emoji: '💍' },
-  coup_un_soir: { label: "Coup d'un soir 🌙", emoji: '🌙' },
+  coup_soir: { label: "Coup d'un soir 🌙", emoji: '🌙' },
   plan_q: { label: 'Plan Q 🔥', emoji: '🔥' },
 };
 
+// Simple hash for anonymization (client-side placeholder - should be edge function)
+async function hashVoter(userId: string, monthYear: string): Promise<string> {
+  const data = new TextEncoder().encode(`${userId}:${monthYear}:daimbet-secret`);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export default function KissMarryPage() {
   const { user } = useAuth();
-  const [mode, setMode] = useState<'simple' | 'extended'>('simple');
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [hasVoted, setHasVoted] = useState(false);
   const [results, setResults] = useState<Record<string, { name: string; count: number }[]>>({});
   const [loading, setLoading] = useState(true);
 
-  const categories = mode === 'simple' ? CATEGORIES_SIMPLE : CATEGORIES_EXTENDED;
   const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
+  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   useEffect(() => {
-    checkIfVoted();
+    if (user) {
+      checkIfVoted();
+    }
     fetchResults();
   }, [user]);
 
   const checkIfVoted = async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from('kiss_marry_votes')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('month', month)
-      .eq('year', year);
-    if (data && data.length > 0) setHasVoted(true);
+    const voterHash = await hashVoter(user.id, monthYear);
+    // We can't read kiss_marry_votes due to RLS (no SELECT policy)
+    // Store vote status in localStorage as a simple check
+    const key = `km_voted_${monthYear}`;
+    if (localStorage.getItem(key)) setHasVoted(true);
     setLoading(false);
   };
 
   const fetchResults = async () => {
-    // We can't use the view directly due to RLS, so we'll use an RPC or aggregate client-side
-    // For now, fetch all votes for the current month (only own votes visible due to RLS)
-    // Results are shown after voting
-    const { data } = await supabase
-      .from('kiss_marry_votes')
-      .select('category, chosen_name')
-      .eq('month', month)
-      .eq('year', year);
-    
+    // Use the RPC function for anonymous aggregates
+    const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
     if (data) {
-      const grouped: Record<string, Record<string, number>> = {};
-      data.forEach((v) => {
-        if (!grouped[v.category]) grouped[v.category] = {};
-        grouped[v.category][v.chosen_name] = (grouped[v.category][v.chosen_name] || 0) + 1;
-      });
-
       const sorted: Record<string, { name: string; count: number }[]> = {};
-      Object.entries(grouped).forEach(([cat, names]) => {
-        sorted[cat] = Object.entries(names)
-          .map(([name, count]) => ({ name, count }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 3);
-      });
+      for (const row of data as any[]) {
+        if (!sorted[row.category]) sorted[row.category] = [];
+        sorted[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
+      }
+      // Keep top 3 per category
+      for (const cat of Object.keys(sorted)) {
+        sorted[cat] = sorted[cat].slice(0, 3);
+      }
       setResults(sorted);
     }
+    setLoading(false);
   };
 
   const handleSelect = (category: string, name: string) => {
@@ -89,16 +74,17 @@ export default function KissMarryPage() {
 
   const handleSubmit = async () => {
     if (!user) return;
-    const votes = Object.entries(selections).map(([category, chosen_name]) => ({
-      user_id: user.id,
-      category,
-      chosen_name,
-      month,
-      year,
+    const voterHash = await hashVoter(user.id, monthYear);
+
+    const votes = Object.entries(selections).map(([category, voted_prenom]) => ({
+      voter_hash: voterHash,
+      category: category as any,
+      voted_prenom,
+      month_year: monthYear,
     }));
 
-    if (votes.length !== categories.length) {
-      toast.error(`Choisis un prénom pour chaque catégorie !`);
+    if (votes.length !== CATEGORIES.length) {
+      toast.error('Choisis un prénom pour chaque catégorie !');
       return;
     }
 
@@ -107,6 +93,7 @@ export default function KissMarryPage() {
       toast.error('Erreur: ' + error.message);
     } else {
       toast.success('Vote enregistré ! 💕');
+      localStorage.setItem(`km_voted_${monthYear}`, 'true');
       setHasVoted(true);
       fetchResults();
     }
@@ -124,30 +111,13 @@ export default function KissMarryPage() {
 
       {!hasVoted ? (
         <>
-          <div className="flex justify-center gap-2 mb-6">
-            <Button
-              variant={mode === 'simple' ? 'default' : 'outline'}
-              onClick={() => setMode('simple')}
-              size="sm"
-            >
-              Simple (2 catégories)
-            </Button>
-            <Button
-              variant={mode === 'extended' ? 'default' : 'outline'}
-              onClick={() => setMode('extended')}
-              size="sm"
-            >
-              Étendu (4 catégories)
-            </Button>
-          </div>
-
-          {categories.map((cat) => (
+          {CATEGORIES.map((cat) => (
             <div key={cat} className="mb-6">
               <h2 className="text-xl font-display mb-3">
                 {CATEGORY_LABELS[cat].label}
               </h2>
               <div className="flex flex-wrap gap-2">
-                {PRENOMS.map((name) => (
+                {PROMO_NAMES.map((name) => (
                   <button
                     key={name}
                     onClick={() => handleSelect(cat, name)}
@@ -172,7 +142,7 @@ export default function KissMarryPage() {
           <Button
             className="w-full gold-gradient font-semibold"
             onClick={handleSubmit}
-            disabled={Object.keys(selections).length !== categories.length}
+            disabled={Object.keys(selections).length !== CATEGORIES.length}
           >
             Valider mon vote 💕
           </Button>

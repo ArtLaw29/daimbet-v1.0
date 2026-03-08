@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import { ThumbsUp, ThumbsDown, MessageSquarePlus } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
-type Proposal = Tables<'event_proposals'>;
+type Proposal = Tables<'daimocratie_proposals'>;
 
 export default function ProposalsPage() {
   const { user } = useAuth();
@@ -26,9 +26,9 @@ export default function ProposalsPage() {
 
   const fetchProposals = async () => {
     const { data } = await supabase
-      .from('event_proposals')
+      .from('daimocratie_proposals')
       .select('*')
-      .order('upvotes', { ascending: false });
+      .order('votes_positive', { ascending: false });
     setProposals(data || []);
     setLoading(false);
   };
@@ -36,11 +36,11 @@ export default function ProposalsPage() {
   const fetchUserVotes = async () => {
     if (!user) return;
     const { data } = await supabase
-      .from('proposal_votes')
-      .select('proposal_id, vote_type')
+      .from('daimocratie_votes')
+      .select('proposal_id, vote')
       .eq('user_id', user.id);
     const votes: Record<string, string> = {};
-    data?.forEach((v) => (votes[v.proposal_id] = v.vote_type));
+    data?.forEach((v) => (votes[v.proposal_id] = v.vote));
     setUserVotes(votes);
   };
 
@@ -48,10 +48,10 @@ export default function ProposalsPage() {
     e.preventDefault();
     if (!user || !title.trim()) return;
 
-    const { error } = await supabase.from('event_proposals').insert({
+    const { error } = await supabase.from('daimocratie_proposals').insert({
       title: title.trim(),
-      description: description.trim() || null,
-      proposed_by: user.id,
+      type: description.trim() || null,
+      user_id: user.id,
     });
 
     if (error) toast.error('Erreur');
@@ -63,7 +63,7 @@ export default function ProposalsPage() {
     }
   };
 
-  const vote = async (proposalId: string, voteType: 'up' | 'down') => {
+  const vote = async (proposalId: string, voteType: 'positif' | 'negatif') => {
     if (!user) return;
     const existing = userVotes[proposalId];
 
@@ -72,10 +72,10 @@ export default function ProposalsPage() {
       return;
     }
 
-    const { error } = await supabase.from('proposal_votes').insert({
+    const { error } = await supabase.from('daimocratie_votes').insert({
       proposal_id: proposalId,
       user_id: user.id,
-      vote_type: voteType,
+      vote: voteType,
     });
 
     if (error) {
@@ -84,11 +84,11 @@ export default function ProposalsPage() {
     }
 
     // Update counts locally
-    const field = voteType === 'up' ? 'upvotes' : 'downvotes';
+    const field = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
     const proposal = proposals.find((p) => p.id === proposalId);
     if (proposal) {
       await supabase
-        .from('event_proposals')
+        .from('daimocratie_proposals')
         .update({ [field]: proposal[field] + 1 })
         .eq('id', proposalId);
     }
@@ -104,8 +104,8 @@ export default function ProposalsPage() {
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="text-center mb-8">
         <MessageSquarePlus className="w-12 h-12 mx-auto text-primary mb-2" />
-        <h1 className="text-4xl font-display gold-text">Proposer un Pari</h1>
-        <p className="text-muted-foreground mt-1">Suggère un événement et vote pour ceux des autres !</p>
+        <h1 className="text-4xl font-display gold-text">Daim-ocratie</h1>
+        <p className="text-muted-foreground mt-1">Suggère un pari et vote pour ceux des autres !</p>
       </div>
 
       <form onSubmit={submitProposal} className="rounded-xl border border-border bg-card p-5 mb-8 card-glow">
@@ -148,18 +148,18 @@ export default function ProposalsPage() {
           >
             <div className="flex flex-col items-center gap-1">
               <button
-                onClick={() => vote(p.id, 'up')}
+                onClick={() => vote(p.id, 'positif')}
                 className={`p-1 rounded transition-colors ${
-                  userVotes[p.id] === 'up' ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+                  userVotes[p.id] === 'positif' ? 'text-primary' : 'text-muted-foreground hover:text-primary'
                 }`}
               >
                 <ThumbsUp className="w-5 h-5" />
               </button>
-              <span className="text-sm font-bold text-primary">{p.upvotes - p.downvotes}</span>
+              <span className="text-sm font-bold text-primary">{p.votes_positive - p.votes_negative}</span>
               <button
-                onClick={() => vote(p.id, 'down')}
+                onClick={() => vote(p.id, 'negatif')}
                 className={`p-1 rounded transition-colors ${
-                  userVotes[p.id] === 'down' ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'
+                  userVotes[p.id] === 'negatif' ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'
                 }`}
               >
                 <ThumbsDown className="w-5 h-5" />
@@ -167,7 +167,7 @@ export default function ProposalsPage() {
             </div>
             <div className="flex-1">
               <h3 className="font-semibold">{p.title}</h3>
-              {p.description && <p className="text-sm text-muted-foreground mt-0.5">{p.description}</p>}
+              {p.type && <p className="text-sm text-muted-foreground mt-0.5">{p.type}</p>}
             </div>
           </motion.div>
         ))}

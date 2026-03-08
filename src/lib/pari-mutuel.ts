@@ -17,11 +17,6 @@ export const RAKE_PERCENT = 0.05;
 export const DEFAULT_ODDS = 1.10;
 export const MIN_ODDS = 1.0;
 
-export interface BetPool {
-  optionId: string;
-  totalBet: number;
-}
-
 /**
  * Calculate pari mutuel odds for an option.
  * Floor: MIN_ODDS (1.0). Default when no bets: DEFAULT_ODDS (1.10).
@@ -50,7 +45,7 @@ export function calculateRake(grossWinnings: number, betAmount: number): number 
 }
 
 /**
- * Legacy alias for backward compat.
+ * Net winnings after rake.
  */
 export function calculateWinnings(betAmount: number, totalOnWinningOption: number, totalPool: number): number {
   const gross = calculateGrossWinnings(betAmount, totalOnWinningOption, totalPool);
@@ -80,19 +75,4 @@ export function maxBetAmount(balance: number, isLongTerm: boolean = false): numb
  */
 export function isValidEssecEmail(email: string): boolean {
   return /^[a-zà-ÿ\-]+\.[a-zà-ÿ\-]+@essec\.edu$/i.test(email.trim());
-}
-
-/**
- * Aggregate bets by option for pari mutuel calculation.
- */
-export function aggregateBetsByOption(
-  bets: { option_id: string; amount: number; status: string }[]
-): Record<string, number> {
-  const pools: Record<string, number> = {};
-  for (const bet of bets) {
-    if (bet.status === 'pending' || bet.status === 'won' || bet.status === 'lost') {
-      pools[bet.option_id] = (pools[bet.option_id] || 0) + bet.amount;
-    }
-  }
-  return pools;
 }
