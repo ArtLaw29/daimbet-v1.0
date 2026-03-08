@@ -1365,6 +1365,22 @@ export default function AdminPage() {
                         <RefreshCw className="w-3 h-3 mr-1" /> Reset
                       </Button>
                     </div>
+                    <Button variant="outline" size="sm" className="text-destructive border-destructive/30"
+                      onClick={async () => {
+                        if (!confirm(`Supprimer définitivement le compte de ${selectedUser.display_name} ? Cette action est irréversible.`)) return;
+                        const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+                          body: { target_user_id: selectedUser.user_id },
+                        });
+                        if (error || data?.error) {
+                          toast.error(data?.error || error?.message || 'Erreur');
+                        } else {
+                          toast.success(`Compte de ${selectedUser.display_name} supprimé`);
+                          setSelectedUser(null);
+                          fetchAll();
+                        }
+                      }}>
+                      <Trash2 className="w-3 h-3 mr-1" /> Supprimer le compte
+                    </Button>
                   </div>
                 </div>
               )}
