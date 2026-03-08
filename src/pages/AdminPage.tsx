@@ -93,14 +93,16 @@ export default function AdminPage() {
   useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
 
   const fetchAll = useCallback(async () => {
-    const [betsRes, prRes, wagersRes] = await Promise.all([
+    const [betsRes, prRes, wagersRes, injRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
       supabase.from('wagers').select('*').order('created_at', { ascending: false }),
+      supabase.from('liquidity_injections').select('*').order('triggered_at', { ascending: false }),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
     setAllWagers((wagersRes.data as Wager[]) || []);
+    setInjections(injRes.data || []);
     setLoading(false);
   }, []);
 
