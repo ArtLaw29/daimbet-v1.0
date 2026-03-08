@@ -50,7 +50,7 @@ const CATEGORY_OPTIONS: { value: BetCategory; label: string }[] = [
 ];
 
 export default function AdminPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [bets, setBets] = useState<BetWithOptions[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [allWagers, setAllWagers] = useState<Wager[]>([]);
@@ -563,6 +563,10 @@ export default function AdminPage() {
 
   const getProfileName = (userId: string) =>
     profiles.find(p => p.user_id === userId)?.display_name || 'Anonyme';
+
+  if (authLoading) {
+    return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
+  }
 
   if (!isAdmin) {
     return (
