@@ -142,33 +142,30 @@ export default function KissMarryPage() {
     generateIndices();
   };
 
-  const startReveal = async () => {
-    // Fetch latest data
-    const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
-    if (!data) return;
-
-    const catData: Record<string, { name: string; count: number }[]> = {};
-    for (const row of data as any[]) {
-      if (!catData[row.category]) catData[row.category] = [];
-      catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
-    }
-    // Keep top 3
-    for (const cat of Object.keys(catData)) {
-      catData[cat] = catData[cat].slice(0, 3);
-    }
-    setRevealData(catData);
-    setRevealMode(true);
-    localStorage.setItem(`km_reveal_${monthYear}`, 'true');
-
-    // Countdown and sequential reveal
-    setRevealStep(-3); // 3, 2, 1 countdown
-    setTimeout(() => setRevealStep(-2), 1000);
-    setTimeout(() => setRevealStep(-1), 2000);
-    setTimeout(() => setRevealStep(0), 3000); // kiss
-    setTimeout(() => setRevealStep(1), 5500); // marry
-    setTimeout(() => setRevealStep(2), 8000); // coup_soir
-    setTimeout(() => setRevealStep(3), 10500); // plan_q
-  };
+  // Auto-fetch reveal data when revealMode activates
+  useEffect(() => {
+    if (!revealMode || Object.keys(revealData).length > 0) return;
+    (async () => {
+      const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
+      if (!data) return;
+      const catData: Record<string, { name: string; count: number }[]> = {};
+      for (const row of data as any[]) {
+        if (!catData[row.category]) catData[row.category] = [];
+        catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
+      }
+      for (const cat of Object.keys(catData)) {
+        catData[cat] = catData[cat].slice(0, 3);
+      }
+      setRevealData(catData);
+      setRevealStep(-3);
+      setTimeout(() => setRevealStep(-2), 1000);
+      setTimeout(() => setRevealStep(-1), 2000);
+      setTimeout(() => setRevealStep(0), 3000);
+      setTimeout(() => setRevealStep(1), 5500);
+      setTimeout(() => setRevealStep(2), 8000);
+      setTimeout(() => setRevealStep(3), 10500);
+    })();
+  }, [revealMode, monthYear, revealData]);
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
