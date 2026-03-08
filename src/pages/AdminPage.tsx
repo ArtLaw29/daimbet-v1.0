@@ -333,6 +333,59 @@ export default function AdminPage() {
     fetchAll();
   };
 
+  const adjustBalanceWithMotif = async (userId: string, delta: number, motif: string) => {
+    if (!motif.trim()) { toast.error('Le motif est obligatoire'); return; }
+    const profile = profiles.find(p => p.user_id === userId);
+    if (!profile) return;
+    const newBal = profile.balance + delta;
+    await supabase.from('profiles').update({ balance: newBal }).eq('user_id', userId);
+    await supabase.from('solde_history').insert({ user_id: userId, delta_dc: delta, reason: motif.trim() });
+    toast.success(`Solde modifié : ${delta > 0 ? '+' : ''}${delta} DC`);
+    setBalanceDelta(''); setBalanceMotif('');
+    setSelectedUser({ ...profile, balance: newBal });
+    fetchAll();
+  };
+
+  const toggleSuspend = async (userId: string, suspend: boolean) => {
+    await supabase.from('profiles').update({ is_suspended: suspend }).eq('user_id', userId);
+    toast.success(suspend ? 'Utilisateur suspendu ⛔' : 'Utilisateur réactivé ✅');
+    const profile = profiles.find(p => p.user_id === userId);
+    if (profile) setSelectedUser({ ...profile, is_suspended: suspend });
+    fetchAll();
+  };
+
+  const resetUserPassword = async (userId: string) => {
+    // We need the user's email - we don't have it in profiles, so use admin API via edge function
+    toast.info('Fonction de réinitialisation de mot de passe disponible via le lien "Mot de passe oublié" sur la page de connexion.');
+  };
+
+  const triggerLiquidityInjection = async () => {
+    if (injecting) return;
+    setInjecting(true);
+    try {
+      const activeProfiles = profiles.filter(p => !p.is_suspended);
+      for (const p of activeProfiles) {
+        await supabase.from('profiles').update({ balance: p.balance + 250 }).eq('user_id', p.user_id);
+        await supabase.from('solde_history').insert({
+          user_id: p.user_id, delta_dc: 250, reason: 'Injection de liquidités',
+        });
+      }
+      await supabase.from('liquidity_injections').insert({
+        amount_dc: 250, triggered_by: user?.id,
+      });
+      await supabase.from('gazette_messages').insert({
+        content: '🪙 Bonne nouvelle — des DAIMcoins viennent d\'être ajoutés à tous les soldes !',
+        is_system_message: true,
+      });
+      toast.success(`Injection réussie ! +250 DC pour ${activeProfiles.length} utilisateurs 🪙`);
+      setShowInjectionModal(false);
+      fetchAll();
+    } catch (err) {
+      toast.error('Erreur lors de l\'injection');
+    }
+    setInjecting(false);
+  };
+
   // ─── TOGGLE WINNER ───
   const toggleWinner = (betId: string, optionId: string, maxW: number) => {
     setSelectedWinners(prev => {
