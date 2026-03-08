@@ -51,7 +51,7 @@ function formatDate(dateStr: string | null) {
   return format(new Date(dateStr), "d MMM yyyy · HH'h'mm", { locale: fr });
 }
 
-export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountChange, onPlaceWager, profileBalance, userWager, wagerCount = 0 }: BetCardProps) {
+export default function BetCard({ bet, pools, totalPool, profileBalance, userWager, wagerCount = 0, onOpenBet }: BetCardProps) {
   const status = STATUS_CONFIG[bet.status] || STATUS_CONFIG.ouvert;
   const StatusIcon = status.icon;
   const isLongTerm = bet.is_long_terme;
