@@ -54,7 +54,7 @@ function AppRoutes() {
 
   useEffect(() => {
     if (showCharterFlash) {
-      const timer = setTimeout(() => setShowCharterFlash(false), 2000);
+      const timer = setTimeout(() => setShowCharterFlash(false), 5000);
       return () => clearTimeout(timer);
     }
   }, [showCharterFlash]);
