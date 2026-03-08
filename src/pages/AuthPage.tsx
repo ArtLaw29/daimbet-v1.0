@@ -31,7 +31,9 @@ function getEmojiForName(name: string): string {
 }
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<'connexion' | 'inscription'>('connexion');
+  const location = useLocation();
+  const initialMode = location.pathname === '/inscription' ? 'inscription' : 'connexion';
+  const [mode, setMode] = useState<'connexion' | 'inscription'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
