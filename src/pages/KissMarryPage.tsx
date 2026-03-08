@@ -40,7 +40,13 @@ export default function KissMarryPage() {
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
 
   const now = new Date();
+  // Current voting month
   const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  // Reveal logic: on the 1st of each month at 10h, reveal LAST month's results
+  const isRevealDay = now.getDate() === 1 && now.getHours() >= 10;
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const revealMonthYear = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
 
   // Filter out user's own name
   const availableNames = PROMO_NAMES.filter(n =>
