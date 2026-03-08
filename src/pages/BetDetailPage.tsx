@@ -269,6 +269,99 @@ export default function BetDetailPage() {
             })}
           </div>
 
+          {/* Suggest candidate button — Tiercé only */}
+          {isTierce && isOpen && bet.open_to_suggestions && (bet.bet_options.length < 20) && (
+            <div className="mt-4 space-y-3">
+              {!showSuggestForm ? (
+                <Button variant="outline" size="sm" onClick={() => setShowSuggestForm(true)} className="w-full">
+                  + Proposer un candidat
+                </Button>
+              ) : (
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <h4 className="text-sm font-display">Proposer un candidat</h4>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Prénom</label>
+                    <select
+                      value={suggestPrenom}
+                      onChange={e => setSuggestPrenom(e.target.value)}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">— Choisir un prénom —</option>
+                      {PROMO_NAMES.filter(n => !bet.bet_options.some(o => o.label === n)).map(n => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                      <option value="__custom">Autre (hors promo)</option>
+                    </select>
+                    {suggestPrenom === '__custom' && (
+                      <Input
+                        placeholder="Nom du candidat..."
+                        value=""
+                        onChange={e => setSuggestPrenom(e.target.value)}
+                        className="h-9"
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Commentaire (optionnel)</label>
+                    <Input
+                      value={suggestComment}
+                      onChange={e => setSuggestComment(e.target.value)}
+                      placeholder="Ex : il part au Japon l'an prochain"
+                      className="h-9"
+                    />
+                  </div>
+
+                  {/* User's pending suggestions */}
+                  {mySuggestions.filter(s => s.status === 'en_attente').length > 0 && (
+                    <p className="text-xs text-muted-foreground">⏳ Tu as déjà une suggestion en attente de validation.</p>
+                  )}
+                  {mySuggestions.filter(s => s.status === 'rejete').length > 0 && (
+                    <p className="text-xs text-destructive">❌ Proposition non retenue pour une suggestion précédente.</p>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { setShowSuggestForm(false); setSuggestPrenom(''); setSuggestComment(''); }}>
+                      Annuler
+                    </Button>
+                    <Button size="sm" className="flex-1"
+                      disabled={!suggestPrenom || suggestPrenom === '__custom' || suggestSubmitting}
+                      onClick={async () => {
+                        if (!user || !bet) return;
+                        // Check if already exists
+                        if (bet.bet_options.some(o => o.label === suggestPrenom)) {
+                          toast.error('Ce candidat est déjà dans le pari.');
+                          return;
+                        }
+                        setSuggestSubmitting(true);
+                        const { error } = await supabase.from('tierce_suggestions').insert({
+                          bet_id: bet.id,
+                          suggested_by: user.id,
+                          prenom_suggested: suggestPrenom,
+                          comment: suggestComment.trim() || null,
+                        });
+                        if (error) { toast.error('Erreur lors de la soumission'); setSuggestSubmitting(false); return; }
+                        // Create admin notification
+                        await supabase.from('admin_notifications').insert({
+                          type: 'tierce_suggestion',
+                          title: `Suggestion Tiercé : ${suggestPrenom}`,
+                          detail: `${suggestPrenom} proposé pour "${bet.title}"${suggestComment ? ` — ${suggestComment}` : ''}`,
+                          reference_id: bet.id,
+                        });
+                        toast.success('Ta suggestion a été soumise à Jordaim Belfort pour validation. Tu pourras miser dessus si elle est approuvée. 🦌');
+                        setSuggestPrenom('');
+                        setSuggestComment('');
+                        setShowSuggestForm(false);
+                        setSuggestSubmitting(false);
+                        fetchBet();
+                      }}>
+                      {suggestSubmitting ? 'Envoi...' : 'Soumettre'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* My wagers */}
           {myWagers.length > 0 && (
             <div className="mt-6">
