@@ -415,7 +415,14 @@ export default function AdminPage() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && !w.is_retracted;
   }).map(w => w.user_id)).size;
 
-  // ─── FILTER ───
+  // ─── SORTED PROFILES ───
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    if (userSortBy === 'balance') return b.balance - a.balance;
+    if (userSortBy === 'display_name') return a.display_name.localeCompare(b.display_name);
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+
   const filteredBets = bets.filter(b => {
     if (filterStatus !== 'all' && b.status !== filterStatus) return false;
     if (filterCategory !== 'all' && b.category !== filterCategory) return false;
