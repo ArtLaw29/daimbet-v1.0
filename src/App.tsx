@@ -5,25 +5,33 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "./components/Navbar";
-import LandingPage from "./pages/LandingPage";
-import AuthPage from "./pages/AuthPage";
-import AdminLoginPage from "./pages/AdminLoginPage";
-import EventsPage from "./pages/EventsPage";
-import BetDetailPage from "./pages/BetDetailPage";
-import LeaderboardPage from "./pages/LeaderboardPage";
-import KissMarryPage from "./pages/KissMarryPage";
-import ProposalsPage from "./pages/ProposalsPage";
-import GazettePage from "./pages/GazettePage";
-import ProfilePage from "./pages/ProfilePage";
-import AdminPage from "./pages/AdminPage";
-import MaintenancePage from "./pages/MaintenancePage";
-import NotFound from "./pages/NotFound";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+// Lazy-loaded pages for performance
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
+const EventsPage = lazy(() => import("./pages/EventsPage"));
+const BetDetailPage = lazy(() => import("./pages/BetDetailPage"));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
+const KissMarryPage = lazy(() => import("./pages/KissMarryPage"));
+const ProposalsPage = lazy(() => import("./pages/ProposalsPage"));
+const GazettePage = lazy(() => import("./pages/GazettePage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 import CharterModal from "./components/CharterModal";
 import ResolutionNotifier from "./components/ResolutionNotifier";
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-pulse text-primary font-display text-2xl">DAIMBet...</div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
