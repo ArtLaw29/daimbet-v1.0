@@ -107,13 +107,14 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => setIsSetup(!isSetup)}
-            className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-primary transition-colors"
+            className="w-full mt-4 border-primary/50 text-primary hover:bg-primary/10"
           >
-            {isSetup ? '← Retour à la connexion' : 'Première fois ? Créer le compte admin'}
-          </button>
+            {isSetup ? '← Retour à la connexion' : '🛡️ Première fois ? Créer le compte admin'}
+          </Button>
         </div>
       </motion.div>
     </div>
