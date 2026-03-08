@@ -56,13 +56,6 @@ export default function KissMarryPage() {
   const checkIfVoted = useCallback(async () => {
     const key = `km_voted_${monthYear}`;
     if (localStorage.getItem(key)) setHasVoted(true);
-    // Check reveal mode from platform_settings (admin-controlled)
-    const { data: revealSetting } = await supabase
-      .from('platform_settings')
-      .select('value')
-      .eq('key', `km_reveal_${monthYear}`)
-      .maybeSingle();
-    if (revealSetting?.value === 'true') setRevealMode(true);
     setLoading(false);
   }, [monthYear]);
 
