@@ -81,11 +81,7 @@ export default function ProfilePage() {
   const [retractingId, setRetractingId] = useState<string | null>(null);
   const [retractConfirm, setRetractConfirm] = useState<ActiveWager | null>(null);
 
-  // Contact
-  const [showContact, setShowContact] = useState(false);
-  const [contactSubject, setContactSubject] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
-  const [sendingContact, setSendingContact] = useState(false);
+  // Contact (removed — replaced by tickets)
 
   // Password reset
   const [resettingPw, setResettingPw] = useState(false);
