@@ -316,7 +316,7 @@ export default function AuthPage() {
                     {checkingName ? (
                       <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> <span className="text-muted-foreground">Vérification...</span></>
                     ) : nameAvailable === true ? (
-                      <><CheckCircle className="w-4 h-4 text-green-500" /> <span className="text-green-500">Prénom disponible ✓</span></>
+                      <><CheckCircle className="w-4 h-4 text-primary" /> <span className="text-primary">Prénom disponible ✓</span></>
                     ) : nameAvailable === false ? (
                       <><XCircle className="w-4 h-4 text-destructive" /> <span className="text-destructive">Ce prénom est déjà utilisé. Si c'est le tien, contacte Jordaim Belfort.</span></>
                     ) : null}
