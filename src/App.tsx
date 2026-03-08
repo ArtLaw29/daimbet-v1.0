@@ -113,20 +113,16 @@ function AppRoutes() {
     );
   }
 
-  // ─── CHARTER MODAL ───
-  if (!hasAcceptedCharter && !isAdmin) {
-    return (
-      <>
-        <CharterModal userId={user.id} onAccepted={refreshProfile} />
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="*" element={<div />} />
-          </Routes>
-        </Suspense>
-      </>
-    );
-  }
+  // ─── CHARTER (auto-accept silently for new users) ───
+  useEffect(() => {
+    if (user && !hasAcceptedCharter && !isAdmin) {
+      supabase
+        .from('profiles')
+        .update({ has_accepted_charter: true })
+        .eq('user_id', user.id)
+        .then(() => refreshProfile());
+    }
+  }, [user, hasAcceptedCharter, isAdmin]);
 
 
 
