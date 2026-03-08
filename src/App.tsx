@@ -123,14 +123,8 @@ function AppRoutes() {
     );
   }
 
-  // ─── CHARTER FLASH (2s on each login) ───
-  const [showCharterFlash, setShowCharterFlash] = useState(true);
-  useEffect(() => {
-    if (showCharterFlash) {
-      const timer = setTimeout(() => setShowCharterFlash(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [showCharterFlash]);
+
+
 
   // ─── LOGGED IN ───
   return (
