@@ -373,6 +373,20 @@ export default function EventsPage() {
           </div>
         </>
       )}
+
+      {/* Bottom sheet for binary/over-under */}
+      {sheetBet && (
+        <BetBottomSheet
+          bet={sheetBet}
+          pools={wagerPools[sheetBet.id] || {}}
+          totalPool={betTotals[sheetBet.id] || 0}
+          profileBalance={profile?.balance || 0}
+          open={!!sheetBet}
+          onOpenChange={(open) => { if (!open) setSheetBet(null); }}
+          onPlaceWager={placeWagerFromSheet}
+          existingWagerOptionId={userWagers[sheetBet.id]?.option_id}
+        />
+      )}
     </div>
   );
 }
