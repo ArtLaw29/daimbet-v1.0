@@ -564,6 +564,10 @@ export default function AdminPage() {
   const getProfileName = (userId: string) =>
     profiles.find(p => p.user_id === userId)?.display_name || 'Anonyme';
 
+  if (authLoading) {
+    return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
+  }
+
   if (!isAdmin) {
     return (
       <div className="text-center py-20">
