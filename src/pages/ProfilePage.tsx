@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { INTRO_PROFIL } from '@/components/TabIntro';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, MessageSquarePlus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ProposalForm from '@/components/ProposalForm';
 
 export default function ProfilePage() {
   const { profile, signOut } = useAuth();
+  const [showProposalForm, setShowProposalForm] = useState(false);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-2xl pb-20 md:pb-6">
@@ -45,11 +49,27 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          <Button onClick={() => setShowProposalForm(true)} className="w-full gold-gradient font-semibold">
+            <MessageSquarePlus className="w-4 h-4 mr-2" /> Soumettre une proposition 🗳️
+          </Button>
+
           <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/10" onClick={signOut}>
             <LogOut className="w-4 h-4 mr-2" /> Se déconnecter
           </Button>
         </div>
       )}
+
+      <Dialog open={showProposalForm} onOpenChange={setShowProposalForm}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display gold-text">🗳️ Nouvelle Proposition</DialogTitle>
+          </DialogHeader>
+          <ProposalForm
+            onClose={() => setShowProposalForm(false)}
+            onSubmitted={() => setShowProposalForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

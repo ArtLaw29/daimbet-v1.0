@@ -237,9 +237,33 @@ export default function EventsPage() {
 
   const voteProposal = async (proposalId: string, voteType: 'positif' | 'negatif') => {
     if (!user) return;
-    if (userVotes[proposalId]) {
-      toast.info('Tu as déjà voté sur cette proposition !');
+    const existing = userVotes[proposalId];
+    const proposal = proposals.find(p => p.id === proposalId);
+    if (!proposal) return;
+
+    if (existing === voteType) {
+      // Same vote → do nothing
+      toast.info('Tu as déjà voté ainsi !');
       return;
+    }
+
+    if (existing) {
+      // Change vote: delete old, insert new, update counters
+      await supabase.from('daimocratie_votes').delete()
+        .eq('proposal_id', proposalId).eq('user_id', user.id);
+
+      const oldField = existing === 'positif' ? 'votes_positive' : 'votes_negative';
+      const newField = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
+      await supabase.from('daimocratie_proposals').update({
+        [oldField]: Math.max(0, proposal[oldField] - 1),
+        [newField]: proposal[newField] + 1,
+      }).eq('id', proposalId);
+    } else {
+      // New vote
+      const field = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
+      await supabase.from('daimocratie_proposals').update({
+        [field]: proposal[field] + 1,
+      }).eq('id', proposalId);
     }
 
     const { error } = await supabase.from('daimocratie_votes').insert({
@@ -249,17 +273,17 @@ export default function EventsPage() {
     });
     if (error) { toast.error('Erreur de vote'); return; }
 
-    const field = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
-    const proposal = proposals.find(p => p.id === proposalId);
-    if (proposal) {
-      await supabase
-        .from('daimocratie_proposals')
-        .update({ [field]: proposal[field] + 1 })
-        .eq('id', proposalId);
-    }
-
     setUserVotes(prev => ({ ...prev, [proposalId]: voteType }));
     toast.success('Vote enregistré !');
+
+    // Check auto-activation threshold
+    const updatedPositive = (existing === 'positif' ? proposal.votes_positive - 1 : proposal.votes_positive) + (voteType === 'positif' ? 1 : 0);
+    const updatedNegative = (existing === 'negatif' ? proposal.votes_negative - 1 : proposal.votes_negative) + (voteType === 'negatif' ? 1 : 0);
+
+    if (updatedPositive >= 15 && updatedNegative < 5) {
+      supabase.functions.invoke('activate-proposal', { body: { proposal_id: proposalId } });
+    }
+
     fetchProposals();
   };
 
