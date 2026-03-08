@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Sparkles, Eye } from 'lucide-react';
+import { Lock, Eye } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { INTRO_KISS_MARRY } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -47,12 +47,16 @@ export default function KissMarryPage() {
     n.toLowerCase() !== (profile?.display_name || '').toLowerCase()
   );
 
-  const checkIfVoted = useCallback(() => {
+  const checkIfVoted = useCallback(async () => {
     const key = `km_voted_${monthYear}`;
     if (localStorage.getItem(key)) setHasVoted(true);
-    // Check reveal mode
-    const revealKey = `km_reveal_${monthYear}`;
-    if (localStorage.getItem(revealKey)) setRevealMode(true);
+    // Check reveal mode from platform_settings (admin-controlled)
+    const { data: revealSetting } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', `km_reveal_${monthYear}`)
+      .maybeSingle();
+    if (revealSetting?.value === 'true') setRevealMode(true);
     setLoading(false);
   }, [monthYear]);
 
@@ -109,6 +113,14 @@ export default function KissMarryPage() {
       return;
     }
 
+    // Validate unique names across categories
+    const selectedNames = Object.entries(selections).filter(([_, name]) => name).map(([_, name]) => name);
+    if (new Set(selectedNames).size !== selectedNames.length) {
+      toast.error('Choisis des prénoms différents pour chaque catégorie ! 🦌');
+      setSubmitting(false);
+      return;
+    }
+
     const votes = Object.entries(selections)
       .filter(([_, name]) => name)
       .map(([category, voted_prenom]) => ({ category, voted_prenom }));
@@ -130,33 +142,30 @@ export default function KissMarryPage() {
     generateIndices();
   };
 
-  const startReveal = async () => {
-    // Fetch latest data
-    const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
-    if (!data) return;
-
-    const catData: Record<string, { name: string; count: number }[]> = {};
-    for (const row of data as any[]) {
-      if (!catData[row.category]) catData[row.category] = [];
-      catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
-    }
-    // Keep top 3
-    for (const cat of Object.keys(catData)) {
-      catData[cat] = catData[cat].slice(0, 3);
-    }
-    setRevealData(catData);
-    setRevealMode(true);
-    localStorage.setItem(`km_reveal_${monthYear}`, 'true');
-
-    // Countdown and sequential reveal
-    setRevealStep(-3); // 3, 2, 1 countdown
-    setTimeout(() => setRevealStep(-2), 1000);
-    setTimeout(() => setRevealStep(-1), 2000);
-    setTimeout(() => setRevealStep(0), 3000); // kiss
-    setTimeout(() => setRevealStep(1), 5500); // marry
-    setTimeout(() => setRevealStep(2), 8000); // coup_soir
-    setTimeout(() => setRevealStep(3), 10500); // plan_q
-  };
+  // Auto-fetch reveal data when revealMode activates
+  useEffect(() => {
+    if (!revealMode || Object.keys(revealData).length > 0) return;
+    (async () => {
+      const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
+      if (!data) return;
+      const catData: Record<string, { name: string; count: number }[]> = {};
+      for (const row of data as any[]) {
+        if (!catData[row.category]) catData[row.category] = [];
+        catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
+      }
+      for (const cat of Object.keys(catData)) {
+        catData[cat] = catData[cat].slice(0, 3);
+      }
+      setRevealData(catData);
+      setRevealStep(-3);
+      setTimeout(() => setRevealStep(-2), 1000);
+      setTimeout(() => setRevealStep(-1), 2000);
+      setTimeout(() => setRevealStep(0), 3000);
+      setTimeout(() => setRevealStep(1), 5500);
+      setTimeout(() => setRevealStep(2), 8000);
+      setTimeout(() => setRevealStep(3), 10500);
+    })();
+  }, [revealMode, monthYear, revealData]);
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
@@ -259,12 +268,7 @@ export default function KissMarryPage() {
           </div>
         )}
 
-        {/* Reveal button (for testing — admin triggers it) */}
-        {Object.keys(revealData).length > 0 && (
-          <Button variant="outline" className="w-full" onClick={startReveal}>
-            <Sparkles className="w-4 h-4 mr-2" /> Voir la révélation 🏆
-          </Button>
-        )}
+        {/* Reveal is now admin-controlled via platform_settings */}
       </div>
     );
   }
@@ -277,8 +281,11 @@ export default function KissMarryPage() {
       </div>
       {INTRO_KISS_MARRY}
 
-      <p className="text-xs text-muted-foreground mb-4 text-center">
+      <p className="text-xs text-muted-foreground mb-2 text-center">
         Les catégories "Coup d'un soir" et "Plan Q" sont optionnelles — tu peux jouer sans elles.
+      </p>
+      <p className="text-xs text-primary/80 mb-4 text-center font-medium">
+        ⚠️ Choisis un prénom différent pour chaque catégorie !
       </p>
 
       <div className="space-y-5">
