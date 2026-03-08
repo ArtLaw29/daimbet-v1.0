@@ -20,6 +20,7 @@ import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import CharterModal from "./components/CharterModal";
+import ResolutionNotifier from "./components/ResolutionNotifier";
 
 const queryClient = new QueryClient();
 
