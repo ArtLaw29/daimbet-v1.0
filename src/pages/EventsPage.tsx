@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Timer, BarChart3, Tag, Flame } from 'lucide-react';
+import { Timer, Tag, Flame } from 'lucide-react';
 import { calculateEstimatedNetGain, STARTING_BALANCE } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
