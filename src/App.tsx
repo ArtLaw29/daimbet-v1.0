@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
@@ -12,12 +13,23 @@ import EventsPage from "./pages/EventsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import KissMarryPage from "./pages/KissMarryPage";
 import ProposalsPage from "./pages/ProposalsPage";
+import GazettePage from "./pages/GazettePage";
+import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import CharterModal from "./components/CharterModal";
 
 const queryClient = new QueryClient();
+
+/** Route guard: redirects to /feed if tab is hidden by admin */
+function GuardedRoute({ tabKey, children }: { tabKey: string; children: React.ReactNode }) {
+  const { visibleTabs } = useNavConfig();
+  if (visibleTabs[tabKey] === false) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
 
 function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
@@ -44,7 +56,7 @@ function AppRoutes() {
     );
   }
 
-  // ─── CHARTER MODAL (non-dismissable, admin skips) ───
+  // ─── CHARTER MODAL ───
   if (!hasAcceptedCharter && !isAdmin) {
     return (
       <>
@@ -63,11 +75,16 @@ function AppRoutes() {
       <Navbar />
       <Routes>
         <Route path="/" element={<EventsPage />} />
-        {/* Redirect landing/auth routes to feed when already logged in */}
         <Route path="/connexion" element={<Navigate to="/" replace />} />
         <Route path="/inscription" element={<Navigate to="/" replace />} />
-        <Route path="/leaderboard" element={<LeaderboardPage />} />
-        <Route path="/kiss-marry" element={<KissMarryPage />} />
+        <Route path="/gazette" element={<GazettePage />} />
+        <Route path="/classement" element={
+          <GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute>
+        } />
+        <Route path="/kiss-marry" element={
+          <GuardedRoute tabKey="kiss-marry"><KissMarryPage /></GuardedRoute>
+        } />
+        <Route path="/profil" element={<ProfilePage />} />
         <Route path="/proposals" element={<ProposalsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/login" element={<AdminPage />} />
@@ -85,7 +102,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <NavConfigProvider>
+            <AppRoutes />
+          </NavConfigProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
