@@ -91,6 +91,8 @@ export default function AdminPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const [archiveMonth, setArchiveMonth] = useState<string>('all');
 
   // Multi-winner resolution
   const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
