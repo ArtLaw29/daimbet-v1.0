@@ -1947,42 +1947,96 @@ export default function AdminPage() {
             </div>
 
             {/* ─── KISS/MARRY REVEAL ─── */}
-            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-display flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Révélation Kiss/Marry</h3>
-              <p className="text-xs text-muted-foreground">
-                Active la révélation des résultats du mois pour tous les utilisateurs.
+            <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-pink-500/10 to-violet-500/10 p-5 space-y-4">
+              <h3 className="text-lg font-display flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> 💋 Révélation Kiss/Marry</h3>
+              <p className="text-sm text-muted-foreground">
+                Dévoile le Top 3 de chaque catégorie à tous les utilisateurs. <strong>Action visible par tous.</strong>
               </p>
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  className="flex-1 border-primary/50 text-primary hover:bg-primary/10"
-                  onClick={async () => {
-                    const now = new Date();
-                    const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                    const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', `km_reveal_${monthYear}`).maybeSingle();
-                    if (existing) {
-                      await supabase.from('platform_settings').update({ value: 'true', updated_at: new Date().toISOString() }).eq('key', `km_reveal_${monthYear}`);
-                    } else {
-                      await supabase.from('platform_settings').insert({ key: `km_reveal_${monthYear}`, value: 'true' });
-                    }
-                    toast.success('🏆 Révélation Kiss/Marry activée !');
-                  }}
-                >
-                  <Sparkles className="w-4 h-4 mr-2" /> Activer la révélation 🏆
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    const now = new Date();
-                    const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                    await supabase.from('platform_settings').update({ value: 'false', updated_at: new Date().toISOString() }).eq('key', `km_reveal_${monthYear}`);
-                    toast.success('Révélation désactivée');
-                  }}
-                >
-                  Désactiver
-                </Button>
-              </div>
+              {(() => {
+                const [revealStep, setRevealStep] = React.useState(0);
+                const now = new Date();
+                const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+                if (revealStep === 0) {
+                  return (
+                    <div className="space-y-3">
+                      <Button
+                        variant="outline"
+                        className="w-full border-primary/50 text-primary hover:bg-primary/10 h-12 text-base"
+                        onClick={() => setRevealStep(1)}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" /> Activer la révélation 🏆
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-muted-foreground"
+                        onClick={async () => {
+                          await supabase.from('platform_settings').update({ value: 'false', updated_at: new Date().toISOString() }).eq('key', `km_reveal_${monthYear}`);
+                          toast.success('Révélation désactivée');
+                        }}
+                      >
+                        Désactiver la révélation en cours
+                      </Button>
+                    </div>
+                  );
+                }
+
+                if (revealStep === 1) {
+                  return (
+                    <div className="space-y-3 p-4 rounded-xl bg-destructive/10 border border-destructive/30">
+                      <p className="text-sm font-semibold text-destructive">⚠️ Étape 1/3 — Es-tu sûr ?</p>
+                      <p className="text-xs text-muted-foreground">Les résultats seront visibles par <strong>tous les utilisateurs</strong> immédiatement.</p>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setRevealStep(0)}>Annuler</Button>
+                        <Button variant="outline" className="border-destructive/50 text-destructive" onClick={() => setRevealStep(2)}>Continuer →</Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (revealStep === 2) {
+                  return (
+                    <div className="space-y-3 p-4 rounded-xl bg-destructive/20 border border-destructive/40">
+                      <p className="text-sm font-semibold text-destructive">🔥 Étape 2/3 — Dernière vérification</p>
+                      <p className="text-xs text-muted-foreground">Cette action est <strong>irréversible pour le mois en cours ({monthYear})</strong>. Le Top 3 Kiss, Marry, Coup d'un soir et Plan Q sera affiché.</p>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setRevealStep(0)}>Annuler</Button>
+                        <Button variant="outline" className="border-destructive/50 text-destructive" onClick={() => setRevealStep(3)}>Je confirme →</Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (revealStep === 3) {
+                  return (
+                    <div className="space-y-3 p-4 rounded-xl bg-primary/20 border border-primary/40">
+                      <p className="text-sm font-semibold text-primary">🏆 Étape 3/3 — Validation finale</p>
+                      <p className="text-xs text-muted-foreground">Clique sur le bouton ci-dessous pour révéler les résultats à tout le monde.</p>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setRevealStep(0)}>Annuler</Button>
+                        <Button
+                          className="gold-gradient font-semibold"
+                          onClick={async () => {
+                            const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', `km_reveal_${monthYear}`).maybeSingle();
+                            if (existing) {
+                              await supabase.from('platform_settings').update({ value: 'true', updated_at: new Date().toISOString() }).eq('key', `km_reveal_${monthYear}`);
+                            } else {
+                              await supabase.from('platform_settings').insert({ key: `km_reveal_${monthYear}`, value: 'true' });
+                            }
+                            toast.success('🏆 Révélation Kiss/Marry activée pour tous !');
+                            setRevealStep(0);
+                          }}
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" /> RÉVÉLER LES RÉSULTATS 🏆
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
             </div>
 
             {/* ─── RETRACTION CONFIG ─── */}
