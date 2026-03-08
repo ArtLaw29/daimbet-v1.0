@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Navbar from "./components/Navbar";
 import AuthPage from "./pages/AuthPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import EventsPage from "./pages/EventsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import KissMarryPage from "./pages/KissMarryPage";
@@ -31,6 +32,7 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="*" element={<AuthPage />} />
       </Routes>
     );
@@ -45,6 +47,7 @@ function AppRoutes() {
         <Route path="/kiss-marry" element={<KissMarryPage />} />
         <Route path="/proposals" element={<ProposalsPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/login" element={<AdminPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Flame, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { calculatePariMutuelOdds, aggregateBetsByOption, maxBetAmount } from '@/lib/pari-mutuel';
+import { calculatePariMutuelOdds, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS, STARTING_BALANCE } from '@/lib/pari-mutuel';
 
 interface EventOption {
   id: string;
@@ -49,7 +49,6 @@ export default function EventsPage() {
     } else {
       const evts = data as BetEvent[];
       setEvents(evts);
-      // Fetch all bets for these events to calculate pari mutuel odds
       if (evts.length > 0) {
         const eventIds = evts.map(e => e.id);
         const { data: bets } = await supabase
@@ -78,9 +77,13 @@ export default function EventsPage() {
     const amount = betAmounts[optionId] || 10;
     if (!user || !profile) return;
 
-    const maxBet = maxBetAmount(profile.balance);
+    const event = events.find(e => e.id === eventId);
+    const isLongTerm = event?.category === 'long-term';
+    const maxBet = maxBetAmount(profile.balance, isLongTerm);
+    const pctLabel = isLongTerm ? '15%' : '30%';
+
     if (amount > maxBet) {
-      toast.error(`Mise max: ${maxBet} DAIMcoins (20% de ton capital) 💸`);
+      toast.error(`Mise max : ${maxBet} DC (${pctLabel} de ton capital) 💸`);
       return;
     }
     if (amount > profile.balance) {
@@ -88,21 +91,21 @@ export default function EventsPage() {
       return;
     }
     if (amount < 1) {
-      toast.error('Mise minimum: 1 DAIMcoin');
+      toast.error('Mise minimum : 1 DC');
       return;
     }
 
-    // For pari mutuel, potential_winnings is estimated at bet time but recalculated at resolution
     const totalPool = (eventTotals[eventId] || 0) + amount;
     const optionPool = ((betPools[eventId] || {})[optionId] || 0) + amount;
     const estimatedOdds = calculatePariMutuelOdds(totalPool, optionPool);
+    const estimatedNet = calculateEstimatedNetGain(amount, estimatedOdds);
 
     const { error } = await supabase.from('bets').insert({
       user_id: user.id,
       event_id: eventId,
       option_id: optionId,
       amount,
-      potential_winnings: Math.round(amount * estimatedOdds),
+      potential_winnings: estimatedNet,
     });
 
     if (error) {
@@ -112,14 +115,14 @@ export default function EventsPage() {
         .from('profiles')
         .update({ balance: profile.balance - amount })
         .eq('user_id', user.id);
-      toast.success(`Pari placé ! 🎰 Cote estimée: x${estimatedOdds.toFixed(2)}`);
+      toast.success(`Pari placé ! 🎰 Cote estimée : x${estimatedOdds.toFixed(2)} · Gain estimé (après rake 5%) : ${estimatedNet} DC`);
       window.location.reload();
     }
   };
 
   const statusConfig: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-    open: { icon: Flame, label: 'En cours 🔥', color: 'text-primary' },
-    closed: { icon: Clock, label: 'Mises fermées', color: 'text-muted-foreground' },
+    open: { icon: Flame, label: 'Mises ouvertes 🔥', color: 'text-primary' },
+    closed: { icon: Clock, label: 'Mises clôturées', color: 'text-muted-foreground' },
     resolved: { icon: CheckCircle, label: 'Résolu ✅', color: 'text-success' },
     cancelled: { icon: XCircle, label: 'Annulé', color: 'text-destructive' },
   };
@@ -146,7 +149,9 @@ export default function EventsPage() {
 
       <div className="bg-secondary/30 border border-border rounded-lg p-3 mb-6 text-center">
         <p className="text-sm text-muted-foreground">
-          🔄 Les 100 DAIMcoins sont <span className="text-primary font-semibold">réinitialisés chaque mois</span>. Mise max : <span className="text-primary font-semibold">20% de ton capital</span>.
+          🔄 Les {STARTING_BALANCE} DC sont <span className="text-primary font-semibold">réinitialisés chaque mois</span>. 
+          Mise max : <span className="text-primary font-semibold">30% du capital</span> (15% pour les paris long terme). 
+          Rake : <span className="text-primary font-semibold">5% sur les gains nets</span>.
         </p>
       </div>
 
@@ -164,6 +169,7 @@ export default function EventsPage() {
           const emoji = categoryEmojis[event.category] || '🎲';
           const totalPool = eventTotals[event.id] || 0;
           const pools = betPools[event.id] || {};
+          const isLongTerm = event.category === 'long-term';
 
           return (
             <motion.div
@@ -188,7 +194,7 @@ export default function EventsPage() {
                   )}
                   {event.category === 'long-term' && (
                     <span className="inline-flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full mt-1">
-                      🔮 Pari long terme
+                      🔮 Pari long terme · Mise max 15%
                     </span>
                   )}
                 </div>
@@ -201,7 +207,7 @@ export default function EventsPage() {
               {totalPool > 0 && (
                 <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
                   <TrendingUp className="w-3.5 h-3.5" />
-                  Cagnotte totale: <span className="text-primary font-bold">{totalPool}</span>
+                  Cagnotte totale : <span className="text-primary font-bold">{totalPool}</span>
                   <img src={daimcoinLogo} alt="" className="w-3.5 h-3.5 rounded-full" />
                 </div>
               )}
@@ -209,8 +215,10 @@ export default function EventsPage() {
               <div className="space-y-2">
                 {event.event_options.map((option) => {
                   const optionPool = pools[option.id] || 0;
-                  const liveOdds = totalPool > 0 ? calculatePariMutuelOdds(totalPool, optionPool) : 0;
+                  const liveOdds = totalPool > 0 ? calculatePariMutuelOdds(totalPool, optionPool) : DEFAULT_ODDS;
                   const percentage = totalPool > 0 ? ((optionPool / totalPool) * 100).toFixed(0) : '0';
+                  const currentBetAmount = betAmounts[option.id] || 10;
+                  const estimatedNet = calculateEstimatedNetGain(currentBetAmount, liveOdds);
 
                   return (
                     <div
@@ -219,21 +227,31 @@ export default function EventsPage() {
                     >
                       <div className="flex-1">
                         <span className="font-medium">{option.label}</span>
-                        {totalPool > 0 && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {percentage}% des mises · {optionPool} DC
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {totalPool > 0 ? (
+                            <>{percentage}% des mises · {optionPool} DC</>
+                          ) : (
+                            <>Aucune mise pour l'instant</>
+                          )}
+                        </div>
+                        {event.status === 'open' && (
+                          <div className="text-xs text-primary/80 mt-0.5">
+                            Gain estimé (après rake de 5%) : {estimatedNet} DC
                           </div>
                         )}
                       </div>
-                      <span className="text-primary font-bold text-sm px-2 py-1 rounded bg-primary/10">
-                        {liveOdds > 0 ? `x${liveOdds.toFixed(2)}` : '—'}
-                      </span>
+                      <div className="text-center">
+                        <span className="text-primary font-bold text-sm px-2 py-1 rounded bg-primary/10 block">
+                          x{liveOdds.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">Cote estimée</span>
+                      </div>
                       {event.status === 'open' && (
                         <div className="flex items-center gap-2">
                           <Input
                             type="number"
                             min={1}
-                            max={maxBetAmount(profile?.balance || 0)}
+                            max={maxBetAmount(profile?.balance || 0, isLongTerm)}
                             value={betAmounts[option.id] || 10}
                             onChange={(e) =>
                               setBetAmounts({ ...betAmounts, [option.id]: parseInt(e.target.value) || 0 })

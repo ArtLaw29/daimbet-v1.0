@@ -10,6 +10,13 @@ export const PROMO_NAMES = [
   'Tom', 'Willem', 'Yanis', 'Yara', 'Yash', 'Yoann',
 ];
 
+export const STARTING_BALANCE = 1000;
+export const MAX_BET_PERCENT_STANDARD = 0.30;
+export const MAX_BET_PERCENT_LONG_TERM = 0.15;
+export const RAKE_PERCENT = 0.05;
+export const DEFAULT_ODDS = 1.10;
+export const MIN_ODDS = 1.0;
+
 export interface BetPool {
   optionId: string;
   totalBet: number;
@@ -17,27 +24,55 @@ export interface BetPool {
 
 /**
  * Calculate pari mutuel odds for an option.
- * Odds = Total pool / Amount on this option
+ * Floor: MIN_ODDS (1.0). Default when no bets: DEFAULT_ODDS (1.10).
  */
 export function calculatePariMutuelOdds(totalPool: number, optionPool: number): number {
-  if (optionPool === 0 || totalPool === 0) return 0;
-  return totalPool / optionPool;
+  if (optionPool === 0 || totalPool === 0) return DEFAULT_ODDS;
+  const raw = totalPool / optionPool;
+  return Math.max(raw, MIN_ODDS);
 }
 
 /**
- * Calculate winnings for a bet on the winning option.
- * Payout = (betAmount / totalOnWinningOption) * totalPool
+ * Calculate gross winnings (before rake).
  */
-export function calculateWinnings(betAmount: number, totalOnWinningOption: number, totalPool: number): number {
+export function calculateGrossWinnings(betAmount: number, totalOnWinningOption: number, totalPool: number): number {
   if (totalOnWinningOption === 0) return 0;
   return (betAmount / totalOnWinningOption) * totalPool;
 }
 
 /**
- * Max bet is 20% of user's current balance.
+ * Calculate rake on net gains only: Rake = (gross - stake) * 5%.
  */
-export function maxBetAmount(balance: number): number {
-  return Math.floor(balance * 0.2);
+export function calculateRake(grossWinnings: number, betAmount: number): number {
+  const netGain = grossWinnings - betAmount;
+  if (netGain <= 0) return 0;
+  return Math.round(netGain * RAKE_PERCENT);
+}
+
+/**
+ * Legacy alias for backward compat.
+ */
+export function calculateWinnings(betAmount: number, totalOnWinningOption: number, totalPool: number): number {
+  const gross = calculateGrossWinnings(betAmount, totalOnWinningOption, totalPool);
+  const rake = calculateRake(gross, betAmount);
+  return Math.round(gross - rake);
+}
+
+/**
+ * Estimated net gain for display: betAmount * odds, minus rake on net.
+ */
+export function calculateEstimatedNetGain(betAmount: number, odds: number): number {
+  const gross = betAmount * odds;
+  const rake = calculateRake(gross, betAmount);
+  return Math.round(gross - rake);
+}
+
+/**
+ * Max bet: 30% standard, 15% long-term.
+ */
+export function maxBetAmount(balance: number, isLongTerm: boolean = false): number {
+  const pct = isLongTerm ? MAX_BET_PERCENT_LONG_TERM : MAX_BET_PERCENT_STANDARD;
+  return Math.floor(balance * pct);
 }
 
 /**

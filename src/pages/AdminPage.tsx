@@ -10,7 +10,7 @@ import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, H
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
-import { calculateWinnings, aggregateBetsByOption } from '@/lib/pari-mutuel';
+import { calculateRake, calculateGrossWinnings, aggregateBetsByOption, STARTING_BALANCE, DEFAULT_ODDS } from '@/lib/pari-mutuel';
 
 type Profile = Tables<'profiles'>;
 
@@ -54,15 +54,12 @@ export default function AdminPage() {
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newCategory, setNewCategory] = useState('bet');
-  const [options, setOptions] = useState([
-    { label: '' },
-    { label: '' },
-  ]);
+  const [newClosesAt, setNewClosesAt] = useState('');
+  const [options, setOptions] = useState([{ label: '' }, { label: '' }]);
 
   // Results filter
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'category'>('date');
 
   useEffect(() => {
     if (isAdmin) fetchAll();
@@ -92,25 +89,38 @@ export default function AdminPage() {
 
     const { data: event, error } = await supabase
       .from('events')
-      .insert({ title: newTitle.trim(), description: newDesc.trim() || null, category: newCategory, created_by: user.id })
+      .insert({
+        title: newTitle.trim(),
+        description: newDesc.trim() || null,
+        category: newCategory,
+        created_by: user.id,
+        closes_at: newClosesAt || null,
+      })
       .select()
       .single();
 
     if (error || !event) { toast.error('Erreur création'); return; }
 
     await supabase.from('event_options').insert(
-      validOptions.map((o) => ({ event_id: event.id, label: o.label.trim(), odds: 2 }))
+      validOptions.map((o) => ({ event_id: event.id, label: o.label.trim(), odds: DEFAULT_ODDS }))
     );
 
     toast.success('Événement créé ! 🎉');
-    setNewTitle(''); setNewDesc('');
+    setNewTitle(''); setNewDesc(''); setNewClosesAt('');
     setOptions([{ label: '' }, { label: '' }]);
     fetchAll();
   };
 
-  // ─── RESOLVE EVENT (Pari Mutuel) ───
+  // ─── CLOSE BETS (Clôture) ───
+  const closeEvent = async (eventId: string) => {
+    await supabase.from('events').update({ status: 'closed' }).eq('id', eventId);
+    toast.success('Mises clôturées ! Les cotes sont figées. 🔒');
+    fetchAll();
+  };
+
+  // ─── RESOLVE EVENT (Résolution — Pari Mutuel avec rake) ───
   const resolveEvent = async (eventId: string, winnerOptionId: string) => {
-    const eventBets = allBets.filter(b => b.event_id === eventId && b.status === 'pending');
+    const eventBets = allBets.filter(b => b.event_id === eventId && (b.status === 'pending'));
     const totalPool = eventBets.reduce((s, b) => s + b.amount, 0);
     const totalOnWinner = eventBets.filter(b => b.option_id === winnerOptionId).reduce((s, b) => s + b.amount, 0);
 
@@ -122,18 +132,23 @@ export default function AdminPage() {
       await supabase.from('event_options').update({ is_winner: opt.id === winnerOptionId }).eq('id', opt.id);
     }
 
-    // Close event
+    // Resolve event
     await supabase.from('events').update({ status: 'resolved' }).eq('id', eventId);
 
-    // Pay winners with pari mutuel formula
+    // Pay winners with pari mutuel + rake
+    let totalRake = 0;
     const winningBets = eventBets.filter(b => b.option_id === winnerOptionId);
     for (const bet of winningBets) {
-      const payout = calculateWinnings(bet.amount, totalOnWinner, totalPool);
+      const gross = calculateGrossWinnings(bet.amount, totalOnWinner, totalPool);
+      const rake = calculateRake(gross, bet.amount);
+      const net = Math.round(gross - rake);
+      totalRake += rake;
+
       const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', bet.user_id).single();
       if (prof) {
-        await supabase.from('profiles').update({ balance: prof.balance + Math.round(payout) }).eq('user_id', bet.user_id);
+        await supabase.from('profiles').update({ balance: prof.balance + net }).eq('user_id', bet.user_id);
       }
-      await supabase.from('bets').update({ status: 'won', potential_winnings: Math.round(payout) }).eq('id', bet.id);
+      await supabase.from('bets').update({ status: 'won', potential_winnings: net }).eq('id', bet.id);
     }
 
     // Mark losers
@@ -142,7 +157,7 @@ export default function AdminPage() {
       await supabase.from('bets').update({ status: 'lost' }).eq('id', bet.id);
     }
 
-    toast.success(`Pari résolu (Pari Mutuel) ! 🏆 Cagnotte: ${totalPool} DC redistribuée.`);
+    toast.success(`Pari résolu ! 🏆 Cagnotte : ${totalPool} DC · Rake prélevé : ${totalRake} DC`);
     fetchAll();
   };
 
@@ -150,7 +165,6 @@ export default function AdminPage() {
   const cancelEvent = async (eventId: string) => {
     const eventBets = allBets.filter(b => b.event_id === eventId && b.status === 'pending');
 
-    // Refund all bettors
     for (const bet of eventBets) {
       const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', bet.user_id).single();
       if (prof) {
@@ -167,9 +181,9 @@ export default function AdminPage() {
   // ─── USER MANAGEMENT ───
   const resetAllBalances = async () => {
     for (const p of profiles) {
-      await supabase.from('profiles').update({ balance: 100 }).eq('user_id', p.user_id);
+      await supabase.from('profiles').update({ balance: STARTING_BALANCE }).eq('user_id', p.user_id);
     }
-    toast.success('Tous les soldes réinitialisés à 100 DAIMcoins !');
+    toast.success(`Tous les soldes réinitialisés à ${STARTING_BALANCE} DC !`);
     fetchAll();
   };
 
@@ -209,21 +223,21 @@ export default function AdminPage() {
       <div className="text-center py-20">
         <Shield className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
         <h1 className="text-2xl font-display text-muted-foreground">Accès refusé</h1>
-        <p className="text-muted-foreground mt-2">Tu n'es pas administrateur.</p>
+        <p className="text-muted-foreground mt-2">Tu n'es pas Jordaim Belfort.</p>
       </div>
     );
   }
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
-  const openEvents = events.filter(e => e.status === 'open');
+  const openEvents = events.filter(e => e.status === 'open' || e.status === 'closed');
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="text-center mb-8">
         <Shield className="w-12 h-12 mx-auto text-primary mb-2" />
-        <h1 className="text-4xl font-display gold-text">Panel Admin</h1>
-        <p className="text-muted-foreground mt-1">Système Pari Mutuel – Gère les événements et les joueurs</p>
+        <h1 className="text-4xl font-display gold-text">Jordaim Belfort</h1>
+        <p className="text-muted-foreground mt-1">Panneau d'administration – Pari Mutuel avec rake 5%</p>
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
@@ -248,23 +262,31 @@ export default function AdminPage() {
         {/* ─── CREATE EVENT ─── */}
         <TabsContent value="create">
           <form onSubmit={createEvent} className="rounded-xl border border-border bg-card p-6 card-glow space-y-4">
-            <h2 className="text-xl font-display">Nouvel événement (Pari Mutuel)</h2>
-            <p className="text-xs text-muted-foreground">Les cotes seront calculées automatiquement par la répartition des mises.</p>
+            <h2 className="text-xl font-display">Nouvel événement</h2>
+            <p className="text-xs text-muted-foreground">
+              Chronologie : Création → Mises ouvertes → Clôture → Fin du pari → Résolution → Archivage
+            </p>
             <Input placeholder="Titre de l'événement" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required maxLength={200} />
             <Textarea placeholder="Description (optionnel)" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} rows={2} maxLength={500} />
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">Catégorie</label>
-              <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                <option value="bet">🎲 Pari classique</option>
-                <option value="poll">📊 Sondage</option>
-                <option value="fun">😂 Fun</option>
-                <option value="urgent">⚡ Urgent</option>
-                <option value="long-term">🔮 Long terme</option>
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Catégorie</label>
+                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="bet">🎲 Pari classique (max 30%)</option>
+                  <option value="poll">📊 Sondage</option>
+                  <option value="fun">😂 Fun</option>
+                  <option value="urgent">⚡ Urgent (max 30%)</option>
+                  <option value="long-term">🔮 Long terme (max 15%)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block">Clôture des mises</label>
+                <Input type="datetime-local" value={newClosesAt} onChange={(e) => setNewClosesAt(e.target.value)} />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground">Options de pari</label>
+              <label className="text-sm text-muted-foreground">Options de pari (cote par défaut : {DEFAULT_ODDS})</label>
               {options.map((opt, i) => (
                 <div key={i} className="flex gap-2 items-center">
                   <Input
@@ -293,33 +315,51 @@ export default function AdminPage() {
           </form>
         </TabsContent>
 
-        {/* ─── MANAGE EVENTS (resolve / cancel) ─── */}
+        {/* ─── MANAGE EVENTS ─── */}
         <TabsContent value="manage">
           <div className="space-y-4">
-            <h2 className="text-xl font-display">Événements ouverts ({openEvents.length})</h2>
-            {openEvents.length === 0 && <p className="text-muted-foreground text-center py-8">Aucun événement ouvert.</p>}
+            <h2 className="text-xl font-display">Événements actifs ({openEvents.length})</h2>
+            {openEvents.length === 0 && <p className="text-muted-foreground text-center py-8">Aucun événement actif.</p>}
             {openEvents.map((event) => {
               const eventBets = allBets.filter(b => b.event_id === event.id && b.status === 'pending');
               const totalPool = eventBets.reduce((s, b) => s + b.amount, 0);
               const pools = aggregateBetsByOption(eventBets);
+              const isClosed = event.status === 'closed';
 
               return (
                 <motion.div key={event.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-lg font-display tracking-wider mb-1">{event.title}</h3>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-lg font-display tracking-wider">{event.title}</h3>
+                    <span className={`text-xs px-2 py-1 rounded-full ${isClosed ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                      {isClosed ? '🔒 Clôturé' : '🔥 Mises ouvertes'}
+                    </span>
+                  </div>
                   {event.description && <p className="text-sm text-muted-foreground mb-2">{event.description}</p>}
-                  <p className="text-xs text-muted-foreground mb-1">Cagnotte: <span className="text-primary font-bold">{totalPool} DC</span> · {eventBets.length} paris</p>
+                  <p className="text-xs text-muted-foreground mb-1">Cagnotte : <span className="text-primary font-bold">{totalPool} DC</span> · {eventBets.length} paris</p>
 
-                  <p className="text-xs text-muted-foreground mb-2 mt-3">🏆 Choisis le gagnant (Pari Mutuel) :</p>
+                  {/* Close bets button */}
+                  {event.status === 'open' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mb-3 mr-2"
+                      onClick={() => { if (confirm('Clôturer les mises ? Les cotes seront figées.')) closeEvent(event.id); }}
+                    >
+                      🔒 Clôturer les mises
+                    </Button>
+                  )}
+
+                  <p className="text-xs text-muted-foreground mb-2 mt-2">🏆 Résolution — Choisis le résultat gagnant :</p>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {event.event_options.map((opt) => {
                       const optPool = pools[opt.id] || 0;
-                      const odds = totalPool > 0 ? (totalPool / optPool).toFixed(2) : '—';
+                      const odds = totalPool > 0 ? (totalPool / optPool).toFixed(2) : DEFAULT_ODDS.toFixed(2);
                       return (
                         <Button
                           key={opt.id}
                           variant="outline"
                           size="sm"
-                          onClick={() => { if (confirm(`Confirmer "${opt.label}" comme gagnant ?`)) resolveEvent(event.id, opt.id); }}
+                          onClick={() => { if (confirm(`Confirmer "${opt.label}" comme résultat gagnant ? Les gains (après rake 5%) seront distribués.`)) resolveEvent(event.id, opt.id); }}
                           className="hover:bg-primary/20 hover:border-primary"
                         >
                           <Trophy className="w-3 h-3 mr-1" />
@@ -350,9 +390,10 @@ export default function AdminPage() {
               <h2 className="text-xl font-display">Historique des paris</h2>
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
                 <option value="all">Tous les statuts</option>
-                <option value="open">En cours</option>
-                <option value="resolved">Résolus</option>
-                <option value="cancelled">Annulés</option>
+                <option value="open">Mises ouvertes</option>
+                <option value="closed">Clôturé</option>
+                <option value="resolved">Résolu</option>
+                <option value="cancelled">Annulé</option>
               </select>
               <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="rounded-md border border-input bg-background px-2 py-1 text-xs">
                 <option value="all">Toutes catégories</option>
@@ -369,14 +410,14 @@ export default function AdminPage() {
               const eventBets = allBets.filter(b => b.event_id === event.id);
               const totalPool = eventBets.reduce((s, b) => s + b.amount, 0);
               const date = new Date(event.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-              const statusLabels: Record<string, string> = { open: '🔥 En cours', resolved: '✅ Résolu', cancelled: '❌ Annulé', closed: '🔒 Fermé' };
+              const statusLabels: Record<string, string> = { open: '🔥 Mises ouvertes', closed: '🔒 Clôturé', resolved: '✅ Résolu', cancelled: '❌ Annulé' };
 
               return (
                 <div key={event.id} className={`rounded-xl border bg-card p-4 ${event.status === 'resolved' ? 'border-primary/30' : event.status === 'cancelled' ? 'border-destructive/30' : 'border-border'}`}>
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-display tracking-wider">{event.title}</h3>
-                      <p className="text-xs text-muted-foreground">{date} · {statusLabels[event.status] || event.status} · Cagnotte: {totalPool} DC · {eventBets.length} paris</p>
+                      <p className="text-xs text-muted-foreground">{date} · {statusLabels[event.status] || event.status} · Cagnotte : {totalPool} DC · {eventBets.length} paris</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -400,7 +441,7 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { if (confirm('Réinitialiser TOUS les soldes à 100 DAIMcoins ?')) resetAllBalances(); }}
+                onClick={() => { if (confirm(`Réinitialiser TOUS les soldes à ${STARTING_BALANCE} DC ?`)) resetAllBalances(); }}
                 className="text-destructive border-destructive/30 hover:bg-destructive/10"
               >
                 Réinitialiser tous les soldes
@@ -453,7 +494,6 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Monthly breakdown */}
             <h3 className="text-lg font-display mt-6">Paris par mois</h3>
             <div className="space-y-2">
               {(() => {
