@@ -468,25 +468,31 @@ export type Database = {
       }
       tickets: {
         Row: {
+          admin_replied_at: string | null
           created_at: string
           id: string
           status: Database["public"]["Enums"]["ticket_status"]
           subject: string
           user_id: string
+          user_last_seen_at: string | null
         }
         Insert: {
+          admin_replied_at?: string | null
           created_at?: string
           id?: string
           status?: Database["public"]["Enums"]["ticket_status"]
           subject: string
           user_id: string
+          user_last_seen_at?: string | null
         }
         Update: {
+          admin_replied_at?: string | null
           created_at?: string
           id?: string
           status?: Database["public"]["Enums"]["ticket_status"]
           subject?: string
           user_id?: string
+          user_last_seen_at?: string | null
         }
         Relationships: []
       }
