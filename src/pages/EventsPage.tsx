@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Flame, Clock, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { calculatePariMutuelOdds, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS, STARTING_BALANCE } from '@/lib/pari-mutuel';
+import { INTRO_PARIS } from '@/components/TabIntro';
 import type { Tables } from '@/integrations/supabase/types';
 
 type BetOption = Tables<'bet_options'>;
@@ -139,14 +140,11 @@ export default function EventsPage() {
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 py-6 max-w-3xl pb-20 md:pb-6">
       <div className="text-center mb-4">
-        <h1 className="text-4xl font-display gold-text">Les Paris du Moment</h1>
-        <p className="text-muted-foreground mt-1">Place tes DAIMcoins sur les événements de la promo 🦌</p>
-        <p className="text-xs text-muted-foreground mt-2 bg-secondary/50 inline-block px-3 py-1 rounded-full">
-          💡 Système Pari Mutuel : les cotes évoluent en temps réel selon les mises !
-        </p>
+        <h1 className="text-3xl font-display gold-text">🎯 Les Paris du Moment</h1>
       </div>
+      {INTRO_PARIS}
 
       <div className="bg-secondary/30 border border-border rounded-lg p-3 mb-6 text-center">
         <p className="text-sm text-muted-foreground">

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Heart, Sparkles } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
+import { INTRO_KISS_MARRY } from '@/components/TabIntro';
 
 const CATEGORIES = ['kiss', 'marry', 'coup_soir', 'plan_q'] as const;
 
@@ -102,12 +103,11 @@ export default function KissMarryPage() {
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="text-center mb-8">
-        <Heart className="w-12 h-12 mx-auto text-destructive mb-2" />
-        <h1 className="text-4xl font-display gold-text">Kiss / Marry</h1>
-        <p className="text-muted-foreground mt-1">Vote anonyme — résultats en live 👀</p>
+    <div className="container mx-auto px-4 py-6 max-w-3xl pb-20 md:pb-6">
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-display gold-text">💋 Kiss / Marry</h1>
       </div>
+      {INTRO_KISS_MARRY}
 
       {!hasVoted ? (
         <>

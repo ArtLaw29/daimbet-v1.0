@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Medal } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
+import { INTRO_CLASSEMENT } from '@/components/TabIntro';
 
 type Profile = Tables<'profiles'>;
 
@@ -27,12 +28,11 @@ export default function LeaderboardPage() {
   const medals = ['🥇', '🥈', '🥉'];
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="text-center mb-8">
-        <Trophy className="w-12 h-12 mx-auto text-primary mb-2" />
-        <h1 className="text-4xl font-display gold-text">Classement</h1>
-        <p className="text-muted-foreground mt-1">Les meilleurs parieurs DAIM du mois 🏆</p>
+    <div className="container mx-auto px-4 py-6 max-w-2xl pb-20 md:pb-6">
+      <div className="text-center mb-6">
+        <h1 className="text-3xl font-display gold-text">🏆 Classement</h1>
       </div>
+      {INTRO_CLASSEMENT}
 
       <div className="space-y-2">
         {profiles.map((p, i) => (
