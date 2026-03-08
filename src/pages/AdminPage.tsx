@@ -50,6 +50,7 @@ export default function AdminPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [allWagers, setAllWagers] = useState<Wager[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gazetteMessages, setGazetteMessages] = useState<GazetteMessage[]>([]);
 
   // Create form state
   const [newTitle, setNewTitle] = useState('');
