@@ -102,7 +102,7 @@ export default function CharterModal({ userId, onAccepted }: CharterModalProps) 
                   className="h-full bg-primary"
                   initial={{ width: '100%' }}
                   animate={{ width: '0%' }}
-                  transition={{ duration: 20, ease: 'linear' }}
+                  transition={{ duration: 15, ease: 'linear' }}
                 />
               </div>
             </div>

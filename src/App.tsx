@@ -50,19 +50,7 @@ function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceChecked, setMaintenanceChecked] = useState(false);
-  const [showCharterFlash, setShowCharterFlash] = useState(() => {
-    // Show charter flash only every 4th login
-    const count = parseInt(localStorage.getItem('daimbet_login_count') || '0', 10) + 1;
-    localStorage.setItem('daimbet_login_count', String(count));
-    return count % 4 === 0;
-  });
-
-  useEffect(() => {
-    if (showCharterFlash) {
-      const timer = setTimeout(() => setShowCharterFlash(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showCharterFlash]);
+  const showCharterFlash = false; // Charter only shown once via CharterModal
 
   useEffect(() => {
     const checkMaintenance = async () => {
