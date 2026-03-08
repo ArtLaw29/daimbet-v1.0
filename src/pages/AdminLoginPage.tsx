@@ -12,12 +12,12 @@ export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSetup, setIsSetup] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       toast.error(error.message);
@@ -27,32 +27,60 @@ export default function AdminLoginPage() {
     setLoading(false);
   };
 
-  const handleSetup = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error('Le mot de passe doit contenir au moins 6 caractères');
-      return;
-    }
     setLoading(true);
-
-    const { data, error } = await supabase.functions.invoke('seed-admin', {
-      body: { email, password },
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
     });
-
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || 'Erreur lors de la création');
-    } else {
-      toast.success('Compte admin créé ! Connexion en cours...');
-      // Auto-login after creation
-      const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (loginErr) {
-        toast.error('Compte créé mais connexion échouée : ' + loginErr.message);
-      } else {
-        toast.success('Bienvenue, Jordaim Belfort ! 🦌👑');
-      }
-    }
+    if (error) toast.error(error.message);
+    else toast.success('Email de réinitialisation envoyé ! 📧');
     setLoading(false);
   };
+
+  if (showForgot) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-md"
+        >
+          <div className="text-center mb-8">
+            <img src={daimcoinLogo} alt="DAIMcoin" className="w-24 h-24 mx-auto mb-4 rounded-full" />
+            <h1 className="text-3xl font-display gold-text">Mot de passe oublié</h1>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-6 card-glow">
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="Email"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full gold-gradient font-semibold" disabled={loading}>
+                {loading ? '...' : 'Envoyer le lien 📧'}
+              </Button>
+            </form>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowForgot(false)}
+              className="w-full mt-4 border-primary/50 text-primary hover:bg-primary/10"
+            >
+              ← Retour à la connexion
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -78,7 +106,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 card-glow">
-          <form onSubmit={isSetup ? handleSetup : handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="admin-email">Email administrateur</Label>
               <Input
@@ -103,17 +131,17 @@ export default function AdminLoginPage() {
               />
             </div>
             <Button type="submit" className="w-full gold-gradient font-semibold" disabled={loading}>
-              {loading ? '...' : isSetup ? 'Créer le compte Admin 🛡️' : 'Connexion Admin 👑'}
+              {loading ? '...' : 'Connexion Admin 👑'}
             </Button>
           </form>
 
           <Button
             type="button"
             variant="outline"
-            onClick={() => setIsSetup(!isSetup)}
+            onClick={() => setShowForgot(true)}
             className="w-full mt-4 border-primary/50 text-primary hover:bg-primary/10"
           >
-            {isSetup ? '← Retour à la connexion' : '🛡️ Première fois ? Créer le compte admin'}
+            🔑 Mot de passe oublié ?
           </Button>
         </div>
       </motion.div>
