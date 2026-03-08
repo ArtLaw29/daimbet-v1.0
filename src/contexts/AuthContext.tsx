@@ -11,6 +11,8 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  hasAcceptedCharter: boolean;
+  refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -20,6 +22,8 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   loading: true,
   isAdmin: false,
+  hasAcceptedCharter: false,
+  refreshProfile: async () => {},
   signOut: async () => {},
 });
 
@@ -31,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasAcceptedCharter, setHasAcceptedCharter] = useState(false);
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -39,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', userId)
       .single();
     setProfile(data);
+    setHasAcceptedCharter(data?.has_accepted_charter ?? false);
   };
 
   const fetchRole = async (userId: string) => {
@@ -49,6 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('role', 'admin')
       .maybeSingle();
     setIsAdmin(!!data);
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id);
+    }
   };
 
   useEffect(() => {
@@ -64,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setIsAdmin(false);
+          setHasAcceptedCharter(false);
         }
         setLoading(false);
       }
@@ -87,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, isAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, isAdmin, hasAcceptedCharter, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

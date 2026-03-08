@@ -14,11 +14,12 @@ import ProposalsPage from "./pages/ProposalsPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import CharterModal from "./components/CharterModal";
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
+  const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
 
   if (loading) {
     return (
@@ -35,6 +36,21 @@ function AppRoutes() {
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route path="*" element={<AuthPage />} />
       </Routes>
+    );
+  }
+
+  // Charter modal — non-dismissable, must accept before accessing the app
+  // Admin users skip the charter
+  if (!hasAcceptedCharter && !isAdmin) {
+    return (
+      <>
+        <CharterModal userId={user.id} onAccepted={refreshProfile} />
+        {/* Still render reset-password route in case they're on it */}
+        <Routes>
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="*" element={<div />} />
+        </Routes>
+      </>
     );
   }
 
