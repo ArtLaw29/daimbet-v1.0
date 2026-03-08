@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,6 +14,13 @@ interface CharterModalProps {
 export default function CharterModal({ userId, onAccepted }: CharterModalProps) {
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [countdown, setCountdown] = useState(20);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => setCountdown(c => c - 1), 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const handleAccept = async () => {
     setLoading(true);
@@ -30,6 +37,8 @@ export default function CharterModal({ userId, onAccepted }: CharterModalProps) 
     }
     setLoading(false);
   };
+
+  const canAccept = accepted && countdown <= 0;
 
   return (
     <AnimatePresence>
@@ -80,11 +89,24 @@ export default function CharterModal({ userId, onAccepted }: CharterModalProps) 
 
           <Button
             className="w-full gold-gradient font-semibold"
-            disabled={!accepted || loading}
+            disabled={!canAccept || loading}
             onClick={handleAccept}
           >
-            {loading ? '...' : "J'ai compris et j'accepte 🦌"}
+            {loading ? '...' : countdown > 0 ? `Patiente encore ${countdown}s ⏳` : "J'ai compris et j'accepte 🦌"}
           </Button>
+
+          {countdown > 0 && (
+            <div className="mt-3">
+              <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary"
+                  initial={{ width: '100%' }}
+                  animate={{ width: '0%' }}
+                  transition={{ duration: 20, ease: 'linear' }}
+                />
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>
