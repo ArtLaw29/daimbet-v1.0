@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Medal } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
+import { INTRO_CLASSEMENT } from '@/components/TabIntro';
 
 type Profile = Tables<'profiles'>;
 
