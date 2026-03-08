@@ -1288,6 +1288,7 @@ export default function AdminPage() {
                   {selectedUser?.emoji || '🦌'} {selectedUser?.display_name || 'Anonyme'}
                 </DialogTitle>
                 <DialogDescription>
+                  📧 {selectedUser ? (userEmails[selectedUser.user_id] || '—') : ''}<br />
                   {selectedUser?.is_suspended ? '⛔ Compte suspendu' : '✅ Compte actif'} · Inscrit le {selectedUser && new Date(selectedUser.created_at).toLocaleDateString('fr-FR')}
                 </DialogDescription>
               </DialogHeader>
