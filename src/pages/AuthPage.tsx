@@ -338,7 +338,7 @@ export default function AuthPage() {
                   <p className="text-xs text-destructive mt-1">Format requis : prénom.nom@essec.edu</p>
                 )}
                 {email && emailValid === true && (
-                  <p className="text-xs text-green-500 mt-1">✓ Format valide</p>
+                  <p className="text-xs text-primary mt-1">✓ Format valide</p>
                 )}
               </div>
 
