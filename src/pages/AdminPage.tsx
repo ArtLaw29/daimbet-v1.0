@@ -100,6 +100,7 @@ export default function AdminPage() {
   const [userSortBy, setUserSortBy] = useState<'balance' | 'display_name' | 'created_at'>('balance');
   const [balanceDelta, setBalanceDelta] = useState('');
   const [balanceMotif, setBalanceMotif] = useState('');
+  const [userEmails, setUserEmails] = useState<Record<string, string>>({});
   const [injecting, setInjecting] = useState(false);
   const [showInjectionModal, setShowInjectionModal] = useState(false);
   const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
