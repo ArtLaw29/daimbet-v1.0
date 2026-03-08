@@ -96,13 +96,15 @@ export default function ProfilePage() {
 
   const fetchAll = async () => {
     if (!user) return;
-    const [wagersRes, betsRes, optionsRes, histRes, configRes] = await Promise.all([
+    const [wagersRes, betsRes, optionsRes, histRes, configRes, ticketsRes] = await Promise.all([
       supabase.from('wagers').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('bets').select('*'),
       supabase.from('bet_options').select('*'),
       supabase.from('solde_history').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
       supabase.from('retraction_config').select('*').limit(1).single(),
+      supabase.from('tickets').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
+    setTickets(ticketsRes.data || []);
 
     const wagers = wagersRes.data || [];
     const bets = betsRes.data || [];
