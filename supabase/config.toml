@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.send-admin-email]
 verify_jwt = false
+
+[functions.nuclear-reset]
+verify_jwt = false
