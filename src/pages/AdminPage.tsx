@@ -509,7 +509,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8 bg-secondary">
+        <TabsList className="grid w-full grid-cols-9 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
           <TabsTrigger value="proposals" className="font-display text-xs">
