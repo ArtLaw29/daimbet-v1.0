@@ -41,6 +41,36 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notifications: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          is_read: boolean
+          reference_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          is_read?: boolean
+          reference_id?: string | null
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          is_read?: boolean
+          reference_id?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       bet_options: {
         Row: {
           bet_id: string
