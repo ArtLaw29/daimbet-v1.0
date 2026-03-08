@@ -1,5 +1,4 @@
 import { format } from 'date-fns';
-import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
