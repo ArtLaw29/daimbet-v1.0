@@ -1370,41 +1370,197 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="stats">
-          <div className="space-y-4">
-            <h2 className="text-xl font-display">Statistiques 📊</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { label: 'Utilisateurs', value: totalUsers, emoji: '👥' },
-                { label: 'Mises total', value: totalWagersCount, emoji: '🎰' },
-                { label: 'Mises ce mois', value: wagersThisMonth, emoji: '📅' },
-                { label: 'Parieurs actifs', value: activeBettors, emoji: '🔥' },
-                { label: 'Mise moyenne', value: `${avgWagerSize} DC`, emoji: '💰' },
-                { label: 'Volume total', value: `${totalPoolAllTime} DC`, emoji: '📈' },
-              ].map(stat => (
-                <div key={stat.label} className="rounded-xl border border-border bg-card p-4 card-glow text-center">
-                  <p className="text-2xl mb-1">{stat.emoji}</p>
-                  <p className="text-2xl font-display text-primary">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+          <div className="space-y-6">
+            {/* ── NOTIFICATIONS ── */}
+            {(() => {
+              const unread = adminNotifications.filter(n => !n.is_read);
+              return unread.length > 0 && (
+                <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-display flex items-center gap-2"><Bell className="w-4 h-4 text-primary" /> Notifications ({unread.length})</h3>
+                    <Button variant="outline" size="sm" className="text-xs" onClick={async () => {
+                      for (const n of unread) {
+                        await supabase.from('admin_notifications').update({ is_read: true }).eq('id', n.id);
+                      }
+                      toast.success('Toutes les notifications marquées comme lues');
+                      fetchAll();
+                    }}>Tout marquer comme lu</Button>
+                  </div>
+                  {unread.slice(0, 10).map((n: any) => (
+                    <div key={n.id} className="flex items-start gap-3 p-2 rounded-lg bg-secondary/50 text-xs">
+                      <span className="shrink-0">{n.type === 'proposal' ? '🗳️' : n.type === 'flag' ? '🚩' : n.type === 'ticket' ? '🎫' : n.type === 'contact' ? '✉️' : '🔔'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold">{n.title}</p>
+                        {n.detail && <p className="text-muted-foreground">{n.detail}</p>}
+                      </div>
+                      <span className="text-muted-foreground whitespace-nowrap">{new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              );
+            })()}
+
+            {/* ── KPI CARDS ── */}
+            <div>
+              <h2 className="text-xl font-display mb-4">Statistiques 📊</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { label: 'Utilisateurs', value: totalUsers, emoji: '👥' },
+                  { label: 'Mises total', value: totalWagersCount, emoji: '🎰' },
+                  { label: 'Mises ce mois', value: wagersThisMonth, emoji: '📅' },
+                  { label: 'Parieurs actifs (mois)', value: activeBettors, emoji: '🔥' },
+                  { label: 'Mise moyenne', value: `${avgWagerSize} DC`, emoji: '💰' },
+                  { label: 'Volume total', value: `${totalPoolAllTime} DC`, emoji: '📈' },
+                  { label: 'Taux participation', value: `${totalUsers > 0 ? Math.round((new Set(allWagers.filter(w => !w.is_retracted).map(w => w.user_id)).size / totalUsers) * 100) : 0}%`, emoji: '📊' },
+                  { label: 'Propositions en attente', value: adminProposals.filter(p => p.status === 'en_attente').length, emoji: '🗳️' },
+                ].map(stat => (
+                  <div key={stat.label} className="rounded-xl border border-border bg-card p-3 card-glow text-center">
+                    <p className="text-xl mb-0.5">{stat.emoji}</p>
+                    <p className="text-xl font-display text-primary">{stat.value}</p>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <h3 className="text-lg font-display mt-6">Mises par mois</h3>
-            <div className="space-y-2">
-              {(() => {
-                const monthlyData: Record<string, number> = {};
-                allWagers.filter(w => !w.is_retracted).forEach(w => {
-                  const d = new Date(w.created_at);
-                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                  monthlyData[key] = (monthlyData[key] || 0) + 1;
-                });
-                return Object.entries(monthlyData).sort().reverse().map(([month, count]) => (
-                  <div key={month} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
-                    <span className="font-medium flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground" />{month}</span>
-                    <span className="text-primary font-bold">{count} mises</span>
+            {/* ── CHARTS ── */}
+            {/* Wagers per month bar chart */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-display mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-primary" /> Mises par mois</h3>
+              <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={(() => {
+                    const monthly: Record<string, { mises: number; volume: number }> = {};
+                    allWagers.filter(w => !w.is_retracted).forEach(w => {
+                      const d = new Date(w.created_at);
+                      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                      if (!monthly[key]) monthly[key] = { mises: 0, volume: 0 };
+                      monthly[key].mises++;
+                      monthly[key].volume += w.montant_dc;
+                    });
+                    return Object.entries(monthly).sort().map(([m, d]) => ({ month: m, ...d }));
+                  })()}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 15% 20%)" />
+                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(220 10% 55%)' }} />
+                    <YAxis tick={{ fontSize: 10, fill: 'hsl(220 10% 55%)' }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(220 18% 11%)', border: '1px solid hsl(220 15% 20%)', borderRadius: '8px', fontSize: '12px' }} />
+                    <Bar dataKey="mises" fill="hsl(42 92% 55%)" radius={[4, 4, 0, 0]} name="Mises" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Volume DC per month line chart */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-display mb-3 flex items-center gap-2"><Coins className="w-4 h-4 text-primary" /> Volume DC par mois</h3>
+              <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={(() => {
+                    const monthly: Record<string, number> = {};
+                    allWagers.filter(w => !w.is_retracted).forEach(w => {
+                      const d = new Date(w.created_at);
+                      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                      monthly[key] = (monthly[key] || 0) + w.montant_dc;
+                    });
+                    return Object.entries(monthly).sort().map(([m, v]) => ({ month: m, volume: v }));
+                  })()}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 15% 20%)" />
+                    <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(220 10% 55%)' }} />
+                    <YAxis tick={{ fontSize: 10, fill: 'hsl(220 10% 55%)' }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(220 18% 11%)', border: '1px solid hsl(220 15% 20%)', borderRadius: '8px', fontSize: '12px' }} />
+                    <Line type="monotone" dataKey="volume" stroke="hsl(42 92% 55%)" strokeWidth={2} dot={{ fill: 'hsl(42 92% 55%)', r: 4 }} name="Volume DC" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Proposals breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="text-sm font-display mb-3">🗳️ Propositions Daim-ocratie</h3>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'En attente', value: adminProposals.filter(p => p.status === 'en_attente').length },
+                          { name: 'Validées', value: adminProposals.filter(p => p.status === 'valide').length },
+                          { name: 'Rejetées', value: adminProposals.filter(p => p.status === 'rejete').length },
+                        ].filter(d => d.value > 0)}
+                        cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={3} dataKey="value"
+                        label={({ name, value }) => `${name}: ${value}`}
+                      >
+                        <Cell fill="hsl(42 92% 55%)" />
+                        <Cell fill="hsl(142 71% 45%)" />
+                        <Cell fill="hsl(0 72% 51%)" />
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Top parieurs */}
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="text-sm font-display mb-3">🏆 Top parieurs (volume misé)</h3>
+                <div className="space-y-2">
+                  {(() => {
+                    const userVolumes: Record<string, number> = {};
+                    allWagers.filter(w => !w.is_retracted).forEach(w => {
+                      userVolumes[w.user_id] = (userVolumes[w.user_id] || 0) + w.montant_dc;
+                    });
+                    return Object.entries(userVolumes)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+                      .map(([uid, vol], i) => {
+                        const p = profiles.find(pr => pr.user_id === uid);
+                        return (
+                          <div key={uid} className="flex items-center justify-between text-xs p-2 rounded-lg bg-secondary/50">
+                            <span className="font-medium">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`} {p?.display_name || 'Anonyme'}</span>
+                            <span className="text-primary font-bold">{vol} DC</span>
+                          </div>
+                        );
+                      });
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* ── REPORT DOWNLOAD ── */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-display mb-3 flex items-center gap-2"><Download className="w-4 h-4 text-primary" /> Télécharger le rapport</h3>
+              <div className="flex flex-wrap gap-2">
+                {(['week', 'month', 'all'] as const).map(period => (
+                  <div key={period} className="flex gap-1">
+                    <Button variant="outline" size="sm" className="text-xs" onClick={async () => {
+                      toast.info('Génération du rapport JSON...');
+                      const { data, error } = await supabase.functions.invoke('generate-report', { body: { period, format: 'json' } });
+                      if (error) { toast.error('Erreur génération rapport'); return; }
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url; a.download = `daimbet-${period}.json`; a.click();
+                      URL.revokeObjectURL(url);
+                      toast.success('Rapport téléchargé !');
+                    }}>
+                      <FileJson className="w-3 h-3 mr-1" /> {period === 'week' ? 'Semaine' : period === 'month' ? 'Mois' : 'Tout'} (JSON)
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-xs" onClick={async () => {
+                      toast.info('Génération du rapport CSV...');
+                      const resp = await supabase.functions.invoke('generate-report', { body: { period, format: 'csv' } });
+                      if (resp.error) { toast.error('Erreur génération rapport'); return; }
+                      const csvText = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data);
+                      const blob = new Blob([csvText], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a'); a.href = url; a.download = `daimbet-${period}.csv`; a.click();
+                      URL.revokeObjectURL(url);
+                      toast.success('Rapport CSV téléchargé !');
+                    }}>
+                      <FileSpreadsheet className="w-3 h-3 mr-1" /> CSV
+                    </Button>
                   </div>
-                ));
-              })()}
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-2">Les rapports sont optimisés pour analyse IA — données structurées en JSON avec timestamps.</p>
             </div>
           </div>
         </TabsContent>
