@@ -10,6 +10,7 @@ import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import EventsPage from "./pages/EventsPage";
+import BetDetailPage from "./pages/BetDetailPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import KissMarryPage from "./pages/KissMarryPage";
 import ProposalsPage from "./pages/ProposalsPage";
