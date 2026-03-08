@@ -10,6 +10,7 @@ import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import EventsPage from "./pages/EventsPage";
+import BetDetailPage from "./pages/BetDetailPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import KissMarryPage from "./pages/KissMarryPage";
 import ProposalsPage from "./pages/ProposalsPage";
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Navbar />
       <Routes>
         <Route path="/" element={<EventsPage />} />
+        <Route path="/bet/:id" element={<BetDetailPage />} />
         <Route path="/connexion" element={<Navigate to="/" replace />} />
         <Route path="/inscription" element={<Navigate to="/" replace />} />
         <Route path="/gazette" element={<GazettePage />} />

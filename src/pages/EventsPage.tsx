@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -7,6 +8,7 @@ import { Timer, Tag, Flame } from 'lucide-react';
 import { calculateEstimatedNetGain, STARTING_BALANCE } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
+import BetBottomSheet from '@/components/BetBottomSheet';
 import ProposalCard from '@/components/ProposalCard';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -21,10 +23,11 @@ const SORT_OPTIONS: { value: SortMode; label: string; icon: React.ElementType }[
 ];
 
 export default function EventsPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [bets, setBets] = useState<BetWithOptions[]>([]);
-  const [betAmounts, setBetAmounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [sheetBet, setSheetBet] = useState<BetWithOptions | null>(null);
   const [wagerPools, setWagerPools] = useState<Record<string, Record<string, number>>>({});
   const [betTotals, setBetTotals] = useState<Record<string, number>>({});
   const [wagerCounts, setWagerCounts] = useState<Record<string, number>>({});
@@ -209,32 +212,27 @@ export default function EventsPage() {
     return groups;
   }, [sortedBets, sortMode]);
 
-  const placeWager = async (betId: string, optionId: string) => {
-    const amount = betAmounts[optionId] || 10;
+  const handleOpenBet = (bet: BetWithOptions) => {
+    // Binary / Over-Under → bottom sheet; others → detail page
+    if (bet.type === 'binaire' || bet.type === 'over_under') {
+      setSheetBet(bet);
+    } else {
+      navigate(`/bet/${bet.id}`);
+    }
+  };
+
+  const placeWagerFromSheet = async (betId: string, optionId: string, amount: number) => {
     if (!user || !profile) return;
-
     const { data, error } = await supabase.rpc('place_wager', {
-      p_user_id: user.id,
-      p_bet_id: betId,
-      p_option_id: optionId,
-      p_montant_dc: amount,
+      p_user_id: user.id, p_bet_id: betId, p_option_id: optionId, p_montant_dc: amount,
     });
-
-    if (error) {
-      toast.error('Erreur lors de la mise');
-      return;
-    }
-
+    if (error) { toast.error('Erreur lors de la mise'); return; }
     const result = data as { error?: string; success?: boolean; new_odds?: number };
-    if (result.error) {
-      toast.error(result.error);
-      return;
-    }
-
+    if (result.error) { toast.error(result.error); return; }
     const newOdds = result.new_odds || 1.10;
     const estimatedNet = calculateEstimatedNetGain(amount, newOdds);
-    toast.success(`Mise placée ! 🎰 Cote : x${newOdds.toFixed(2)} · Gain estimé (après rake 5%) : ${estimatedNet} DC`);
-    await fetchBets();
+    toast.success(`Mise placée ! 🎰 Gain estimé (après rake 5%) : ${estimatedNet} DC`);
+    await Promise.all([fetchBets(), refreshProfile()]);
   };
 
   const voteProposal = async (proposalId: string, voteType: 'positif' | 'negatif') => {
@@ -333,14 +331,10 @@ export default function EventsPage() {
                     bet={bet}
                     pools={wagerPools[bet.id] || {}}
                     totalPool={betTotals[bet.id] || 0}
-                    betAmounts={betAmounts}
-                    onAmountChange={(optionId, amount) =>
-                      setBetAmounts(prev => ({ ...prev, [optionId]: amount }))
-                    }
-                    onPlaceWager={placeWager}
                     profileBalance={profile?.balance || 0}
                     userWager={userWagers[bet.id] || null}
                     wagerCount={wagerCounts[bet.id] || 0}
+                    onOpenBet={handleOpenBet}
                   />
                 </motion.div>
               ))}
@@ -378,6 +372,20 @@ export default function EventsPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Bottom sheet for binary/over-under */}
+      {sheetBet && (
+        <BetBottomSheet
+          bet={sheetBet}
+          pools={wagerPools[sheetBet.id] || {}}
+          totalPool={betTotals[sheetBet.id] || 0}
+          profileBalance={profile?.balance || 0}
+          open={!!sheetBet}
+          onOpenChange={(open) => { if (!open) setSheetBet(null); }}
+          onPlaceWager={placeWagerFromSheet}
+          existingWagerOptionId={userWagers[sheetBet.id]?.option_id}
+        />
       )}
     </div>
   );

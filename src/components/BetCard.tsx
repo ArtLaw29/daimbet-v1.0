@@ -1,10 +1,8 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Flame, Clock, CheckCircle, XCircle, TrendingUp, PauseCircle, Timer, Users } from 'lucide-react';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { calculatePariMutuelOdds, maxBetAmount, calculateEstimatedNetGain, DEFAULT_ODDS } from '@/lib/pari-mutuel';
+import { calculatePariMutuelOdds, DEFAULT_ODDS } from '@/lib/pari-mutuel';
 import type { Tables } from '@/integrations/supabase/types';
 import { useCountdown } from '@/hooks/useCountdown';
 
@@ -26,12 +24,10 @@ interface BetCardProps {
   bet: BetWithOptions;
   pools: Record<string, number>;
   totalPool: number;
-  betAmounts: Record<string, number>;
-  onAmountChange: (optionId: string, amount: number) => void;
-  onPlaceWager: (betId: string, optionId: string) => void;
   profileBalance: number;
   userWager?: UserWager | null;
   wagerCount?: number;
+  onOpenBet: (bet: BetWithOptions) => void;
 }
 
 const STATUS_CONFIG: Record<string, { icon: React.ElementType; label: string; color: string; cardClass?: string }> = {
@@ -53,7 +49,7 @@ function formatDate(dateStr: string | null) {
   return format(new Date(dateStr), "d MMM yyyy · HH'h'mm", { locale: fr });
 }
 
-export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountChange, onPlaceWager, profileBalance, userWager, wagerCount = 0 }: BetCardProps) {
+export default function BetCard({ bet, pools, totalPool, profileBalance, userWager, wagerCount = 0, onOpenBet }: BetCardProps) {
   const status = STATUS_CONFIG[bet.status] || STATUS_CONFIG.ouvert;
   const StatusIcon = status.icon;
   const isLongTerm = bet.is_long_terme;
@@ -79,7 +75,10 @@ export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountCha
   const hiddenCount = isTierce ? Math.max(0, sortedOptions.length - 3) : 0;
 
   return (
-    <div className={`rounded-xl border border-border bg-card p-5 card-glow ${status.cardClass || ''}`}>
+    <div
+      className={`rounded-xl border border-border bg-card p-5 card-glow cursor-pointer transition-colors hover:border-primary/30 ${status.cardClass || ''}`}
+      onClick={() => onOpenBet(bet)}
+    >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
@@ -161,25 +160,14 @@ export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountCha
           const optionPool = pools[option.id] || 0;
           const liveOdds = totalPool > 0 && optionPool > 0 ? calculatePariMutuelOdds(totalPool, optionPool) : DEFAULT_ODDS;
           const percentage = totalPool > 0 ? ((optionPool / totalPool) * 100).toFixed(0) : '0';
-          const currentBetAmount = betAmounts[option.id] || 10;
-          const estimatedNet = calculateEstimatedNetGain(currentBetAmount, liveOdds);
 
           return (
-            <div key={option.id} className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border/50">
+            <div key={option.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border/50">
               <div className="flex-1 min-w-[120px]">
                 <span className="font-medium">{option.label}</span>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  {optionPool > 0 ? (
-                    <>{percentage}% des mises · {optionPool} DC</>
-                  ) : (
-                    <>Aucune mise pour l'instant</>
-                  )}
+                  {optionPool > 0 ? <>{percentage}% · {optionPool} DC</> : <>Aucune mise</>}
                 </div>
-                {isOpen && (
-                  <div className="text-xs text-primary/80 mt-0.5">
-                    Gain estimé (après rake 5%) : {estimatedNet} DC
-                  </div>
-                )}
               </div>
               <div className="text-center">
                 <span className="text-primary font-bold text-sm px-2 py-1 rounded bg-primary/10 block">
@@ -189,26 +177,6 @@ export default function BetCard({ bet, pools, totalPool, betAmounts, onAmountCha
                   {isClosed ? 'Cote définitive' : 'Cote estimée'}
                 </span>
               </div>
-              {isOpen && !isSuspended && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={maxBetAmount(profileBalance, isLongTerm)}
-                    value={betAmounts[option.id] || 10}
-                    onChange={(e) => onAmountChange(option.id, parseInt(e.target.value) || 0)}
-                    className="w-20 h-8 text-center text-sm"
-                  />
-                  <img src={daimcoinLogo} alt="" className="w-4 h-4 rounded-full" />
-                  <Button
-                    size="sm"
-                    className="gold-gradient text-xs font-semibold"
-                    onClick={() => onPlaceWager(bet.id, option.id)}
-                  >
-                    Parier
-                  </Button>
-                </div>
-              )}
             </div>
           );
         })}
