@@ -487,7 +487,7 @@ export default function AdminPage() {
       </div>
 
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7 bg-secondary">
+        <TabsList className="grid w-full grid-cols-8 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
           <TabsTrigger value="proposals" className="font-display text-xs">
@@ -500,6 +500,14 @@ export default function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="results" className="font-display text-xs"><History className="w-4 h-4 mr-1" /> Archive</TabsTrigger>
           <TabsTrigger value="users" className="font-display text-xs"><Users className="w-4 h-4 mr-1" /> Joueurs</TabsTrigger>
+          <TabsTrigger value="tickets" className="font-display text-xs">
+            <Ticket className="w-4 h-4 mr-1" /> Tickets
+            {adminTickets.filter(t => t.status === 'ouvert').length > 0 && (
+              <span className="ml-1 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full">
+                {adminTickets.filter(t => t.status === 'ouvert').length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="gazette" className="font-display text-xs">
             <MessageSquare className="w-4 h-4 mr-1" /> Gazette
             {gazetteMessages.filter(m => m.flag_status && !m.is_deleted).length > 0 && (
