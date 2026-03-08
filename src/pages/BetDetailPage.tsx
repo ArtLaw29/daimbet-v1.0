@@ -151,18 +151,7 @@ export default function BetDetailPage() {
     await Promise.all([fetchBet(), refreshProfile()]);
   };
 
-  // Sort options for tiercé
-  const sortedOptions = useMemo(() => {
-    const opts = [...bet.bet_options];
-    if (!isTierce) return opts;
-    switch (tierceSort) {
-      case 'volume': return opts.sort((a, b) => (pools[b.id] || 0) - (pools[a.id] || 0));
-      case 'cote_asc': return opts.sort((a, b) => a.cote_actuelle - b.cote_actuelle);
-      case 'cote_desc': return opts.sort((a, b) => b.cote_actuelle - a.cote_actuelle);
-      case 'alpha': return opts.sort((a, b) => a.label.localeCompare(b.label));
-      default: return opts;
-    }
-  }, [bet.bet_options, pools, tierceSort, isTierce]);
+  // sortedOptions already computed above hooks
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-5xl pb-20 md:pb-6">
