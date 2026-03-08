@@ -65,37 +65,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
+    let mounted = true;
+
+    const loadUserData = async (session: Session | null) => {
+      if (!mounted) return;
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        try {
           await Promise.all([
             fetchProfile(session.user.id),
             fetchRole(session.user.id),
           ]);
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-          setHasAcceptedCharter(false);
+        } catch (e) {
+          console.error('Error loading user data:', e);
         }
-        setLoading(false);
+      } else {
+        setProfile(null);
+        setIsAdmin(false);
+        setHasAcceptedCharter(false);
+      }
+      if (mounted) setLoading(false);
+    };
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      loadUserData(session);
+    });
+
+    // Listen for auth changes (skip initial since we handle it above)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (_event === 'INITIAL_SESSION') return;
+        loadUserData(session);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await Promise.all([
-          fetchProfile(session.user.id),
-          fetchRole(session.user.id),
-        ]);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
