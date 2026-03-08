@@ -100,6 +100,7 @@ export default function AdminPage() {
   const [userSortBy, setUserSortBy] = useState<'balance' | 'display_name' | 'created_at'>('balance');
   const [balanceDelta, setBalanceDelta] = useState('');
   const [balanceMotif, setBalanceMotif] = useState('');
+  const [userEmails, setUserEmails] = useState<Record<string, string>>({});
   const [injecting, setInjecting] = useState(false);
   const [showInjectionModal, setShowInjectionModal] = useState(false);
   const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
@@ -149,7 +150,14 @@ export default function AdminPage() {
   // Multi-winner resolution
   const [selectedWinners, setSelectedWinners] = useState<Record<string, Set<string>>>({});
 
-  useEffect(() => { if (isAdmin) fetchAll(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) { fetchAll(); fetchUserEmails(); } }, [isAdmin]);
+
+  const fetchUserEmails = async () => {
+    const { data, error } = await supabase.functions.invoke('get-user-emails');
+    if (!error && data?.emails) {
+      setUserEmails(data.emails);
+    }
+  };
 
   const fetchAll = useCallback(async () => {
     const todayStart = new Date();
@@ -1259,7 +1267,7 @@ export default function AdminPage() {
                       {p.is_suspended && <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">Suspendu</span>}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {userWagers.length} mises · Inscrit le {new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      📧 {userEmails[p.user_id] || '—'} · {userWagers.length} mises · Inscrit le {new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -1280,6 +1288,7 @@ export default function AdminPage() {
                   {selectedUser?.emoji || '🦌'} {selectedUser?.display_name || 'Anonyme'}
                 </DialogTitle>
                 <DialogDescription>
+                  📧 {selectedUser ? (userEmails[selectedUser.user_id] || '—') : ''}<br />
                   {selectedUser?.is_suspended ? '⛔ Compte suspendu' : '✅ Compte actif'} · Inscrit le {selectedUser && new Date(selectedUser.created_at).toLocaleDateString('fr-FR')}
                 </DialogDescription>
               </DialogHeader>
