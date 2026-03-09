@@ -81,6 +81,12 @@ export default function ProposalForm({ onClose, onSubmitted }: ProposalFormProps
     if (error) {
       toast.error('Erreur lors de la soumission');
     } else {
+      // Gazette auto-message for new proposal
+      await supabase.from('gazette_messages').insert({
+        content: `🗳️ ${profile?.display_name || 'Un Daim'} propose un nouveau pari : "${title.trim()}" — Votez pour ou contre ! 🦌`,
+        user_id: user.id,
+        is_system_message: false,
+      });
       toast.success(`Ta proposition est soumise au vote de la promo 🎯 — ${profile?.display_name} propose ce pari !`);
       onSubmitted();
     }
