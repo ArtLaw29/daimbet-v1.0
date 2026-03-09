@@ -33,20 +33,44 @@ serve(async (req) => {
       });
     }
 
-    const { votes, month_year } = await req.json();
-    if (!votes || !month_year) {
+    const body = await req.json();
+    const { month_year } = body;
+
+    if (!month_year) {
       return new Response(JSON.stringify({ error: "Données manquantes" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Generate anonymous voter hash server-side
-    const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; // use as HMAC key
+    const secret = supabaseServiceKey;
     const encoder = new TextEncoder();
     const data = encoder.encode(`${user.id}:${month_year}:daimbet-km-secret`);
     const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const sig = await crypto.subtle.sign("HMAC", key, data);
     const voterHash = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // ── CHECK MODE: just verify if user already voted ──
+    if (body.action === "check") {
+      const { data: existing } = await supabase
+        .from('kiss_marry_votes')
+        .select('id')
+        .eq('voter_hash', voterHash)
+        .eq('month_year', month_year)
+        .limit(1);
+
+      return new Response(JSON.stringify({ has_voted: !!(existing && existing.length > 0) }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── VOTE MODE ──
+    const { votes } = body;
+    if (!votes) {
+      return new Response(JSON.stringify({ error: "Données manquantes" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Check if already voted this month
     const { data: existing } = await supabase
@@ -111,7 +135,6 @@ serve(async (req) => {
       });
     }
 
-    // Return the voter hash so client can store it for "already voted" check
     return new Response(JSON.stringify({ success: true, voter_hash: voterHash }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

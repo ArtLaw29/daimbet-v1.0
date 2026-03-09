@@ -54,8 +54,23 @@ export default function KissMarryPage() {
   );
 
   const checkIfVoted = useCallback(async () => {
-    const key = `km_voted_${monthYear}`;
-    if (localStorage.getItem(key)) setHasVoted(true);
+    try {
+      // Server-side check (localStorage alone is unreliable after nuclear reset)
+      const { data, error } = await supabase.functions.invoke('km-vote', {
+        body: { action: 'check', month_year: monthYear },
+      });
+      if (!error && data?.has_voted) {
+        localStorage.setItem(`km_voted_${monthYear}`, 'true');
+        setHasVoted(true);
+      } else {
+        // Clear stale localStorage if server says not voted
+        localStorage.removeItem(`km_voted_${monthYear}`);
+        setHasVoted(false);
+      }
+    } catch {
+      // Fallback to localStorage if server unreachable
+      if (localStorage.getItem(`km_voted_${monthYear}`)) setHasVoted(true);
+    }
     setLoading(false);
   }, [monthYear]);
 

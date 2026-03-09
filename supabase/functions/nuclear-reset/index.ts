@@ -173,9 +173,9 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Reset admin balance to 1000
+        // Reset admin profile (admin has NO balance — can't bet)
         for (const adminId of adminIds) {
-          await supabase.from("profiles").update({ balance: 1000, has_accepted_charter: true }).eq("user_id", adminId);
+          await supabase.from("profiles").update({ balance: 0, has_accepted_charter: true }).eq("user_id", adminId);
         }
       }
 
