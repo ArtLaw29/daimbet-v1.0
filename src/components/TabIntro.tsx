@@ -18,14 +18,26 @@ export const INTRO_PARIS = (
       Bienvenue sur le premier marché de prédiction de la promo.
     </p>
     <p>
-      Oublie ton CV : ici, ta connaissance des potins vaut de l'or et ton instinct est ton seul actif.
+      Oublie ton CV : ici, ta connaissance de la promo vaut de l'or, et ton instinct fait le reste.
     </p>
     <ul className="mt-3 space-y-1 text-xs list-disc list-inside">
-      <li>📊 <strong>Pari mutuel</strong> — les cotes évoluent en temps réel selon les mises</li>
-      <li>💰 Mise max : <strong>30% du capital</strong> (15% pour les paris long terme)</li>
-      <li>🔒 Cotes figées à la <strong>clôture</strong> des mises</li>
-      <li>↩️ <strong>Droit de Remords</strong> — possibilité de rétractation avant clôture</li>
+      <li>📊 <strong>Pari mutuel</strong> — les cotes évoluent en temps réel selon les mises de la promo</li>
+      <li>💰 <strong>Mise max</strong> — 30% de ton solde (15% pour les paris long terme)</li>
+      <li>🔒 <strong>Cotes figées à la clôture des mises</strong> — ton gain final est calculé à ce moment-là, pas quand tu as misé</li>
+      <li>↩️ <strong>Option de rétractation</strong> — tu peux annuler ta mise dès le lendemain, pendant la plage horaire autorisée</li>
     </ul>
+    <div className="mt-4 pt-3 border-t border-border/50">
+      <p className="font-medium text-foreground mb-2">Comment lire une cote ?</p>
+      <p>
+        Une cote haute (ex : 4.5) signifie que peu de parieurs pensent que cette option se réalisera — si tu as raison contre la promo, tes gains sont importants.
+      </p>
+      <p className="mt-1">
+        Une cote basse (ex : 1.2) signifie que la majorité parie déjà sur cette option — le marché la considère quasi certaine, mais si elle se réalise, tu ne gagnes que peu.
+      </p>
+      <p className="mt-2 text-xs italic text-muted-foreground">
+        Miser sur l'outsider, c'est risqué. Miser sur le favori, c'est prudent. À toi de lire la promo mieux que les autres.
+      </p>
+    </div>
   </TabIntro>
 );
 
