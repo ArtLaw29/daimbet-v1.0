@@ -296,13 +296,6 @@ export default function EventsPage() {
       </div>
       {INTRO_PARIS}
 
-      <div className="bg-secondary/30 border border-border rounded-lg p-3 mb-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          🔄 Les {STARTING_BALANCE} DC sont <span className="text-primary font-semibold">réinitialisés chaque mois</span>.
-          Mise max : <span className="text-primary font-semibold">30% du capital</span> (15% pour les paris long terme).
-          Rake : <span className="text-primary font-semibold">5% sur les gains nets</span>.
-        </p>
-      </div>
 
       {/* Sort selector */}
       <div className="flex items-center gap-2 mb-6 overflow-x-auto">
