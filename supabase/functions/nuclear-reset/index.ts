@@ -118,6 +118,20 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Explicit fallback: force-delete ALL kiss_marry_votes regardless
+      const { error: kmErr } = await supabase.from("kiss_marry_votes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if (kmErr) {
+        console.error("Force delete kiss_marry_votes error:", kmErr.message);
+        // Try alternative
+        const { error: kmErr2 } = await supabase.from("kiss_marry_votes").delete().gte("created_at", "1970-01-01");
+        if (kmErr2) {
+          console.error("Force delete kiss_marry_votes alt error:", kmErr2.message);
+          errors.push(`kiss_marry_votes (force): ${kmErr2.message}`);
+        }
+      } else {
+        console.log("Force-deleted all kiss_marry_votes");
+      }
+
       // Delete non-admin users
       const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
       const adminIds = (adminRoles ?? []).map((r: any) => r.user_id);
