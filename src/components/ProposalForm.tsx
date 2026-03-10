@@ -18,9 +18,8 @@ const TYPE_OPTIONS: { value: BetType; label: string; emoji: string; desc: string
 ];
 
 const TEMPLATES = [
-  { label: "L'élève [X] arrivera-t-il à l'heure ?", type: 'binaire' as BetType, title: '' },
-  { label: "L'élève [X] aura-t-il plus de [Y] min de retard ?", type: 'over_under' as BetType, title: '' },
-  { label: "Qui parmi [X, Y, Z] ?", type: 'tranches_multiples' as BetType, title: '' },
+  { label: "Est-ce que l'évènement X va se réaliser ?", type: 'binaire' as BetType, title: '' },
+  { label: "Qui dans la promo ... ?", type: 'tranches_multiples' as BetType, title: '' },
 ];
 
 interface ProposalFormProps {
