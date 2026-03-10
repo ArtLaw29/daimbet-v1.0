@@ -10,6 +10,7 @@ import type { Tables } from '@/integrations/supabase/types';
 
 type GazetteMessage = Tables<'gazette_messages'>;
 type GazetteReaction = Tables<'gazette_reactions'>;
+type Profile = Tables<'profiles'>;
 
 const QUICK_EMOJIS = ['😂', '🔥', '🦌', '👀', '💀', '❤️', '👏', '😭', '🤡', '💯', '🫡', '🤭'];
 const MAX_CHARS = 280;
