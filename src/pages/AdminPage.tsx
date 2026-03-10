@@ -1545,18 +1545,16 @@ export default function AdminPage() {
                           {msg.flag_score > 0 && !msg.flag_status && <span className="ml-2 text-muted-foreground/50">({msg.flag_score})</span>}
                         </p>
                       </div>
-                      {!msg.is_system_message && (
-                        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8"
-                          onClick={async () => {
-                            if (confirm('Supprimer ce message ?')) {
-                              await supabase.from('gazette_messages').update({ is_deleted: true }).eq('id', msg.id);
-                              toast.success('Message supprimé');
-                              fetchAll();
-                            }
-                          }}>
-                          <Trash2 className="w-3 h-3 text-muted-foreground" />
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8"
+                        onClick={async () => {
+                          if (confirm('Supprimer ce message ?')) {
+                            await supabase.from('gazette_messages').update({ is_deleted: true }).eq('id', msg.id);
+                            toast.success('Message supprimé');
+                            fetchAll();
+                          }
+                        }}>
+                        <Trash2 className="w-3 h-3 text-muted-foreground" />
+                      </Button>
                     </div>
                   </div>
                 );
