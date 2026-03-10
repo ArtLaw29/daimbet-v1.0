@@ -10,6 +10,7 @@ import type { Tables } from '@/integrations/supabase/types';
 
 type GazetteMessage = Tables<'gazette_messages'>;
 type GazetteReaction = Tables<'gazette_reactions'>;
+type Profile = Tables<'profiles'>;
 
 const QUICK_EMOJIS = ['😂', '🔥', '🦌', '👀', '💀', '❤️', '👏', '😭', '🤡', '💯', '🫡', '🤭'];
 const MAX_CHARS = 280;
@@ -17,18 +18,23 @@ const MAX_CHARS = 280;
 export default function GazettePage() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<GazetteMessage[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [reactions, setReactions] = useState<GazetteReaction[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [msgRes, reactRes] = await Promise.all([
+    const [msgRes, reactRes, profilesRes] = await Promise.all([
       supabase.from('gazette_messages').select('*').eq('is_deleted', false).order('created_at', { ascending: false }),
       supabase.from('gazette_reactions').select('*'),
+      supabase.from('profiles').select('*'),
     ]);
     setMessages(msgRes.data || []);
     setReactions(reactRes.data || []);
+    const profileMap: Record<string, Profile> = {};
+    (profilesRes.data || []).forEach(p => { profileMap[p.user_id] = p; });
+    setProfiles(profileMap);
   }, []);
 
   useEffect(() => {
@@ -144,6 +150,11 @@ export default function GazettePage() {
                   </div>
                 ) : (
                   <div className="rounded-2xl bg-card border border-border p-4">
+                    {msg.user_id && profiles[msg.user_id] && (
+                      <p className="text-xs font-semibold text-primary mb-1">
+                        {profiles[msg.user_id].emoji || '🦌'} {profiles[msg.user_id].display_name}
+                      </p>
+                    )}
                     <p className="text-sm leading-relaxed">{msg.content}</p>
                   </div>
                 )}
