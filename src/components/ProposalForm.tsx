@@ -111,6 +111,7 @@ export default function ProposalForm({ onClose, onSubmitted }: ProposalFormProps
           <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
             <h3 className="text-lg font-display">Étape 1 — Titre du pari</h3>
             <p className="text-sm text-muted-foreground">Formule ta question clairement</p>
+            <p className="text-xs text-amber-400/80 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">⚠️ Ta proposition ne sera pas anonyme — les autres utilisateurs verront qui l'a soumise.</p>
 
             {/* Templates */}
             <div className="space-y-2">
