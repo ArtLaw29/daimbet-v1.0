@@ -20,6 +20,8 @@ export const INTRO_PARIS = (
     <p>
       Oublie ton CV : ici, ta connaissance de la promo vaut de l'or, et ton instinct fait le reste.
     </p>
+    <p className="mt-2 text-xs italic text-muted-foreground">
+      Tous les paris sont modérés, leur résolution est assurée par l'admin, et une règle est sacrée sur DaimBet : <strong>on rigole ensemble, jamais aux dépens de quelqu'un.</strong>
     <ul className="mt-3 space-y-1 text-xs list-disc list-inside">
       <li>📊 <strong>Pari mutuel</strong> — les cotes évoluent en temps réel selon les mises de la promo</li>
       <li>💰 <strong>Mise max</strong> — 30% de ton solde (15% pour les paris long terme)</li>
