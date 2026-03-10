@@ -18,6 +18,7 @@ const MAX_CHARS = 280;
 export default function GazettePage() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<GazetteMessage[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [reactions, setReactions] = useState<GazetteReaction[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
