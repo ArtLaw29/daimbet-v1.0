@@ -22,7 +22,7 @@ export const INTRO_PARIS = (
     </p>
     <div className="mt-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
       <p className="text-sm text-foreground">
-        🛡️ Tous les paris sont modérés, leur résolution est assurée par l'admin, et une règle est sacrée sur DaimBet : <strong>on rigole ensemble, jamais aux dépens de quelqu'un.</strong> 🤝
+        🛡️ Tous les paris sont modérés, leur résolution est assurée par l'administrateur Jordaim Belfort, et une règle est sacrée sur DaimBet : <strong>on rigole ensemble, jamais aux dépens de quelqu'un.</strong> 🤝
       </p>
     </div>
     <ul className="mt-3 space-y-1 text-xs list-disc list-inside">
