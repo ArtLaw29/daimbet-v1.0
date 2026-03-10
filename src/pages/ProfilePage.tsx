@@ -487,7 +487,6 @@ export default function ProfilePage() {
             <p className="text-sm leading-relaxed">
               Un <strong>rake de 5%</strong> sur les gains nets est prélevé automatiquement.
               Mise max : <strong>30%</strong> du capital (15% long terme).
-              Les {1000} DC sont réinitialisés chaque mois.
             </p>
             <p className="text-sm leading-relaxed">Bonne chance à toi. 💸</p>
           </div>
