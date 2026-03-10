@@ -150,6 +150,11 @@ export default function GazettePage() {
                   </div>
                 ) : (
                   <div className="rounded-2xl bg-card border border-border p-4">
+                    {msg.user_id && profiles[msg.user_id] && (
+                      <p className="text-xs font-semibold text-primary mb-1">
+                        {profiles[msg.user_id].emoji || '🦌'} {profiles[msg.user_id].display_name}
+                      </p>
+                    )}
                     <p className="text-sm leading-relaxed">{msg.content}</p>
                   </div>
                 )}
