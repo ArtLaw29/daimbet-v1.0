@@ -66,8 +66,29 @@ Deno.serve(async (req) => {
 
     const results: { email: string; success: boolean; error?: string }[] = [];
 
+    const buildHtml = (bodyContent: string) => `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;background:#ffffff;padding:0;">
+  <div style="padding:24px 32px 16px;text-align:center;">
+    <span style="font-size:22px;font-weight:700;letter-spacing:6px;color:#111;">DAIMBET 🦌</span>
+  </div>
+  <div style="border-top:2px solid #111;margin:0 32px;"></div>
+  <div style="padding:28px 32px;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#333;">
+    ${bodyContent}
+  </div>
+  <div style="border-top:2px solid #111;margin:0 32px;"></div>
+  <div style="padding:16px 32px 24px;text-align:center;">
+    <div style="font-weight:700;font-size:14px;color:#111;">Jordaim Belfort</div>
+    <div style="font-size:12px;color:#888;margin-top:2px;">CEO — DaimBet Prediction Markets</div>
+  </div>
+</div>
+</body></html>`;
+
     for (const email of recipients) {
       try {
+        const htmlContent = buildHtml(body_html || `<p>${subject}</p>`);
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: { "Authorization": `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
@@ -76,7 +97,7 @@ Deno.serve(async (req) => {
             reply_to: "jordaim.belfort@daimbet.com",
             to: [email],
             subject,
-            html: body_html || `<p>${subject}</p>`,
+            html: htmlContent,
           }),
         });
         const resData = await res.json();
