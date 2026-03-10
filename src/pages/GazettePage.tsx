@@ -25,12 +25,16 @@ export default function GazettePage() {
   const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
-    const [msgRes, reactRes] = await Promise.all([
+    const [msgRes, reactRes, profilesRes] = await Promise.all([
       supabase.from('gazette_messages').select('*').eq('is_deleted', false).order('created_at', { ascending: false }),
       supabase.from('gazette_reactions').select('*'),
+      supabase.from('profiles').select('*'),
     ]);
     setMessages(msgRes.data || []);
     setReactions(reactRes.data || []);
+    const profileMap: Record<string, Profile> = {};
+    (profilesRes.data || []).forEach(p => { profileMap[p.user_id] = p; });
+    setProfiles(profileMap);
   }, []);
 
   useEffect(() => {
