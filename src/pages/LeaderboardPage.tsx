@@ -40,14 +40,14 @@ export default function LeaderboardPage() {
 
   const fetchAll = useCallback(async () => {
     const monday = getMonday().toISOString();
-    const [profRes, histRes, betsRes] = await Promise.all([
+    const [profRes, histRes, weekGainsRes] = await Promise.all([
       supabase.from('profiles').select('*'),
       supabase.from('solde_history').select('*').gte('created_at', getFirstOfMonth().toISOString()),
-      supabase.from('bets').select('id').eq('status', 'resolu').gte('updated_at', monday),
+      supabase.from('solde_history').select('id').gte('created_at', monday).gt('delta_dc', 0).limit(1),
     ]);
     setProfiles(profRes.data || []);
     setSoldeHistory(histRes.data || []);
-    setResolvedThisWeek((betsRes.data || []).length > 0);
+    setResolvedThisWeek((weekGainsRes.data || []).length > 0);
     setLoading(false);
   }, []);
 
@@ -160,7 +160,7 @@ export default function LeaderboardPage() {
       {/* Week filter: check if any bet resolved */}
       {filter === 'week' && !resolvedThisWeek ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg">📊 Classement disponible dès la résolution du premier pari de la semaine 🦌</p>
+          <p className="text-lg">📊 Classement disponible dès les premiers gains de DaimCoins de la semaine 🦌</p>
         </div>
       ) : (
         <div className="space-y-2">
