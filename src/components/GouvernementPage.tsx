@@ -65,7 +65,7 @@ export default function GouvernementPage() {
     const fetch = async () => {
       const [gouvRes, profilesRes] = await Promise.all([
         supabase.from('game_participations').select('*')
-          .eq('session_id', 'gouvernement-global'),
+          .eq('session_id', '00000000-0000-0000-0000-000000000001'),
         supabase.from('profiles').select('user_id, display_name, emoji, balance'),
       ]);
 
@@ -176,11 +176,11 @@ export default function GouvernementPage() {
     if (existingGouv) {
       await supabase.from('game_participations')
         .update({ data: gouvData as any })
-        .eq('session_id', 'gouvernement-global')
+        .eq('session_id', '00000000-0000-0000-0000-000000000001')
         .eq('user_id', user.id);
     } else {
       await supabase.from('game_participations').insert({
-        session_id: 'gouvernement-global',
+        session_id: '00000000-0000-0000-0000-000000000001',
         user_id: user.id,
         data: gouvData as any,
       });
@@ -214,7 +214,7 @@ export default function GouvernementPage() {
       // Update with comment
       await supabase.from('game_participations')
         .update({ data: gouvData as any })
-        .eq('session_id', 'gouvernement-global')
+        .eq('session_id', '00000000-0000-0000-0000-000000000001')
         .eq('user_id', user.id);
 
       setExistingGouv(gouvData);
