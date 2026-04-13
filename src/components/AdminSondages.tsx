@@ -37,6 +37,8 @@ export default function AdminSondages() {
   const [newOptions, setNewOptions] = useState('');
   const [newEndDate, setNewEndDate] = useState('');
   const [newBonus, setNewBonus] = useState('');
+  const [newFormat, setNewFormat] = useState<'simple' | 'combinaison' | 'predefined_libre'>('simple');
+  const [newSubtitle, setNewSubtitle] = useState('');
 
   // Delete option modal
   const [deleteOptionModal, setDeleteOptionModal] = useState<{ sessionId: string; option: string } | null>(null);
