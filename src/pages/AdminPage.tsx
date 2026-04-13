@@ -132,6 +132,8 @@ export default function AdminPage() {
 
   // Kiss/Marry reveal
   const [kmRevealStep, setKmRevealStep] = useState(0);
+  const [kmShowCoupSoir, setKmShowCoupSoir] = useState(false);
+  const [kmShowPlanQ, setKmShowPlanQ] = useState(false);
 
   // Maintenance
   const [maintenanceMode, setMaintenanceMode] = useState(false);
