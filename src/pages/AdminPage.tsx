@@ -2466,6 +2466,7 @@ export default function AdminPage() {
         {/* ═══════════════ TOURNOIS ═══════════════ */}
         <TabsContent value="tournois">
           <AdminTournois />
+        </TabsContent>
         {/* ═══════════════ GLOSSAIRE ═══════════════ */}
         <TabsContent value="glossaire">
           <AdminGlossary />
