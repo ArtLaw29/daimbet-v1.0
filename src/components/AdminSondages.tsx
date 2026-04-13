@@ -195,8 +195,29 @@ export default function AdminSondages() {
 
       {showCreate && (
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {([
+              { v: 'simple' as const, l: '📝 Simple', d: 'Choix parmi élèves + noms libres' },
+              { v: 'combinaison' as const, l: '🔗 Combinaison', d: 'Élève + Motif' },
+              { v: 'predefined_libre' as const, l: '📋 Prédéfini + Libre', d: 'Choix prédéfinis + ajout libre' },
+            ]).map(f => (
+              <button key={f.v} type="button" onClick={() => setNewFormat(f.v)}
+                className={`px-3 py-2 rounded-lg border text-sm transition-colors text-left ${
+                  newFormat === f.v ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border bg-secondary/50'
+                }`}>
+                <p className="font-medium">{f.l}</p>
+                <p className="text-[10px] text-muted-foreground">{f.d}</p>
+              </button>
+            ))}
+          </div>
           <Input placeholder="Question du sondage" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
-          <Textarea placeholder="Options (une par ligne)" value={newOptions} onChange={e => setNewOptions(e.target.value)} rows={4} />
+          <Input placeholder="Sous-titre (optionnel)" value={newSubtitle} onChange={e => setNewSubtitle(e.target.value)} />
+          {newFormat !== 'combinaison' && (
+            <Textarea placeholder={newFormat === 'predefined_libre' ? 'Options prédéfinies (une par ligne, ex: 🏀 Basketball - Samory)' : 'Options (une par ligne, optionnel)'} value={newOptions} onChange={e => setNewOptions(e.target.value)} rows={4} />
+          )}
+          {newFormat === 'combinaison' && (
+            <p className="text-xs text-muted-foreground">Les combos sont créés par les utilisateurs (Élève + Motif). Motifs prédéfinis : trafic d'influence, délit d'initié, fraude fiscale, etc.</p>
+          )}
           <Input type="datetime-local" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
           <Input placeholder="Montant bonus pronostic (DC, optionnel)" type="number" value={newBonus} onChange={e => setNewBonus(e.target.value)} />
           <Button className="gold-gradient" onClick={createSondage} disabled={!newTitle.trim()}>Créer 🚀</Button>
