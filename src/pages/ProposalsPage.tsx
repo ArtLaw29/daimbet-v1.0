@@ -27,6 +27,7 @@ export default function ProposalsPage() {
     const { data } = await supabase
       .from('daimocratie_proposals')
       .select('*')
+      .eq('is_hidden', false)
       .order('created_at', { ascending: false });
     const items = data || [];
     setProposals(items);
