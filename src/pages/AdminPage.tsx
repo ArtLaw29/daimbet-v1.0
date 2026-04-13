@@ -2545,7 +2545,7 @@ export default function AdminPage() {
               )}
               {nuclearStep === 3 && (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Un rapport complet va être envoyé à B00831041@essec.edu avant la suppression.</p>
+                  <p className="text-sm text-muted-foreground">Un rapport complet va être envoyé à l'adresse admin avant la suppression.</p>
                   {nuclearReportError && (
                     <p className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-2">{nuclearReportError}</p>
                   )}
@@ -2561,7 +2561,7 @@ export default function AdminPage() {
                       }
                       setNuclearReportSent(true);
                       setNuclearSendingReport(false);
-                      toast.success('Rapport envoyé à B00831041@essec.edu');
+                      toast.success('Rapport envoyé à l\'adresse admin');
                     }} disabled={nuclearSendingReport} className="w-full">
                       {nuclearSendingReport ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi en cours...</> : '📧 Envoyer le rapport'}
                     </Button>
