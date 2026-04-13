@@ -2122,6 +2122,51 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* ─── EMERGENCY SUSPENSION ─── */}
+            <div className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2 text-destructive">🚨 Contrôle d'urgence</h3>
+              <p className="text-xs text-muted-foreground">Suspendre ou réactiver instantanément un jeu ou les paris. Aucune donnée n'est supprimée.</p>
+              <div className="space-y-2">
+                {[
+                  { key: 'suspend_paris', label: '🎯 Paris', emoji: '🎯' },
+                  { key: 'suspend_kiss-marry', label: '💋 Kiss/Marry', emoji: '💋' },
+                  { key: 'suspend_daimocratie', label: '🗳️ Daimocratie', emoji: '🗳️' },
+                  { key: 'suspend_you-decide', label: '⚔️ You Decide', emoji: '⚔️' },
+                  { key: 'suspend_gouvernement', label: '🏛️ Gouvernement', emoji: '🏛️' },
+                  { key: 'suspend_fantasy-firm', label: '⚖️ Fantasy Firm', emoji: '⚖️' },
+                ].map(item => {
+                  const isSuspended = !!suspensionStatus[item.key];
+                  return (
+                    <div key={item.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-card border border-border/50">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${isSuspended ? 'bg-destructive' : 'bg-primary'}`} />
+                        <span className="text-sm">{item.label}</span>
+                        {isSuspended && <span className="text-[10px] text-destructive font-medium">SUSPENDU</span>}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={isSuspended ? 'outline' : 'destructive'}
+                        className="text-xs h-7"
+                        onClick={async () => {
+                          const newVal = isSuspended ? 'false' : 'true';
+                          const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', item.key).maybeSingle();
+                          if (existing) {
+                            await supabase.from('platform_settings').update({ value: newVal, updated_at: new Date().toISOString() }).eq('key', item.key);
+                          } else {
+                            await supabase.from('platform_settings').insert({ key: item.key, value: newVal });
+                          }
+                          setSuspensionStatus(prev => ({ ...prev, [item.key]: !isSuspended }));
+                          toast.success(`${item.label} ${isSuspended ? 'réactivé ✅' : 'suspendu 🚨'}`);
+                        }}
+                      >
+                        {isSuspended ? <><Play className="w-3 h-3 mr-1" /> Activer</> : <><Pause className="w-3 h-3 mr-1" /> Suspendre</>}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* ─── GAME SUBTITLES ─── */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-display flex items-center gap-2">🎮 Sous-titres des jeux</h3>
