@@ -7,6 +7,7 @@ import GameSessionsList from '@/components/GameSessionsList';
 import SondagePage from '@/components/SondagePage';
 import TournoiPage from '@/components/TournoiPage';
 import GouvernementPage from '@/components/GouvernementPage';
+import FantasyFirmPage from '@/components/FantasyFirmPage';
 
 interface GameTab {
   id: string;
@@ -124,7 +125,7 @@ export default function GamesPage() {
             {activeTab === 'daimocratie' && <SondagePage />}
             {activeTab === 'you-decide' && <TournoiPage />}
             {activeTab === 'gouvernement' && <GouvernementPage />}
-            {activeTab === 'fantasy-firm' && <GameSessionsList gameType="fantasy" emoji="⚖️" label="Daim Fantasy Firm" />}
+            {activeTab === 'fantasy-firm' && <FantasyFirmPage />}
           </>
         )}
       </motion.div>
