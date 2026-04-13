@@ -270,7 +270,7 @@ export default function AuthPage() {
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Se connecter 🦌'}
               </Button>
               <button
-                type="button" onClick={() => setShowForgot(true)}
+                type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
                 className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Mot de passe oublié ?
