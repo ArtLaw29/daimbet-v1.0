@@ -99,42 +99,78 @@ Deno.serve(async (req) => {
     const { action } = await req.json();
 
     if (action === "send_report") {
-      const resendApiKey = Deno.env.get("RESEND_API_KEY");
-      const [betsRes, wagersRes, profilesRes, gazetteRes, proposalsRes, soldeRes, ticketsRes, gameSessionsRes, gameParticipationsRes] = await Promise.all([
-        supabase.from("bets").select("*"),
-        supabase.from("wagers").select("*"),
-        supabase.from("profiles").select("*"),
-        supabase.from("gazette_messages").select("*"),
-        supabase.from("daimocratie_proposals").select("*"),
-        supabase.from("solde_history").select("*"),
-        supabase.from("tickets").select("*"),
-        supabase.from("game_sessions").select("*"),
-        supabase.from("game_participations").select("*"),
-      ]);
-
-      const report = {
-        generated_at: new Date().toISOString(),
-        reason: "RÉINITIALISATION TOTALE - Rapport pré-suppression",
-        data: {
-          profiles: profilesRes.data ?? [],
-          bets: betsRes.data ?? [],
-          wagers: wagersRes.data ?? [],
-          gazette_messages: gazetteRes.data ?? [],
-          proposals: proposalsRes.data ?? [],
-          solde_history: soldeRes.data ?? [],
-          tickets: ticketsRes.data ?? [],
-          game_sessions: gameSessionsRes.data ?? [],
-          game_participations: gameParticipationsRes.data ?? [],
-        },
-      };
-
-      if (resendApiKey) {
-        const reportJson = JSON.stringify(report, null, 2);
-        const reportBase64 = btoa(unescape(encodeURIComponent(reportJson)));
-        const fileName = `rapport-pre-reinitialisation-${new Date().toISOString().slice(0, 10)}.json`;
+      try {
+        const resendApiKey = Deno.env.get("RESEND_API_KEY");
         const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+
+        if (!resendApiKey || !lovableApiKey) {
+          console.log("No RESEND_API_KEY or LOVABLE_API_KEY configured, skipping report email");
+          return jsonResponse({ success: true, message: "Rapport non envoyé (pas de clé email configurée)", skipped: true });
+        }
+
+        console.log("Fetching all data for pre-reset report...");
+        const [betsRes, wagersRes, profilesRes, gazetteRes, proposalsRes, soldeRes, ticketsRes, gameSessionsRes, gameParticipationsRes] = await Promise.all([
+          supabase.from("bets").select("*"),
+          supabase.from("wagers").select("*"),
+          supabase.from("profiles").select("*"),
+          supabase.from("gazette_messages").select("*"),
+          supabase.from("daimocratie_proposals").select("*"),
+          supabase.from("solde_history").select("*"),
+          supabase.from("tickets").select("*"),
+          supabase.from("game_sessions").select("*"),
+          supabase.from("game_participations").select("*"),
+        ]);
+
+        const report = {
+          generated_at: new Date().toISOString(),
+          reason: "RÉINITIALISATION TOTALE - Rapport pré-suppression",
+          data: {
+            profiles: profilesRes.data ?? [],
+            bets: betsRes.data ?? [],
+            wagers: wagersRes.data ?? [],
+            gazette_messages: gazetteRes.data ?? [],
+            proposals: proposalsRes.data ?? [],
+            solde_history: soldeRes.data ?? [],
+            tickets: ticketsRes.data ?? [],
+            game_sessions: gameSessionsRes.data ?? [],
+            game_participations: gameParticipationsRes.data ?? [],
+          },
+        };
+
+        let reportJson = JSON.stringify(report, null, 2);
+        console.log(`Report JSON size: ${reportJson.length} bytes`);
+
+        // Truncate if > 5MB to avoid Resend limits
+        const MAX_SIZE = 5 * 1024 * 1024;
+        if (reportJson.length > MAX_SIZE) {
+          console.log("Report too large, truncating to counts + sample...");
+          const truncatedReport = {
+            generated_at: report.generated_at,
+            reason: report.reason,
+            note: "Rapport tronqué (taille > 5 Mo). Seuls les comptages et un échantillon sont inclus.",
+            counts: Object.fromEntries(
+              Object.entries(report.data).map(([k, v]) => [k, (v as unknown[]).length])
+            ),
+            sample: Object.fromEntries(
+              Object.entries(report.data).map(([k, v]) => [k, (v as unknown[]).slice(0, 10)])
+            ),
+          };
+          reportJson = JSON.stringify(truncatedReport, null, 2);
+        }
+
+        // Deno-safe base64 encoding
+        const reportBytes = new TextEncoder().encode(reportJson);
+        let reportBase64 = "";
+        const CHUNK = 8192;
+        for (let i = 0; i < reportBytes.length; i += CHUNK) {
+          reportBase64 += String.fromCharCode(...reportBytes.slice(i, i + CHUNK));
+        }
+        reportBase64 = btoa(reportBase64);
+
+        const fileName = `rapport-pre-reinitialisation-${new Date().toISOString().slice(0, 10)}.json`;
         const gatewayUrl = "https://connector-gateway.lovable.dev/resend";
 
+        console.log("Sending report email via Resend...");
         const emailRes = await fetch(`${gatewayUrl}/emails`, {
           method: "POST",
           headers: {
@@ -156,13 +192,18 @@ Deno.serve(async (req) => {
           }),
         });
 
-        if (!emailRes.ok) {
-          const emailData = await emailRes.json();
-          return jsonResponse({ error: `Échec envoi rapport: ${emailData?.message || emailRes.status}` }, 500);
-        }
-      }
+        const emailData = await emailRes.json();
+        console.log(`Resend response status: ${emailRes.status}`, emailData);
 
-      return jsonResponse({ success: true, message: "Rapport envoyé" });
+        if (!emailRes.ok) {
+          return jsonResponse({ error: `Échec envoi rapport: ${emailData?.message || emailData?.error || emailRes.status}` }, 500);
+        }
+
+        return jsonResponse({ success: true, message: "Rapport envoyé" });
+      } catch (reportErr) {
+        console.error("send_report caught error:", reportErr);
+        return jsonResponse({ error: `Erreur rapport: ${String(reportErr)}` }, 500);
+      }
     }
 
     if (action === "execute_reset") {

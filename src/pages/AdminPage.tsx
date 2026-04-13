@@ -2547,21 +2547,45 @@ export default function AdminPage() {
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">Un rapport complet va être envoyé à l'adresse admin avant la suppression.</p>
                   {nuclearReportError && (
-                    <p className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-2">{nuclearReportError}</p>
+                    <div className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-lg p-2 space-y-2">
+                      <p>{nuclearReportError}</p>
+                      <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => {
+                        setNuclearReportSent(true);
+                        setNuclearReportError('');
+                        toast.info('Étape rapport ignorée');
+                      }}>
+                        ⏭️ Passer cette étape
+                      </Button>
+                    </div>
                   )}
                   {!nuclearReportSent ? (
                     <Button onClick={async () => {
                       setNuclearSendingReport(true);
                       setNuclearReportError('');
-                      const { data, error } = await supabase.functions.invoke('nuclear-reset', { body: { action: 'send_report' } });
-                      if (error || data?.error) {
-                        setNuclearReportError(data?.error || error?.message || "L'envoi du rapport a échoué. Veuillez réessayer avant de continuer.");
+                      try {
+                        const { data, error } = await supabase.functions.invoke('nuclear-reset', { body: { action: 'send_report' } });
+                        if (error) {
+                          const detail = typeof error === 'object' && 'message' in error ? error.message : String(error);
+                          setNuclearReportError(`Erreur: ${detail}`);
+                          setNuclearSendingReport(false);
+                          return;
+                        }
+                        if (data?.error) {
+                          setNuclearReportError(data.error);
+                          setNuclearSendingReport(false);
+                          return;
+                        }
+                        if (data?.skipped) {
+                          toast.info(data.message || 'Rapport ignoré (pas de clé email)');
+                        } else {
+                          toast.success('Rapport envoyé à l\'adresse admin');
+                        }
+                        setNuclearReportSent(true);
                         setNuclearSendingReport(false);
-                        return;
+                      } catch (e: any) {
+                        setNuclearReportError(`Erreur inattendue: ${e?.message || String(e)}`);
+                        setNuclearSendingReport(false);
                       }
-                      setNuclearReportSent(true);
-                      setNuclearSendingReport(false);
-                      toast.success('Rapport envoyé à l\'adresse admin');
                     }} disabled={nuclearSendingReport} className="w-full">
                       {nuclearSendingReport ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Envoi en cours...</> : '📧 Envoyer le rapport'}
                     </Button>
