@@ -68,7 +68,7 @@ export default function TicketThread({ ticketId, subject, status, isAdmin, onBac
     if (!user || !newMessage.trim()) return;
     setSending(true);
 
-    const sender = isAdmin ? 'admin' : 'user';
+    const sender = isAdmin ? 'admin' : 'utilisateur';
     const { error } = await supabase.from('ticket_messages').insert({
       ticket_id: ticketId,
       sender,
