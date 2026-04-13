@@ -234,7 +234,9 @@ export default function AdminSondages() {
               <div className="flex items-start justify-between cursor-pointer" onClick={() => setSelectedId(isSelected ? null : s.id)}>
                 <div>
                   <h3 className="font-semibold">{s.title}</h3>
-                  <p className="text-xs text-muted-foreground">{s.status} • {new Date(s.created_at).toLocaleDateString('fr-FR')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.config?.format === 'combinaison' ? '🔗 Combo' : s.config?.format === 'predefined_libre' ? '📋 Libre' : '📝 Simple'} • {s.status} • {new Date(s.created_at).toLocaleDateString('fr-FR')}
+                  </p>
                 </div>
                 <Eye className="w-4 h-4 text-muted-foreground" />
               </div>
