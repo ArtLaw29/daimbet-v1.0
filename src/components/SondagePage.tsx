@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Users, Clock, CheckCircle, ChevronRight, Archive, ArrowLeft, Trophy, Coins, Lock, Loader2 } from 'lucide-react';
+import { Users, Clock, CheckCircle, ChevronRight, Archive, ArrowLeft, Trophy, Coins, Lock, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,13 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import type { Json } from '@/integrations/supabase/types';
 import CoinRain from '@/components/CoinRain';
+import { PROMO_NAMES } from '@/lib/pari-mutuel';
+
+const COMBO_MOTIFS = [
+  'Trafic d\'influence', 'Délit d\'initié', 'Fraude fiscale', 'Blanchiment',
+  'Trafic d\'organes', 'Corruption', 'Abus de biens sociaux',
+  'Faux et usage de faux', 'Escroquerie', 'Recel',
+];
 
 interface SondageSession {
   id: string;
@@ -32,6 +39,7 @@ interface Participation {
 }
 
 type View = 'list' | 'detail' | 'archives';
+type SondageFormat = 'simple' | 'combinaison' | 'predefined_libre';
 
 export default function SondagePage() {
   const { user } = useAuth();
@@ -39,6 +47,7 @@ export default function SondagePage() {
   const [archivedSessions, setArchivedSessions] = useState<SondageSession[]>([]);
   const [participationCounts, setParticipationCounts] = useState<Record<string, number>>({});
   const [userParticipations, setUserParticipations] = useState<Record<string, Participation>>({});
+  const [allParticipations, setAllParticipations] = useState<Record<string, Participation[]>>({});
   const [selectedSession, setSelectedSession] = useState<SondageSession | null>(null);
   const [view, setView] = useState<View>('list');
   const [loading, setLoading] = useState(true);
@@ -50,6 +59,17 @@ export default function SondagePage() {
   const [betAmount, setBetAmount] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [showCoinRain, setShowCoinRain] = useState(false);
+
+  // Combo format state
+  const [comboPrenom, setComboPrenom] = useState('');
+  const [comboMotif, setComboMotif] = useState('');
+  const [comboVoteOther, setComboVoteOther] = useState('');
+  const [pronosticFirst, setPronosticFirst] = useState('');
+  const [pronosticSecond, setPronosticSecond] = useState('');
+
+  // Add option state
+  const [newOptionText, setNewOptionText] = useState('');
+  const [addingFromPromo, setAddingFromPromo] = useState('');
 
   // Reveal animation
   const [revealStep, setRevealStep] = useState(-1);
@@ -73,9 +93,10 @@ export default function SondagePage() {
 
     const allIds = [...active, ...archived].map(s => s.id);
     if (allIds.length > 0) {
-      const [countsRes, myRes] = await Promise.all([
+      const [countsRes, myRes, allPartsRes] = await Promise.all([
         supabase.from('game_participations').select('session_id').in('session_id', allIds),
         user ? supabase.from('game_participations').select('*').in('session_id', allIds).eq('user_id', user.id) : Promise.resolve({ data: [] }),
+        supabase.from('game_participations').select('*').in('session_id', allIds),
       ]);
       const counts: Record<string, number> = {};
       (countsRes.data || []).forEach((p: any) => { counts[p.session_id] = (counts[p.session_id] || 0) + 1; });
@@ -83,6 +104,12 @@ export default function SondagePage() {
       const uMap: Record<string, Participation> = {};
       ((myRes as any).data || []).forEach((p: any) => { uMap[p.session_id] = p; });
       setUserParticipations(uMap);
+      const aMap: Record<string, Participation[]> = {};
+      ((allPartsRes as any).data || []).forEach((p: any) => {
+        if (!aMap[p.session_id]) aMap[p.session_id] = [];
+        aMap[p.session_id].push(p);
+      });
+      setAllParticipations(aMap);
     }
 
     if (user) {
@@ -102,21 +129,29 @@ export default function SondagePage() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
+  const getFormat = (s: SondageSession): SondageFormat => (s.config?.format as SondageFormat) || 'simple';
+
   const openDetail = (s: SondageSession) => {
     setSelectedSession(s);
     setView('detail');
     setRevealStep(-1);
     setRevealDone(false);
     const existing = userParticipations[s.id];
-    if (existing) {
-      setSelectedVote(existing.data?.vote || '');
-      setPronostic(existing.data?.pronostic || '');
-      setBetAmount(existing.data?.bet_amount || 1);
+    const fmt = getFormat(s);
+    if (fmt === 'combinaison') {
+      setComboPrenom(existing?.data?.combo?.split(' — ')[0] || '');
+      setComboMotif(existing?.data?.combo?.split(' — ')[1] || '');
+      setComboVoteOther('');
+      setPronosticFirst(existing?.data?.pronostic_first || '');
+      setPronosticSecond(existing?.data?.pronostic_second || '');
+      setBetAmount(existing?.data?.bet_amount || 1);
     } else {
-      setSelectedVote('');
-      setPronostic('');
-      setBetAmount(1);
+      setSelectedVote(existing?.data?.vote || '');
+      setPronostic(existing?.data?.pronostic || '');
+      setBetAmount(existing?.data?.bet_amount || 1);
     }
+    setNewOptionText('');
+    setAddingFromPromo('');
   };
 
   const maxBet = useMemo(() => {
@@ -126,33 +161,60 @@ export default function SondagePage() {
     return Math.floor(effectiveBal * 0.20);
   }, [balance, selectedSession, userParticipations]);
 
-
   const submitVote = async () => {
-    if (!user || !selectedSession || !selectedVote || !pronostic || betAmount < 1) return;
+    if (!user || !selectedSession || betAmount < 1) return;
+    const fmt = getFormat(selectedSession);
+
+    let voteParam: string;
+    let pronosticParam: string;
+
+    if (fmt === 'combinaison') {
+      const myCombo = `${comboPrenom} — ${comboMotif}`;
+      if (!comboPrenom || !comboMotif || !pronosticFirst || !pronosticSecond) {
+        toast.error('Remplis tous les champs');
+        return;
+      }
+      const votes = [myCombo];
+      if (comboVoteOther && comboVoteOther !== myCombo) votes.push(comboVoteOther);
+      voteParam = JSON.stringify({ combo: myCombo, votes });
+      pronosticParam = JSON.stringify({ first: pronosticFirst, second: pronosticSecond });
+    } else {
+      if (!selectedVote || !pronostic) return;
+      voteParam = selectedVote;
+      pronosticParam = pronostic;
+    }
+
     setSubmitting(true);
     const { data } = await supabase.rpc('place_sondage_vote', {
       p_user_id: user.id,
       p_session_id: selectedSession.id,
-      p_vote: selectedVote,
-      p_pronostic: pronostic,
+      p_vote: voteParam,
+      p_pronostic: pronosticParam,
       p_bet_amount: betAmount,
     });
     setSubmitting(false);
     const result = data as any;
-    if (result?.error) {
-      toast.error(result.error);
-      return;
-    }
+    if (result?.error) { toast.error(result.error); return; }
     toast.success(userParticipations[selectedSession.id] ? 'Vote modifié ! 🔄' : 'Vote enregistré ! 🎉');
+    fetchSessions();
+  };
+
+  const addOption = async (opt: string) => {
+    if (!selectedSession || !opt.trim()) return;
+    const current = (selectedSession.config?.options as string[]) || [];
+    if (current.includes(opt.trim())) { toast.error('Cette option existe déjà'); return; }
+    const newOpts = [...current, opt.trim()];
+    await supabase.from('game_sessions').update({ config: { ...selectedSession.config, options: newOpts } }).eq('id', selectedSession.id);
+    toast.success('Option ajoutée !');
+    setNewOptionText('');
+    setAddingFromPromo('');
     fetchSessions();
   };
 
   const proposeSession = async () => {
     if (!user || !proposeTitle.trim()) return;
-    const config: Record<string, unknown> = {};
-    if (proposeOptions.trim()) {
-      config.options = proposeOptions.split('\n').map(o => o.trim()).filter(Boolean);
-    }
+    const config: Record<string, unknown> = { format: 'simple' };
+    if (proposeOptions.trim()) config.options = proposeOptions.split('\n').map(o => o.trim()).filter(Boolean);
     if (proposeEndDate) config.end_date = new Date(proposeEndDate).toISOString();
 
     const { error } = await supabase.from('game_sessions').insert([{
@@ -162,41 +224,25 @@ export default function SondagePage() {
       config: config as Json,
       created_by: user.id,
     }] as any);
-
-    if (error) {
-      toast.error('Erreur lors de la création');
-      return;
-    }
-
-    // Gazette
-    await supabase.from('gazette_messages').insert({
-      content: `🗳️ Nouveau sondage : "${proposeTitle.trim()}" — Venez voter !`,
-      is_system_message: true,
-    });
-
+    if (error) { toast.error('Erreur'); return; }
+    await supabase.from('gazette_messages').insert({ content: `🗳️ Nouveau sondage : "${proposeTitle.trim()}" — Venez voter !`, is_system_message: true });
     toast.success('Sondage publié ! 🎉');
-    setProposeTitle('');
-    setProposeOptions('');
-    setProposeEndDate('');
+    setProposeTitle(''); setProposeOptions(''); setProposeEndDate('');
     setShowPropose(false);
     fetchSessions();
   };
 
-  // Reveal animation for closed sondage
   const startReveal = () => {
     if (!selectedSession) return;
     const results = selectedSession.config?.results as any[];
     if (!results || results.length === 0) return;
-    // Reveal from weakest to strongest (results already sorted DESC, so reverse)
-    const reversed = [...results].reverse();
     let step = 0;
     setRevealStep(0);
     const interval = setInterval(() => {
       step++;
-      if (step >= reversed.length) {
+      if (step >= results.length) {
         clearInterval(interval);
         setRevealDone(true);
-        // Check if user won
         const myPart = userParticipations[selectedSession.id];
         if (myPart && myPart.data?.vote === selectedSession.config?.winner_option) {
           setShowCoinRain(true);
@@ -210,9 +256,10 @@ export default function SondagePage() {
 
   if (loading) return <div className="text-center py-12 text-muted-foreground">Chargement...</div>;
 
-  // DETAIL VIEW
+  // ═══════════════ DETAIL VIEW ═══════════════
   if (view === 'detail' && selectedSession) {
     const config = selectedSession.config;
+    const fmt = getFormat(selectedSession);
     const options = (config?.options as string[]) || [];
     const count = participationCounts[selectedSession.id] || 0;
     const myPart = userParticipations[selectedSession.id];
@@ -220,11 +267,16 @@ export default function SondagePage() {
     const isClosed = selectedSession.status === 'closed' || selectedSession.status === 'archived';
     const results = (config?.results as any[]) || [];
     const winnerOption = config?.winner_option as string;
-
-    // Check if voting window still open (20 min before end)
+    const winnerOption2 = config?.winner_option_2 as string;
     const endDate = config?.end_date ? new Date(config.end_date as string) : null;
     const now = new Date();
     const votingClosed = endDate ? now > new Date(endDate.getTime() - 20 * 60000) : false;
+
+    // For combo: get all combos from other users
+    const sessionParts = allParticipations[selectedSession.id] || [];
+    const otherCombos = sessionParts
+      .filter(p => p.user_id !== user?.id && p.data?.combo)
+      .map(p => p.data.combo as string);
 
     return (
       <div className="space-y-4">
@@ -237,9 +289,10 @@ export default function SondagePage() {
           <div>
             <h2 className="text-xl font-display">{selectedSession.title}</h2>
             {selectedSession.subtitle && <p className="text-sm text-muted-foreground mt-1">{selectedSession.subtitle}</p>}
+            {fmt === 'predefined_libre' && <p className="text-xs text-muted-foreground mt-1">N'hésite pas à ajouter les sports et les athlètes de ton choix !</p>}
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {count} participant{count > 1 ? 's' : ''}</span>
             {endDate && (
               <span className="flex items-center gap-1">
@@ -252,60 +305,17 @@ export default function SondagePage() {
 
           {/* CLOSED — Results reveal */}
           {isClosed && results.length > 0 && (
-            <div className="space-y-3">
-              {revealStep < 0 ? (
-                <Button onClick={startReveal} className="gold-gradient w-full">
-                  🎉 Révéler les résultats
-                </Button>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">Résultats :</p>
-                  {[...results].reverse().map((r: any, i: number) => {
-                    const maxCount = results[0]?.count || 1;
-                    const pct = Math.round((r.count / maxCount) * 100);
-                    const isWinner = r.option === winnerOption;
-                    const visible = i <= revealStep;
-                    if (!visible) return null;
-                    return (
-                      <motion.div
-                        key={r.option}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className={`rounded-lg border p-3 ${isWinner && revealDone ? 'border-primary bg-primary/10 animate-pulse' : 'border-border bg-secondary/30'}`}
-                      >
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-semibold">{isWinner && revealDone ? '🏆 ' : ''}{r.option}</span>
-                          <span className="text-muted-foreground">{r.count} vote{r.count > 1 ? 's' : ''}</span>
-                        </div>
-                        <Progress value={pct} className="h-2" />
-                      </motion.div>
-                    );
-                  })}
-                  {revealDone && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 space-y-2">
-                      {myPart && (
-                        <div className="text-sm space-y-1">
-                          {myPart.data?.vote === winnerOption ? (
-                            <p className="text-primary flex items-center gap-1"><Trophy className="w-4 h-4" /> Tu as voté pour le #1 ! Gain : {config?.winner_share || 0} DC</p>
-                          ) : (
-                            <p className="text-muted-foreground">Tu as voté pour "{myPart.data?.vote}" — pas le #1 cette fois.</p>
-                          )}
-                          {myPart.data?.pronostic === winnerOption ? (
-                            <p className="text-primary flex items-center gap-1"><Coins className="w-4 h-4" /> Pronostic correct ! Bonus : {config?.bonus_per_user || 0} DC</p>
-                          ) : (
-                            <p className="text-muted-foreground">Ton pronostic "{myPart.data?.pronostic}" n'était pas le #1.</p>
-                          )}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-2">
-                        <p>Pot total : {config?.total_pot || 0} DC • Part par gagnant : {config?.winner_share || 0} DC</p>
-                        <p>Bonus pronostic : {config?.bonus_per_user || 0} DC ({config?.pronostic_correct_count || 0} pronostic{(config?.pronostic_correct_count || 0) > 1 ? 's' : ''} correct{(config?.pronostic_correct_count || 0) > 1 ? 's' : ''})</p>
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              )}
-            </div>
+            <ResultsReveal
+              results={results}
+              revealStep={revealStep}
+              revealDone={revealDone}
+              startReveal={startReveal}
+              winnerOption={winnerOption}
+              winnerOption2={winnerOption2}
+              myPart={myPart}
+              config={config}
+              format={fmt}
+            />
           )}
 
           {/* OPEN — Voting */}
@@ -316,75 +326,36 @@ export default function SondagePage() {
                   <Lock className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Les votes sont fermés (20 min avant la fin)</p>
                 </div>
+              ) : fmt === 'combinaison' ? (
+                <ComboVoteForm
+                  comboPrenom={comboPrenom} setComboPrenom={setComboPrenom}
+                  comboMotif={comboMotif} setComboMotif={setComboMotif}
+                  comboVoteOther={comboVoteOther} setComboVoteOther={setComboVoteOther}
+                  pronosticFirst={pronosticFirst} setPronosticFirst={setPronosticFirst}
+                  pronosticSecond={pronosticSecond} setPronosticSecond={setPronosticSecond}
+                  betAmount={betAmount} setBetAmount={setBetAmount}
+                  maxBet={maxBet}
+                  otherCombos={otherCombos}
+                  options={options}
+                  submitting={submitting}
+                  myPart={myPart}
+                  onSubmit={submitVote}
+                />
               ) : (
-                <div className="space-y-5">
-                  {/* Step 1: Pronostic */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold">🔮 Ton pronostic secret : quel choix sera le #1 ?</p>
-                    {options.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {options.map(opt => (
-                          <Button key={opt} size="sm"
-                            variant={pronostic === opt ? 'default' : 'outline'}
-                            onClick={() => setPronostic(opt)}>
-                            {opt}
-                          </Button>
-                        ))}
-                      </div>
-                    ) : (
-                      <Input placeholder="Tape ton pronostic..." value={pronostic} onChange={e => setPronostic(e.target.value)} />
-                    )}
-                  </div>
-
-                  {/* Step 2: Vote */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold">🗳️ Ton vote :</p>
-                    {options.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {options.map(opt => (
-                          <Button key={opt} size="sm"
-                            variant={selectedVote === opt ? 'default' : 'outline'}
-                            onClick={() => setSelectedVote(opt)}>
-                            {opt}
-                          </Button>
-                        ))}
-                      </div>
-                    ) : (
-                      <Input placeholder="Ton vote..." value={selectedVote} onChange={e => setSelectedVote(e.target.value)} />
-                    )}
-                  </div>
-
-                  {/* Step 3: Bet */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold">💰 Ta mise (max {maxBet} DC — 20% de ton solde) :</p>
-                    <div className="flex items-center gap-3">
-                      <Slider
-                        value={[betAmount]}
-                        onValueChange={([v]) => setBetAmount(v)}
-                        min={1}
-                        max={Math.max(1, maxBet)}
-                        step={1}
-                        className="flex-1"
-                      />
-                      <span className="text-sm font-bold w-16 text-right">{betAmount} DC</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    className="gold-gradient w-full"
-                    disabled={!selectedVote || !pronostic || betAmount < 1 || submitting}
-                    onClick={submitVote}
-                  >
-                    {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-                    {myPart ? '🔄 Modifier mon vote' : '✅ Valider mon vote'}
-                  </Button>
-
-                  {myPart && (
-                    <p className="text-xs text-primary flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> Tu as déjà voté. Tu peux modifier tant que le sondage est ouvert.
-                    </p>
-                  )}
-                </div>
+                <SimpleVoteForm
+                  options={options}
+                  selectedVote={selectedVote} setSelectedVote={setSelectedVote}
+                  pronostic={pronostic} setPronostic={setPronostic}
+                  betAmount={betAmount} setBetAmount={setBetAmount}
+                  maxBet={maxBet}
+                  submitting={submitting}
+                  myPart={myPart}
+                  onSubmit={submitVote}
+                  format={fmt}
+                  onAddOption={addOption}
+                  newOptionText={newOptionText} setNewOptionText={setNewOptionText}
+                  addingFromPromo={addingFromPromo} setAddingFromPromo={setAddingFromPromo}
+                />
               )}
             </>
           )}
@@ -393,7 +364,7 @@ export default function SondagePage() {
     );
   }
 
-  // ARCHIVES VIEW
+  // ═══════════════ ARCHIVES VIEW ═══════════════
   if (view === 'archives') {
     return (
       <div className="space-y-4">
@@ -408,20 +379,14 @@ export default function SondagePage() {
           <p className="text-center text-muted-foreground py-8">Aucun sondage archivé.</p>
         ) : (
           archivedSessions.map((s, i) => (
-            <motion.button
-              key={s.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+            <motion.button key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               onClick={() => openDetail(s)}
-              className="w-full text-left rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-all flex items-center gap-4"
-            >
+              className="w-full text-left rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-all flex items-center gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold truncate">{s.title}</h3>
                 <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                   <span><Users className="w-3 h-3 inline" /> {participationCounts[s.id] || 0}</span>
                   <span>🏆 {(s.config?.winner_option as string) || '—'}</span>
-                  {s.closed_at && <span>{new Date(s.closed_at).toLocaleDateString('fr-FR')}</span>}
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -432,7 +397,7 @@ export default function SondagePage() {
     );
   }
 
-  // LIST VIEW
+  // ═══════════════ LIST VIEW ═══════════════
   return (
     <div className="space-y-4">
       <div className="text-center mb-4">
@@ -456,7 +421,7 @@ export default function SondagePage() {
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
           <p className="text-sm font-semibold">Proposer un sondage</p>
           <Input placeholder="Question du sondage" value={proposeTitle} onChange={e => setProposeTitle(e.target.value)} />
-          <Textarea placeholder="Options (une par ligne)" value={proposeOptions} onChange={e => setProposeOptions(e.target.value)} rows={3} />
+          <Textarea placeholder="Options (une par ligne, optionnel)" value={proposeOptions} onChange={e => setProposeOptions(e.target.value)} rows={3} />
           <Input type="datetime-local" value={proposeEndDate} onChange={e => setProposeEndDate(e.target.value)} />
           <Button className="gold-gradient" disabled={!proposeTitle.trim()} onClick={proposeSession}>Publier 🚀</Button>
         </div>
@@ -471,30 +436,280 @@ export default function SondagePage() {
 
       {sessions.map((s, i) => {
         const count = participationCounts[s.id] || 0;
-        const myPart = userParticipations[s.id];
+        const myP = userParticipations[s.id];
+        const fmt = getFormat(s);
+        const fmtLabel = fmt === 'combinaison' ? '🔗 Combo' : fmt === 'predefined_libre' ? '📋 Choix libres' : '📝 Simple';
         return (
-          <motion.button
-            key={s.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
+          <motion.button key={s.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             onClick={() => openDetail(s)}
-            className="w-full text-left rounded-xl border border-border bg-card p-4 hover:border-primary/30 hover:bg-secondary/30 transition-all flex items-center gap-4"
-          >
+            className="w-full text-left rounded-xl border border-border bg-card p-4 hover:border-primary/30 hover:bg-secondary/30 transition-all flex items-center gap-4">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold truncate">{s.title}</h3>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {count}</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-secondary text-[10px]">{fmtLabel}</span>
                 <span className="px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px]">🟢 En cours</span>
-                {myPart && (
-                  <span className="flex items-center gap-0.5 text-primary"><CheckCircle className="w-3 h-3" /> Voté</span>
-                )}
+                {myP && <span className="flex items-center gap-0.5 text-primary"><CheckCircle className="w-3 h-3" /> Voté</span>}
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           </motion.button>
         );
       })}
+    </div>
+  );
+}
+
+// ═══════════════ SUB-COMPONENTS ═══════════════
+
+function SimpleVoteForm({ options, selectedVote, setSelectedVote, pronostic, setPronostic, betAmount, setBetAmount, maxBet, submitting, myPart, onSubmit, format, onAddOption, newOptionText, setNewOptionText, addingFromPromo, setAddingFromPromo }: {
+  options: string[]; selectedVote: string; setSelectedVote: (v: string) => void;
+  pronostic: string; setPronostic: (v: string) => void;
+  betAmount: number; setBetAmount: (v: number) => void;
+  maxBet: number; submitting: boolean; myPart: Participation | undefined;
+  onSubmit: () => void; format: SondageFormat;
+  onAddOption: (opt: string) => void;
+  newOptionText: string; setNewOptionText: (v: string) => void;
+  addingFromPromo: string; setAddingFromPromo: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-5">
+      {/* Pronostic */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">🔮 Ton pronostic secret : quel choix sera le #1 ?</p>
+        {options.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {options.map(opt => (
+              <Button key={opt} size="sm" variant={pronostic === opt ? 'default' : 'outline'} onClick={() => setPronostic(opt)}>
+                {opt}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <Input placeholder="Tape ton pronostic..." value={pronostic} onChange={e => setPronostic(e.target.value)} />
+        )}
+      </div>
+
+      {/* Vote */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">🗳️ Ton vote :</p>
+        {options.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {options.map(opt => (
+              <Button key={opt} size="sm" variant={selectedVote === opt ? 'default' : 'outline'} onClick={() => setSelectedVote(opt)}>
+                {opt}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <Input placeholder="Ton vote..." value={selectedVote} onChange={e => setSelectedVote(e.target.value)} />
+        )}
+
+        {/* Add option — for simple & predefined_libre */}
+        <div className="border-t border-border pt-3 mt-3 space-y-2">
+          <p className="text-xs text-muted-foreground">➕ Ajouter un choix :</p>
+          <div className="flex gap-2">
+            <select className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={addingFromPromo} onChange={e => { setAddingFromPromo(e.target.value); if (e.target.value) onAddOption(e.target.value); }}>
+              <option value="">Élève de la promo...</option>
+              {PROMO_NAMES.filter(n => !options.includes(n)).map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <Input placeholder="Ou tape un nom libre..." value={newOptionText} onChange={e => setNewOptionText(e.target.value)} className="flex-1" />
+            <Button size="sm" variant="outline" disabled={!newOptionText.trim()} onClick={() => onAddOption(newOptionText)}>
+              <Plus className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bet */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">💰 Ta mise (max {maxBet} DC — 20% de ton solde) :</p>
+        <div className="flex items-center gap-3">
+          <Slider value={[betAmount]} onValueChange={([v]) => setBetAmount(v)} min={1} max={Math.max(1, maxBet)} step={1} className="flex-1" />
+          <span className="text-sm font-bold w-16 text-right">{betAmount} DC</span>
+        </div>
+      </div>
+
+      <Button className="gold-gradient w-full" disabled={!selectedVote || !pronostic || betAmount < 1 || submitting} onClick={onSubmit}>
+        {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+        {myPart ? '🔄 Modifier mon vote' : '✅ Valider mon vote'}
+      </Button>
+
+      {myPart && (
+        <p className="text-xs text-primary flex items-center gap-1">
+          <CheckCircle className="w-3 h-3" /> Tu as déjà voté. Tu peux modifier tant que le sondage est ouvert.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ComboVoteForm({ comboPrenom, setComboPrenom, comboMotif, setComboMotif, comboVoteOther, setComboVoteOther, pronosticFirst, setPronosticFirst, pronosticSecond, setPronosticSecond, betAmount, setBetAmount, maxBet, otherCombos, options, submitting, myPart, onSubmit }: {
+  comboPrenom: string; setComboPrenom: (v: string) => void;
+  comboMotif: string; setComboMotif: (v: string) => void;
+  comboVoteOther: string; setComboVoteOther: (v: string) => void;
+  pronosticFirst: string; setPronosticFirst: (v: string) => void;
+  pronosticSecond: string; setPronosticSecond: (v: string) => void;
+  betAmount: number; setBetAmount: (v: number) => void;
+  maxBet: number; otherCombos: string[]; options: string[];
+  submitting: boolean; myPart: Participation | undefined;
+  onSubmit: () => void;
+}) {
+  const myCombo = comboPrenom && comboMotif ? `${comboPrenom} — ${comboMotif}` : '';
+  const allCombos = [...new Set([...options, ...otherCombos, myCombo].filter(Boolean))];
+
+  return (
+    <div className="space-y-5">
+      {/* Step 1: Create combo */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">🔗 Crée ta combinaison (Élève + Motif) :</p>
+        <div className="flex gap-2">
+          <select className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={comboPrenom} onChange={e => setComboPrenom(e.target.value)}>
+            <option value="">Élève...</option>
+            {PROMO_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <select className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={comboMotif} onChange={e => setComboMotif(e.target.value)}>
+            <option value="">Motif...</option>
+            {COMBO_MOTIFS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        {myCombo && <p className="text-xs text-primary">Ta combinaison : {myCombo} ✓ (vote automatique)</p>}
+      </div>
+
+      {/* Step 2: Vote for 1 other combo */}
+      {otherCombos.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">🗳️ Vote pour 1 autre combinaison :</p>
+          <div className="flex flex-wrap gap-2">
+            {otherCombos.map(c => (
+              <Button key={c} size="sm" variant={comboVoteOther === c ? 'default' : 'outline'} onClick={() => setComboVoteOther(c)}>
+                {c}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Dual pronostic */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">🔮 Pronostic secret : qui sera #1 ET #2 ?</p>
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">#1 (le plus voté) :</p>
+            <div className="flex flex-wrap gap-2">
+              {allCombos.map(c => (
+                <Button key={c} size="sm" variant={pronosticFirst === c ? 'default' : 'outline'} onClick={() => setPronosticFirst(c)} className="text-xs">
+                  {c}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">#2 (le deuxième plus voté) :</p>
+            <div className="flex flex-wrap gap-2">
+              {allCombos.filter(c => c !== pronosticFirst).map(c => (
+                <Button key={c} size="sm" variant={pronosticSecond === c ? 'default' : 'outline'} onClick={() => setPronosticSecond(c)} className="text-xs">
+                  {c}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bet */}
+      <div className="space-y-2">
+        <p className="text-sm font-semibold">💰 Ta mise (max {maxBet} DC) :</p>
+        <div className="flex items-center gap-3">
+          <Slider value={[betAmount]} onValueChange={([v]) => setBetAmount(v)} min={1} max={Math.max(1, maxBet)} step={1} className="flex-1" />
+          <span className="text-sm font-bold w-16 text-right">{betAmount} DC</span>
+        </div>
+      </div>
+
+      <Button className="gold-gradient w-full"
+        disabled={!myCombo || !pronosticFirst || !pronosticSecond || betAmount < 1 || submitting}
+        onClick={onSubmit}>
+        {submitting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+        {myPart ? '🔄 Modifier' : '✅ Valider'}
+      </Button>
+
+      {myPart && <p className="text-xs text-primary flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Tu peux modifier tant que le sondage est ouvert.</p>}
+    </div>
+  );
+}
+
+function ResultsReveal({ results, revealStep, revealDone, startReveal, winnerOption, winnerOption2, myPart, config, format }: {
+  results: any[]; revealStep: number; revealDone: boolean;
+  startReveal: () => void; winnerOption: string; winnerOption2?: string;
+  myPart: Participation | undefined; config: Record<string, any>;
+  format: SondageFormat;
+}) {
+  if (revealStep < 0) {
+    return <Button onClick={startReveal} className="gold-gradient w-full">🎉 Révéler les résultats</Button>;
+  }
+
+  const reversed = [...results].reverse();
+  const maxCount = results[0]?.count || 1;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold">Résultats :</p>
+      {reversed.map((r: any, i: number) => {
+        const pct = Math.round((r.count / maxCount) * 100);
+        const isWinner = r.option === winnerOption;
+        const isSecond = r.option === winnerOption2;
+        if (i > revealStep) return null;
+        return (
+          <motion.div key={r.option} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+            className={`rounded-lg border p-3 ${isWinner && revealDone ? 'border-primary bg-primary/10 animate-pulse' : isSecond && revealDone ? 'border-accent bg-accent/10' : 'border-border bg-secondary/30'}`}>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="font-semibold">{isWinner && revealDone ? '🏆 ' : isSecond && revealDone ? '🥈 ' : ''}{r.option}</span>
+              <span className="text-muted-foreground">{r.count} vote{r.count > 1 ? 's' : ''}</span>
+            </div>
+            <Progress value={pct} className="h-2" />
+          </motion.div>
+        );
+      })}
+
+      {revealDone && myPart && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 space-y-2">
+          <div className="text-sm space-y-1">
+            {format === 'combinaison' ? (
+              <>
+                {myPart.data?.pronostic_first === winnerOption && myPart.data?.pronostic_second === winnerOption2 ? (
+                  <p className="text-primary flex items-center gap-1"><Coins className="w-4 h-4" /> Pronostic #1 ET #2 corrects ! Bonus : {config?.bonus_per_user || 0} DC 🎉</p>
+                ) : (
+                  <p className="text-muted-foreground">Pronostic : #{myPart.data?.pronostic_first} / #{myPart.data?.pronostic_second} — pas les bons cette fois.</p>
+                )}
+              </>
+            ) : (
+              <>
+                {myPart.data?.vote === winnerOption ? (
+                  <p className="text-primary flex items-center gap-1"><Trophy className="w-4 h-4" /> Tu as voté pour le #1 ! Gain : {config?.winner_share || 0} DC</p>
+                ) : (
+                  <p className="text-muted-foreground">Tu as voté pour "{myPart.data?.vote}" — pas le #1 cette fois.</p>
+                )}
+                {myPart.data?.pronostic === winnerOption ? (
+                  <p className="text-primary flex items-center gap-1"><Coins className="w-4 h-4" /> Pronostic correct ! Bonus : {config?.bonus_per_user || 0} DC</p>
+                ) : (
+                  <p className="text-muted-foreground">Ton pronostic "{myPart.data?.pronostic}" n'était pas le #1.</p>
+                )}
+              </>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground mt-2">
+            <p>Pot total : {config?.total_pot || 0} DC • Part par gagnant : {config?.winner_share || 0} DC</p>
+            <p>Bonus pronostic : {config?.bonus_per_user || 0} DC ({config?.pronostic_correct_count || 0} correct{(config?.pronostic_correct_count || 0) > 1 ? 's' : ''})</p>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
