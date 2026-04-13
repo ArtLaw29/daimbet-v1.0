@@ -2055,24 +2055,34 @@ export default function AdminPage() {
                         <span className="text-sm">{item.label}</span>
                         {isSuspended && <span className="text-[10px] text-destructive font-medium">SUSPENDU</span>}
                       </div>
-                      <Button
-                        size="sm"
-                        variant={isSuspended ? 'outline' : 'destructive'}
-                        className="text-xs h-7"
-                        onClick={async () => {
-                          const newVal = isSuspended ? 'false' : 'true';
-                          const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', item.key).maybeSingle();
-                          if (existing) {
-                            await supabase.from('platform_settings').update({ value: newVal, updated_at: new Date().toISOString() }).eq('key', item.key);
-                          } else {
-                            await supabase.from('platform_settings').insert({ key: item.key, value: newVal });
-                          }
-                          setSuspensionStatus(prev => ({ ...prev, [item.key]: !isSuspended }));
-                          toast.success(`${item.label} ${isSuspended ? 'réactivé ✅' : 'suspendu 🚨'}`);
-                        }}
-                      >
-                        {isSuspended ? <><Play className="w-3 h-3 mr-1" /> Activer</> : <><Pause className="w-3 h-3 mr-1" /> Suspendre</>}
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant={isSuspended ? 'outline' : 'destructive'}
+                          className="text-xs h-7"
+                          onClick={async () => {
+                            const newVal = isSuspended ? 'false' : 'true';
+                            const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', item.key).maybeSingle();
+                            if (existing) {
+                              await supabase.from('platform_settings').update({ value: newVal, updated_at: new Date().toISOString() }).eq('key', item.key);
+                            } else {
+                              await supabase.from('platform_settings').insert({ key: item.key, value: newVal });
+                            }
+                            setSuspensionStatus(prev => ({ ...prev, [item.key]: !isSuspended }));
+                            toast.success(`${item.label} ${isSuspended ? 'réactivé ✅' : 'suspendu 🚨'}`);
+                          }}
+                        >
+                          {isSuspended ? <><Play className="w-3 h-3 mr-1" /> Activer</> : <><Pause className="w-3 h-3 mr-1" /> Suspendre</>}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
+                          onClick={() => { setTabResetTarget(item.key.replace('suspend_', '')); setTabResetConfirm(''); }}
+                        >
+                          🔴 Réinitialiser
+                        </Button>
+                      </div>
                     </div>
                   );
                 })}
