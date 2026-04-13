@@ -94,7 +94,7 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-4xl font-display gold-text text-center mb-12">
               Comment ça marche ?
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {STEPS.map((step, i) => {
                 const Icon = step.icon;
                 return (
