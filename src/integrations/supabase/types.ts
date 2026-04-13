@@ -746,6 +746,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      place_sondage_vote: {
+        Args: {
+          p_bet_amount: number
+          p_pronostic: string
+          p_session_id: string
+          p_user_id: string
+          p_vote: string
+        }
+        Returns: Json
+      }
       place_wager: {
         Args: {
           p_bet_id: string
@@ -760,6 +770,7 @@ export type Database = {
         Args: { p_bet_id: string; p_winning_option_ids: string[] }
         Returns: Json
       }
+      resolve_sondage: { Args: { p_session_id: string }; Returns: Json }
       retract_wager: {
         Args: { p_user_id: string; p_wager_id: string }
         Returns: Json

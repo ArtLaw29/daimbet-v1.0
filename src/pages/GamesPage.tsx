@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Lock, ShieldAlert } from 'lucide-react';
 import KissMarryPage from './KissMarryPage';
 import GameSessionsList from '@/components/GameSessionsList';
+import SondagePage from '@/components/SondagePage';
 
 interface GameTab {
   id: string;
@@ -118,7 +119,7 @@ export default function GamesPage() {
         ) : (
           <>
             {activeTab === 'kiss-marry' && <KissMarryPage />}
-            {activeTab === 'daimocratie' && <GameSessionsList gameType="sondage" emoji="🗳️" label="Daimocratie — Sondages" />}
+            {activeTab === 'daimocratie' && <SondagePage />}
             {activeTab === 'you-decide' && <GameSessionsList gameType="tournoi" emoji="⚔️" label="You Decide — Tournois" />}
             {activeTab === 'gouvernement' && <GameSessionsList gameType="gouvernement" emoji="🏛️" label="Gouvernement" />}
             {activeTab === 'fantasy-firm' && <GameSessionsList gameType="fantasy" emoji="⚖️" label="Daim Fantasy Firm" />}

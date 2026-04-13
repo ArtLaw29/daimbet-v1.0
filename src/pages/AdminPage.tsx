@@ -22,6 +22,7 @@ import { STARTING_BALANCE, DEFAULT_ODDS, PROMO_NAMES } from '@/lib/pari-mutuel';
 import TicketThread from '@/components/TicketThread';
 import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
+import AdminSondages from '@/components/AdminSondages';
 
 type Profile = Tables<'profiles'>;
 type BetRow = Tables<'bets'>;
@@ -663,6 +664,7 @@ export default function AdminPage() {
           <TabsTrigger value="messagerie" className="font-display text-xs"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
           <TabsTrigger value="maintenance" className="font-display text-xs"><Power className="w-4 h-4 mr-1" /> Maint.</TabsTrigger>
           <TabsTrigger value="sessions" className="font-display text-xs"><Sparkles className="w-4 h-4 mr-1" /> Sessions</TabsTrigger>
+          <TabsTrigger value="sondages" className="font-display text-xs">🗳️ Sondages</TabsTrigger>
           <TabsTrigger value="glossaire" className="font-display text-xs">📖 Lexique</TabsTrigger>
         </TabsList>
 
@@ -2454,6 +2456,10 @@ export default function AdminPage() {
         {/* ═══════════════ SESSIONS (JEUX) ═══════════════ */}
         <TabsContent value="sessions">
           <AdminGameSessions />
+        </TabsContent>
+        {/* ═══════════════ SONDAGES ═══════════════ */}
+        <TabsContent value="sondages">
+          <AdminSondages />
         </TabsContent>
         {/* ═══════════════ GLOSSAIRE ═══════════════ */}
         <TabsContent value="glossaire">
