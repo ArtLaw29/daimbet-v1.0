@@ -108,7 +108,7 @@ export default function KissMarryPage() {
 
     // Generate safe indices (max 2)
     const generated: string[] = [];
-    for (const cat of ALL_CATEGORIES) {
+    for (const cat of visibleCategories) {
       if (generated.length >= 2) break;
       const entries = catData[cat] || [];
       if (entries.length < 3) continue; // Too few votes to be safe
@@ -221,7 +221,7 @@ export default function KissMarryPage() {
           </motion.div>
         ) : (
           <div className="space-y-6">
-            {ALL_CATEGORIES.map((cat, catIdx) => {
+            {visibleCategories.map((cat, catIdx) => {
               const catEntries = revealData[cat];
               if (!catEntries || catEntries.length === 0) return null;
               const isVisible = revealStep >= catIdx;
@@ -324,7 +324,7 @@ export default function KissMarryPage() {
       </p>
 
       <div className="space-y-5">
-        {ALL_CATEGORIES.map(cat => {
+        {visibleCategories.map(cat => {
           const config = CATEGORY_CONFIG[cat];
           const isRequired = CATEGORIES_REQUIRED.includes(cat as any);
           const search = searchTerms[cat] || '';
@@ -397,7 +397,7 @@ export default function KissMarryPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-2">
-            {ALL_CATEGORIES.map(cat => {
+            {visibleCategories.map(cat => {
               if (!selections[cat]) return null;
               return (
                 <div key={cat} className="flex items-center gap-2 text-sm">
