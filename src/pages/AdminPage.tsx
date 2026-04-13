@@ -1511,7 +1511,10 @@ export default function AdminPage() {
         <TabsContent value="tickets">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-display">🎫 Tickets ({adminTickets.length})</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-display">🎫 Tickets ({adminTickets.length})</h2>
+                <span className="text-[10px] text-muted-foreground">Double-clic pour supprimer</span>
+              </div>
               <select value={ticketSortBy} onChange={e => setTicketSortBy(e.target.value as any)}
                 className="rounded-md border border-input bg-background px-2 py-1 text-xs">
                 <option value="date">📅 Par date</option>
