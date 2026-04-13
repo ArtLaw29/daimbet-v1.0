@@ -5,11 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Timer, Tag, Flame } from 'lucide-react';
-import { calculateEstimatedNetGain, STARTING_BALANCE } from '@/lib/pari-mutuel';
+import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
 import BetBottomSheet from '@/components/BetBottomSheet';
-import type { Tables } from '@/integrations/supabase/types';
 
 type SortMode = 'urgence' | 'categorie' | 'popularite';
 
