@@ -6,6 +6,7 @@ import KissMarryPage from './KissMarryPage';
 import GameSessionsList from '@/components/GameSessionsList';
 import SondagePage from '@/components/SondagePage';
 import TournoiPage from '@/components/TournoiPage';
+import GouvernementPage from '@/components/GouvernementPage';
 
 interface GameTab {
   id: string;
@@ -122,7 +123,7 @@ export default function GamesPage() {
             {activeTab === 'kiss-marry' && <KissMarryPage />}
             {activeTab === 'daimocratie' && <SondagePage />}
             {activeTab === 'you-decide' && <TournoiPage />}
-            {activeTab === 'gouvernement' && <GameSessionsList gameType="gouvernement" emoji="🏛️" label="Gouvernement" />}
+            {activeTab === 'gouvernement' && <GouvernementPage />}
             {activeTab === 'fantasy-firm' && <GameSessionsList gameType="fantasy" emoji="⚖️" label="Daim Fantasy Firm" />}
           </>
         )}
