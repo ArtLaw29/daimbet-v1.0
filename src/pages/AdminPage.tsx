@@ -885,6 +885,57 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* 💰 Économie DC */}
+            {(() => {
+              const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+              const wagersThisWeek = allWagers.filter(w => !w.is_retracted && new Date(w.created_at) >= oneWeekAgo);
+              const dcSpentWeek = wagersThisWeek.reduce((s, w) => s + w.montant_dc, 0);
+              // Gains distributed this week: approximate from winning wagers (cote * montant - montant) * 0.95
+              // We don't have solde_history loaded, so we estimate from resolved bets this week
+              const resolvedBetsWeek = bets.filter(b => b.status === 'resolu' && new Date(b.updated_at) >= oneWeekAgo);
+              const resolvedBetIds = new Set(resolvedBetsWeek.map(b => b.id));
+              const winningWagersWeek = allWagers.filter(w => !w.is_retracted && resolvedBetIds.has(w.bet_id) && (() => {
+                const bet = bets.find(b => b.id === w.bet_id);
+                if (!bet) return false;
+                const winOpt = bet.bet_options?.find(o => o.id === w.option_id && o.is_winner);
+                return !!winOpt;
+              })());
+              const dcDistributedWeek = winningWagersWeek.reduce((s, w) => {
+                const opt = bets.find(b => b.id === w.bet_id)?.bet_options?.find(o => o.id === w.option_id);
+                if (!opt) return s;
+                const gross = Math.round(w.montant_dc * opt.cote_actuelle);
+                const rake = Math.max(0, Math.round((gross - w.montant_dc) * 0.05));
+                return s + (gross - rake);
+              }, 0);
+              const ratio = dcSpentWeek > 0 ? (dcDistributedWeek / dcSpentWeek).toFixed(2) : '—';
+              return (
+                <div className="rounded-xl border border-primary/30 bg-card p-4 space-y-3">
+                  <h3 className="text-sm font-display flex items-center gap-2"><Coins className="w-4 h-4 text-primary" /> 💰 Économie DC</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="text-center p-2 rounded-lg bg-secondary/50">
+                      <p className="text-lg font-display text-primary">{totalDcCirculation.toLocaleString()}</p>
+                      <p className="text-[10px] text-muted-foreground">DC en circulation</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-secondary/50">
+                      <p className="text-lg font-display text-primary">{dcDistributedWeek.toLocaleString()}</p>
+                      <p className="text-[10px] text-muted-foreground">DC distribués (7j)</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-secondary/50">
+                      <p className="text-lg font-display text-primary">{dcSpentWeek.toLocaleString()}</p>
+                      <p className="text-[10px] text-muted-foreground">DC misés (7j)</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-secondary/50">
+                      <p className="text-lg font-display text-primary">{ratio}</p>
+                      <p className="text-[10px] text-muted-foreground">Ratio entrées/sorties</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Note : le rake (5 %) ne s'applique qu'aux paris classiques. Les sondages et jeux n'ont pas de rake.
+                  </p>
+                </div>
+              );
+            })()}
+
             {/* Quick actions */}
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-sm font-display mb-3">⚡ Accès rapide</h3>
