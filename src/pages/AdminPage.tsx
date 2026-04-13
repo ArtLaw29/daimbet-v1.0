@@ -2473,6 +2473,10 @@ export default function AdminPage() {
         <TabsContent value="glossaire">
           <AdminGlossary />
         </TabsContent>
+
+        <TabsContent value="moderation">
+          <AdminModeration />
+        </TabsContent>
       </Tabs>
 
       {/* ─── TAB RESET MODAL ─── */}
