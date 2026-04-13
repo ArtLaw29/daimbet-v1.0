@@ -2450,6 +2450,10 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
         </TabsContent>
+        {/* ═══════════════ SESSIONS (JEUX) ═══════════════ */}
+        <TabsContent value="sessions">
+          <AdminGameSessions />
+        </TabsContent>
         {/* ═══════════════ GLOSSAIRE ═══════════════ */}
         <TabsContent value="glossaire">
           <AdminGlossary />
