@@ -126,7 +126,7 @@ export default function LandingPage() {
       <footer className="border-t border-border py-6">
         <div className="container mx-auto px-4 text-center">
           <p className="text-xs text-muted-foreground">
-            © DaimBet · Promo DAIM ESSEC · Monnaie fictive — aucun enjeu financier réel.
+            © DaimBet · Promo DAIM · Monnaie fictive — aucun enjeu financier réel.
           </p>
         </div>
       </footer>
