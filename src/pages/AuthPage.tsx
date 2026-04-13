@@ -262,18 +262,9 @@ export default function AuthPage() {
             </form>
           )}
 
-          {/* ─── INSCRIPTION STEP 1 ─── */}
-          {mode === 'inscription' && signupStep === 1 && (
-            <form onSubmit={goToStep2} className="space-y-4">
-              {/* Step indicator */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">1</span>
-                <span className="font-semibold text-foreground">Identité</span>
-                <span className="flex-1 border-t border-border" />
-                <span className="bg-secondary text-muted-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px]">2</span>
-                <span>Code</span>
-              </div>
-
+          {/* ─── INSCRIPTION ─── */}
+          {mode === 'inscription' && (
+            <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Ton prénom</Label>
                 <select
@@ -288,7 +279,6 @@ export default function AuthPage() {
                     <option key={name} value={name}>{name}</option>
                   ))}
                 </select>
-                {/* Name availability indicator */}
                 {selectedName && (
                   <div className="flex items-center gap-2 text-sm mt-1">
                     {checkingName ? (
@@ -352,61 +342,9 @@ export default function AuthPage() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full gold-gradient font-semibold" disabled={!isStep1Valid}>
-                Continuer <ArrowRight className="w-4 h-4 ml-1" />
+              <Button type="submit" className="w-full gold-gradient font-semibold" disabled={!isFormValid || loading}>
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Créer mon compte 🦌'}
               </Button>
-            </form>
-          )}
-
-          {/* ─── INSCRIPTION STEP 2 — CODE ─── */}
-          {mode === 'inscription' && signupStep === 2 && (
-            <form onSubmit={handleSignup} className="space-y-4">
-              {/* Step indicator */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                <span className="bg-primary/30 text-primary rounded-full w-5 h-5 flex items-center justify-center text-[10px]">✓</span>
-                <span>Identité</span>
-                <span className="flex-1 border-t border-primary/30" />
-                <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">2</span>
-                <span className="font-semibold text-foreground">Code</span>
-              </div>
-
-              <div className="bg-secondary/50 rounded-lg p-3 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Inscription en tant que <strong className="text-foreground">{selectedName}</strong>
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">{email}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="signup-code">Code d'inscription</Label>
-                <Input
-                  id="signup-code"
-                  type="text"
-                  value={inscriptionCode}
-                  onChange={(e) => { setInscriptionCode(e.target.value.toUpperCase()); setCodeError(''); }}
-                  placeholder="Ex: A3K9F2"
-                  required
-                  maxLength={6}
-                  className="text-center tracking-[0.3em] font-mono text-lg uppercase"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Entre le code personnel qui t'a été communiqué par Jordaim Belfort.
-                </p>
-                {codeError && (
-                  <p className="text-xs text-destructive mt-1 flex items-center gap-1">
-                    <XCircle className="w-3 h-3" /> {codeError}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setSignupStep(1)}>
-                  <ArrowLeft className="w-4 h-4 mr-1" /> Retour
-                </Button>
-                <Button type="submit" className="flex-1 gold-gradient font-semibold" disabled={loading || inscriptionCode.length !== 6}>
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Créer mon compte 🦌'}
-                </Button>
-              </div>
             </form>
           )}
 
