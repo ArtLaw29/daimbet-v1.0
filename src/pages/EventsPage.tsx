@@ -35,6 +35,7 @@ export default function EventsPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [userVotes, setUserVotes] = useState<Record<string, string>>({});
   const [proposerNames, setProposerNames] = useState<Record<string, string>>({});
+  const [parisSuspended, setParisSuspended] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>(() => {
     return (sessionStorage.getItem('daimbet-sort') as SortMode) || 'urgence';
   });
