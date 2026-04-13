@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // ── Auth: verify JWT + admin role ──
+    // ── Auth: verify JWT ──
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -23,10 +23,6 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const { data: roleCheck } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
-    if (!roleCheck) {
-      return new Response(JSON.stringify({ error: "Accès refusé" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { proposal_id } = await req.json();
@@ -43,9 +39,8 @@ Deno.serve(async (req) => {
     if (proposal.status !== "en_attente") {
       return new Response(JSON.stringify({ error: "Already processed" }), { headers: corsHeaders });
     }
-    if (proposal.votes_positive < 15 || proposal.votes_negative >= 5) {
-      return new Response(JSON.stringify({ ok: false, message: "Threshold not met" }), { headers: corsHeaders });
-    }
+
+    // No threshold check — proposals are immediately activated
 
     const betData: Record<string, unknown> = {
       title: proposal.title,
@@ -69,11 +64,11 @@ Deno.serve(async (req) => {
 
     const { data: proposerProfile } = await supabase.from("profiles").select("display_name").eq("user_id", proposal.user_id).single();
     await supabase.from("gazette_messages").insert({
-      content: `🗳️ La proposition "${proposal.title}" de ${proposerProfile?.display_name || "un Daim"} a été validée par la communauté ! Les mises sont ouvertes 🔥`,
+      content: `🗳️ La proposition "${proposal.title}" de ${proposerProfile?.display_name || "un Daim"} est maintenant ouverte aux mises ! 🔥`,
       is_system_message: true,
     });
 
-    return new Response(JSON.stringify({ ok: true, bet_id: bet.id }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ ok: true, bet_id: bet.id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
   }
