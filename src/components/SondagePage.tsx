@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Users, Clock, CheckCircle, ChevronRight, Archive, ArrowLeft, Trophy, Coins, Lock, Edit, Loader2 } from 'lucide-react';
+import { Users, Clock, CheckCircle, ChevronRight, Archive, ArrowLeft, Trophy, Coins, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -126,17 +126,11 @@ export default function SondagePage() {
     return Math.floor(effectiveBal * 0.20);
   }, [balance, selectedSession, userParticipations]);
 
-  const totalPot = useMemo(() => {
-    if (!selectedSession) return 0;
-    // For active sessions we compute from participation counts * avg, but we don't have all data client-side
-    // We'll show what we can from config or from user's own data
-    return selectedSession.config?.total_pot || 0;
-  }, [selectedSession]);
 
   const submitVote = async () => {
     if (!user || !selectedSession || !selectedVote || !pronostic || betAmount < 1) return;
     setSubmitting(true);
-    const { data, error } = await supabase.rpc('place_sondage_vote', {
+    const { data } = await supabase.rpc('place_sondage_vote', {
       p_user_id: user.id,
       p_session_id: selectedSession.id,
       p_vote: selectedVote,
@@ -231,14 +225,10 @@ export default function SondagePage() {
     const endDate = config?.end_date ? new Date(config.end_date as string) : null;
     const now = new Date();
     const votingClosed = endDate ? now > new Date(endDate.getTime() - 20 * 60000) : false;
-    const canVote = isOpen && !votingClosed;
-
-    // Has user done pronostic?
-    const hasPronostic = !!myPart?.data?.pronostic;
 
     return (
       <div className="space-y-4">
-        {showCoinRain && <CoinRain />}
+        {showCoinRain && <CoinRain amount={10} />}
         <button onClick={() => { setView('list'); setSelectedSession(null); }} className="text-sm text-primary hover:underline flex items-center gap-1">
           <ArrowLeft className="w-3 h-3" /> Retour
         </button>

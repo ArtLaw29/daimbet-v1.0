@@ -162,8 +162,6 @@ export default function AdminSondages() {
 
   if (loading) return <div className="text-center py-8 text-muted-foreground">Chargement...</div>;
 
-  const selected = sessions.find(s => s.id === selectedId);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
