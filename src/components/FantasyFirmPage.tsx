@@ -280,7 +280,10 @@ export default function FantasyFirmPage() {
 
     return (
       <div className="space-y-6">
-        <TabIntro emoji="⚖️" title="Daim Fantasy Firm" description="Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo." />
+        <TabIntro>
+          <p className="font-medium text-foreground mb-2">⚖️ Daim Fantasy Firm</p>
+          <p>Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo.</p>
+        </TabIntro>
 
         {/* Corporate Card */}
         <motion.div
@@ -352,7 +355,10 @@ export default function FantasyFirmPage() {
   if (step === 'naming') {
     return (
       <div className="space-y-6">
-        <TabIntro emoji="⚖️" title="Daim Fantasy Firm" description="Choisis le nom de ton cabinet." />
+        <TabIntro>
+          <p className="font-medium text-foreground mb-2">⚖️ Daim Fantasy Firm</p>
+          <p>Choisis le nom de ton cabinet.</p>
+        </TabIntro>
 
         <div className="max-w-md mx-auto space-y-4">
           <h3 className="font-semibold text-center">Suggestions de noms</h3>
@@ -393,11 +399,10 @@ export default function FantasyFirmPage() {
   // ========== FORM STEP ==========
   return (
     <div className="space-y-6">
-      <TabIntro
-        emoji="⚖️"
-        title="Daim Fantasy Firm"
-        description="Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo. Minimum 2 membres."
-      />
+      <TabIntro>
+        <p className="font-medium text-foreground mb-2">⚖️ Daim Fantasy Firm</p>
+        <p>Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo. Minimum 2 membres.</p>
+      </TabIntro>
 
       <div className="max-w-lg mx-auto space-y-3">
         {members.map((member, i) => (
