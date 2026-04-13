@@ -94,7 +94,7 @@ export default function AdminPage() {
   const [aiComment, setAiComment] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   // Delete motif
-  const [deleteMotif, setDeleteMotif] = '';
+  const [deleteMotif, setDeleteMotif] = useState('');
   // Delete option
   const [deleteOptionId, setDeleteOptionId] = useState<string | null>(null);
   const [deleteOptionMotif, setDeleteOptionMotif] = useState('');
