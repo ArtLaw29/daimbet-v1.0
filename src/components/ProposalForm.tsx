@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, CheckCircle, Zap, BarChart3, Layers, Trophy, Calendar } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
+import { checkBannedWords, checkDailyRateLimit } from '@/lib/moderation';
 
 type BetType = 'binaire' | 'over_under' | 'tranches_multiples' | 'tierce_du_daim';
 
@@ -68,6 +69,22 @@ export default function ProposalForm({ onClose, onSubmitted }: ProposalFormProps
     if (!user || !title.trim()) return;
     setSubmitting(true);
 
+    // Rate limit check
+    const rateLimited = await checkDailyRateLimit(user.id);
+    if (rateLimited) {
+      toast.error('Tu as atteint la limite de 5 propositions par jour. Réessaie demain !');
+      setSubmitting(false);
+      return;
+    }
+
+    // Banned words check
+    const bannedWord = await checkBannedWords(title);
+    if (bannedWord) {
+      toast.error('Ta proposition contient un terme non autorisé. Modifie-la et réessaie.');
+      setSubmitting(false);
+      return;
+    }
+
     const options = buildOptions();
     const { error } = await supabase.from('daimocratie_proposals').insert({
       title: title.trim(),
@@ -80,7 +97,6 @@ export default function ProposalForm({ onClose, onSubmitted }: ProposalFormProps
     if (error) {
       toast.error('Erreur lors de la soumission');
     } else {
-      // Gazette auto-message for new proposal
       await supabase.from('gazette_messages').insert({
         content: `🗳️ ${profile?.display_name || 'Un Daim'} propose un nouveau pari : "${title.trim()}" — Votez pour ou contre ! 🦌`,
         user_id: user.id,
