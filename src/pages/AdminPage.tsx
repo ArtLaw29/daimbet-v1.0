@@ -247,9 +247,6 @@ export default function AdminPage() {
         setSuggestionProfiles(sm);
       }
     }
-    // Fetch inscription codes
-    const { data: codesData } = await supabase.from('inscription_codes').select('*').order('prenom');
-    setInscriptionCodes((codesData as any[]) || []);
     setLoading(false);
   }, []);
 

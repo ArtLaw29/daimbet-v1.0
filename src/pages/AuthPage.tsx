@@ -181,7 +181,7 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  const isStep1Valid = canProceedToStep2();
+  const isFormValid = canSignup();
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -210,14 +210,14 @@ export default function AuthPage() {
             <Button
               variant={mode === 'connexion' ? 'default' : 'outline'}
               className="flex-1"
-              onClick={() => { setMode('connexion'); setSelectedName(''); setSignupStep(1); }}
+              onClick={() => { setMode('connexion'); setSelectedName(''); }}
             >
               Connexion
             </Button>
             <Button
               variant={mode === 'inscription' ? 'default' : 'outline'}
               className="flex-1"
-              onClick={() => { setMode('inscription'); setSelectedName(''); setSignupStep(1); }}
+              onClick={() => { setMode('inscription'); setSelectedName(''); }}
             >
               Inscription
             </Button>
