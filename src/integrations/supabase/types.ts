@@ -702,6 +702,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      mark_code_used: {
+        Args: { p_code: string; p_prenom: string }
+        Returns: boolean
+      }
       place_wager: {
         Args: {
           p_bet_id: string
