@@ -756,6 +756,15 @@ export type Database = {
         }
         Returns: Json
       }
+      place_tournoi_bet: {
+        Args: {
+          p_bet_amount: number
+          p_predicted_winner: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       place_wager: {
         Args: {
           p_bet_id: string
@@ -771,6 +780,7 @@ export type Database = {
         Returns: Json
       }
       resolve_sondage: { Args: { p_session_id: string }; Returns: Json }
+      resolve_tournoi: { Args: { p_session_id: string }; Returns: Json }
       retract_wager: {
         Args: { p_user_id: string; p_wager_id: string }
         Returns: Json
