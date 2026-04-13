@@ -62,14 +62,32 @@ Deno.serve(async (req) => {
       };
 
       if (resendApiKey) {
-        const emailRes = await fetch("https://api.resend.com/emails", {
+        // Encode report as base64 JSON file attachment
+        const reportJson = JSON.stringify(report, null, 2);
+        const reportBase64 = btoa(unescape(encodeURIComponent(reportJson)));
+        const fileName = `rapport-pre-reinitialisation-${new Date().toISOString().slice(0, 10)}.json`;
+
+        const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+        const gatewayUrl = "https://connector-gateway.lovable.dev/resend";
+
+        const emailRes = await fetch(`${gatewayUrl}/emails`, {
           method: "POST",
-          headers: { "Authorization": `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${lovableApiKey}`,
+            "X-Connection-Api-Key": resendApiKey,
+          },
           body: JSON.stringify({
             from: "Jordaim Belfort <jordaim.belfort@daimbet.com>",
             to: ["B00831041@essec.edu"],
             subject: "🚨 DaimBet - Rapport pré-réinitialisation totale",
-            html: `<h2>Rapport pré-réinitialisation totale</h2><p>Date : ${report.generated_at}</p><pre style="font-size:11px;max-height:600px;overflow:auto;">${JSON.stringify(report.data, null, 2).substring(0, 50000)}</pre>`,
+            html: `<h2>Rapport pré-réinitialisation totale</h2><p>Date : ${report.generated_at}</p><p>Le rapport complet est en pièce jointe.</p><p><strong>Tables sauvegardées :</strong> profiles (${(report.data.profiles).length}), bets (${(report.data.bets).length}), wagers (${(report.data.wagers).length}), gazette (${(report.data.gazette_messages).length}), proposals (${(report.data.proposals).length}), solde_history (${(report.data.solde_history).length}), tickets (${(report.data.tickets).length}), game_sessions (${(report.data.game_sessions).length}), game_participations (${(report.data.game_participations).length})</p>`,
+            attachments: [
+              {
+                filename: fileName,
+                content: reportBase64,
+              },
+            ],
           }),
         });
         if (!emailRes.ok) {
