@@ -293,12 +293,12 @@ export default function GouvernementPage() {
                 {ministry.regalian && <Star className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
                 <span className="text-sm font-medium truncate">{ministry.label}</span>
               </div>
-              <Select value={ministers[ministry.id] || ''} onValueChange={v => setMinisters(prev => ({ ...prev, [ministry.id]: v }))}>
+              <Select value={ministers[ministry.id] || '__none__'} onValueChange={v => setMinisters(prev => ({ ...prev, [ministry.id]: v === '__none__' ? '' : v }))}>
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Choisir un DAIM..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Aucun —</SelectItem>
+                  <SelectItem value="__none__">— Aucun —</SelectItem>
                   {availableNamesFor(ministers[ministry.id] || '').map(name => (
                     <SelectItem key={name} value={name}>{name}</SelectItem>
                   ))}
@@ -323,16 +323,16 @@ export default function GouvernementPage() {
                 }}
                 className="flex-1"
               />
-              <Select value={cm.person || ''} onValueChange={v => {
+              <Select value={cm.person || '__none__'} onValueChange={v => {
                 const updated = [...customMinistries];
-                updated[i] = { ...updated[i], person: v };
+                updated[i] = { ...updated[i], person: v === '__none__' ? '' : v };
                 setCustomMinistries(updated);
               }}>
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Choisir un DAIM..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Aucun —</SelectItem>
+                  <SelectItem value="__none__">— Aucun —</SelectItem>
                   {availableNamesFor(cm.person || '').map(name => (
                     <SelectItem key={name} value={name}>{name}</SelectItem>
                   ))}
