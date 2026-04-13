@@ -5,8 +5,101 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+const GOVERNMENT_SESSION_ID = "00000000-0000-0000-0000-000000000001";
+const FANTASY_SESSION_ID = "00000000-0000-0000-0000-000000000002";
+const RESETTABLE_GAME_TYPES = ["sondage", "tournoi", "gouvernement", "fantasy"];
+
+const jsonResponse = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const pushError = (errors: string[], label: string, error: { message: string } | null | undefined) => {
+  if (!error) return false;
+  console.error(`${label} error:`, error.message);
+  errors.push(`${label}: ${error.message}`);
+  return true;
+};
+
+const deleteAllRows = async (supabase: any, table: string, errors: string[]) => {
+  const { error } = await supabase.from(table).delete().neq("id", ZERO_UUID);
+  if (!pushError(errors, table, error)) {
+    console.log(`Deleted all from ${table}`);
+  }
+};
+
+const purgeGameData = async (supabase: any, errors: string[]) => {
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("game_sessions")
+    .select("id")
+    .in("game_type", RESETTABLE_GAME_TYPES);
+
+  if (pushError(errors, "game_sessions fetch", sessionsError)) {
+    return;
+  }
+
+  const sessionIds = (sessions ?? []).map((session: { id: string }) => session.id);
+  const participationSessionIds = Array.from(
+    new Set([...sessionIds, GOVERNMENT_SESSION_ID, FANTASY_SESSION_ID]),
+  );
+
+  if (sessionIds.length > 0) {
+    const { error: reportsError } = await supabase
+      .from("content_reports")
+      .delete()
+      .in("content_id", sessionIds);
+    pushError(errors, "content_reports (game sessions)", reportsError);
+  }
+
+  if (participationSessionIds.length > 0) {
+    const { error: participationsError } = await supabase
+      .from("game_participations")
+      .delete()
+      .in("session_id", participationSessionIds);
+    pushError(errors, "game_participations (games)", participationsError);
+
+    const { data: remainingParticipations, error: remainingParticipationsError } = await supabase
+      .from("game_participations")
+      .select("id")
+      .in("session_id", participationSessionIds);
+
+    if (!pushError(errors, "game_participations verify", remainingParticipationsError) && (remainingParticipations?.length ?? 0) > 0) {
+      const { error: retryParticipationsError } = await supabase
+        .from("game_participations")
+        .delete()
+        .in("id", remainingParticipations.map((row: { id: string }) => row.id));
+      pushError(errors, "game_participations retry", retryParticipationsError);
+    }
+  }
+
+  if (sessionIds.length > 0) {
+    const { error: deleteSessionsError } = await supabase
+      .from("game_sessions")
+      .delete()
+      .in("id", sessionIds);
+    pushError(errors, "game_sessions", deleteSessionsError);
+
+    const { data: remainingSessions, error: remainingSessionsError } = await supabase
+      .from("game_sessions")
+      .select("id")
+      .in("id", sessionIds);
+
+    if (!pushError(errors, "game_sessions verify", remainingSessionsError) && (remainingSessions?.length ?? 0) > 0) {
+      const { error: retrySessionsError } = await supabase
+        .from("game_sessions")
+        .delete()
+        .in("id", remainingSessions.map((row: { id: string }) => row.id));
+      pushError(errors, "game_sessions retry", retrySessionsError);
+    }
+  }
+};
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -14,19 +107,30 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // ── Auth: verify JWT + admin role ──
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Non authentifié" }, 401);
     }
-    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const {
+      data: { user },
+      error: authErr,
+    } = await userClient.auth.getUser();
+
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Non authentifié" }, 401);
     }
-    const { data: roleCheck } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+
+    const { data: roleCheck } = await supabase.rpc("has_role", {
+      _user_id: user.id,
+      _role: "admin",
+    });
+
     if (!roleCheck) {
-      return new Response(JSON.stringify({ error: "Accès refusé" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return jsonResponse({ error: "Accès refusé" }, 403);
     }
 
     const { action } = await req.json();
@@ -62,11 +166,9 @@ Deno.serve(async (req) => {
       };
 
       if (resendApiKey) {
-        // Encode report as base64 JSON file attachment
         const reportJson = JSON.stringify(report, null, 2);
         const reportBase64 = btoa(unescape(encodeURIComponent(reportJson)));
         const fileName = `rapport-pre-reinitialisation-${new Date().toISOString().slice(0, 10)}.json`;
-
         const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
         const gatewayUrl = "https://connector-gateway.lovable.dev/resend";
 
@@ -74,14 +176,14 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${lovableApiKey}`,
+            Authorization: `Bearer ${lovableApiKey}`,
             "X-Connection-Api-Key": resendApiKey,
           },
           body: JSON.stringify({
             from: "Jordaim Belfort <jordaim.belfort@daimbet.com>",
             to: ["B00831041@essec.edu"],
             subject: "🚨 DaimBet - Rapport pré-réinitialisation totale",
-            html: `<h2>Rapport pré-réinitialisation totale</h2><p>Date : ${report.generated_at}</p><p>Le rapport complet est en pièce jointe.</p><p><strong>Tables sauvegardées :</strong> profiles (${(report.data.profiles).length}), bets (${(report.data.bets).length}), wagers (${(report.data.wagers).length}), gazette (${(report.data.gazette_messages).length}), proposals (${(report.data.proposals).length}), solde_history (${(report.data.solde_history).length}), tickets (${(report.data.tickets).length}), game_sessions (${(report.data.game_sessions).length}), game_participations (${(report.data.game_participations).length})</p>`,
+            html: `<h2>Rapport pré-réinitialisation totale</h2><p>Date : ${report.generated_at}</p><p>Le rapport complet est en pièce jointe.</p><p><strong>Tables sauvegardées :</strong> profiles (${report.data.profiles.length}), bets (${report.data.bets.length}), wagers (${report.data.wagers.length}), gazette (${report.data.gazette_messages.length}), proposals (${report.data.proposals.length}), solde_history (${report.data.solde_history.length}), tickets (${report.data.tickets.length}), game_sessions (${report.data.game_sessions.length}), game_participations (${report.data.game_participations.length})</p>`,
             attachments: [
               {
                 filename: fileName,
@@ -90,138 +192,119 @@ Deno.serve(async (req) => {
             ],
           }),
         });
+
         if (!emailRes.ok) {
           const emailData = await emailRes.json();
-          return new Response(JSON.stringify({ error: `Échec envoi rapport: ${emailData?.message || emailRes.status}` }), {
-            status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          return jsonResponse({ error: `Échec envoi rapport: ${emailData?.message || emailRes.status}` }, 500);
         }
       }
 
-      return new Response(JSON.stringify({ success: true, message: "Rapport envoyé" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: true, message: "Rapport envoyé" });
     }
 
     if (action === "execute_reset") {
       const errors: string[] = [];
 
+      await purgeGameData(supabase, errors);
+
       const deletions = [
-        { table: "gazette_reactions" },
-        { table: "gazette_messages" },
-        { table: "ticket_messages" },
-        { table: "tickets" },
-        { table: "daimocratie_votes" },
-        { table: "daimocratie_proposals" },
-        { table: "tierce_suggestions" },
-        { table: "wagers" },
-        { table: "bet_options" },
-        { table: "bets" },
-        { table: "kiss_marry_votes" },
-        { table: "game_participations" },
-        { table: "game_sessions" },
-        { table: "content_reports" },
-        { table: "solde_history" },
-        { table: "liquidity_injections" },
-        { table: "admin_notifications" },
-        { table: "admin_emails_log" },
+        "gazette_reactions",
+        "gazette_messages",
+        "ticket_messages",
+        "tickets",
+        "daimocratie_votes",
+        "daimocratie_proposals",
+        "tierce_suggestions",
+        "wagers",
+        "bet_options",
+        "bets",
+        "kiss_marry_votes",
+        "content_reports",
+        "solde_history",
+        "liquidity_injections",
+        "admin_notifications",
+        "admin_emails_log",
       ];
 
-      // Delete all data from tables sequentially (order matters for FK)
-      for (const { table } of deletions) {
-        const { error } = await supabase.from(table).delete().gte("created_at", "1970-01-01");
-        if (error) {
-          console.error(`Delete ${table} error:`, error.message);
-          errors.push(`${table}: ${error.message}`);
-          // Try alternative delete
-          const { error: err2 } = await supabase.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-          if (err2) {
-            console.error(`Delete ${table} alt error:`, err2.message);
-          }
-        } else {
-          console.log(`Deleted all from ${table}`);
-        }
+      for (const table of deletions) {
+        await deleteAllRows(supabase, table, errors);
       }
 
-      // Explicit fallback: force-delete ALL kiss_marry_votes regardless
-      const { error: kmErr } = await supabase.from("kiss_marry_votes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      if (kmErr) {
-        console.error("Force delete kiss_marry_votes error:", kmErr.message);
-        // Try alternative
-        const { error: kmErr2 } = await supabase.from("kiss_marry_votes").delete().gte("created_at", "1970-01-01");
-        if (kmErr2) {
-          console.error("Force delete kiss_marry_votes alt error:", kmErr2.message);
-          errors.push(`kiss_marry_votes (force): ${kmErr2.message}`);
-        }
-      } else {
-        console.log("Force-deleted all kiss_marry_votes");
-      }
+      const { data: adminRoles, error: adminRolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
 
-      // Delete non-admin users
-      const { data: adminRoles } = await supabase.from("user_roles").select("user_id").eq("role", "admin");
-      const adminIds = (adminRoles ?? []).map((r: any) => r.user_id);
-      console.log(`Admin IDs preserved: ${adminIds.join(", ")}`);
+      if (!pushError(errors, "user_roles (admin fetch)", adminRolesError)) {
+        const adminIds = (adminRoles ?? []).map((row: { user_id: string }) => row.user_id);
+        console.log(`Admin IDs preserved: ${adminIds.join(", ")}`);
 
-      if (adminIds.length > 0) {
-        // Delete non-admin profiles
-        const { data: allProfiles } = await supabase.from("profiles").select("user_id");
-        const nonAdminUserIds = (allProfiles ?? []).filter((p: any) => !adminIds.includes(p.user_id)).map((p: any) => p.user_id);
-        console.log(`Non-admin profiles to delete: ${nonAdminUserIds.length}`);
+        if (adminIds.length > 0) {
+          const { data: allProfiles, error: allProfilesError } = await supabase
+            .from("profiles")
+            .select("user_id");
 
-        for (const uid of nonAdminUserIds) {
-          const { error } = await supabase.from("profiles").delete().eq("user_id", uid);
-          if (error) {
-            console.error(`Delete profile ${uid}:`, error.message);
-            errors.push(`profile ${uid}: ${error.message}`);
-          }
-        }
+          if (!pushError(errors, "profiles fetch", allProfilesError)) {
+            const nonAdminUserIds = (allProfiles ?? [])
+              .filter((profile: { user_id: string }) => !adminIds.includes(profile.user_id))
+              .map((profile: { user_id: string }) => profile.user_id);
 
-        // Delete non-admin roles
-        const { error: roleDelErr } = await supabase.from("user_roles").delete().eq("role", "user");
-        if (roleDelErr) {
-          console.error("Delete user roles:", roleDelErr.message);
-        }
-
-        // Delete non-admin auth users
-        const { data: { users: authUsers }, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-        if (listErr) {
-          console.error("List auth users error:", listErr.message);
-        } else {
-          const nonAdminAuthUsers = (authUsers ?? []).filter(u => !adminIds.includes(u.id));
-          console.log(`Non-admin auth users to delete: ${nonAdminAuthUsers.length}`);
-          for (const u of nonAdminAuthUsers) {
-            const { error } = await supabase.auth.admin.deleteUser(u.id);
-            if (error) {
-              console.error(`Delete auth user ${u.id}:`, error.message);
-              errors.push(`auth ${u.id}: ${error.message}`);
+            if (nonAdminUserIds.length > 0) {
+              const { error: deleteProfilesError } = await supabase
+                .from("profiles")
+                .delete()
+                .in("user_id", nonAdminUserIds);
+              pushError(errors, "profiles (non-admin)", deleteProfilesError);
             }
           }
-        }
 
-        // Reset admin profile (admin has NO balance — can't bet)
-        for (const adminId of adminIds) {
-          await supabase.from("profiles").update({ balance: 0, has_accepted_charter: true }).eq("user_id", adminId);
+          const { error: deleteRolesError } = await supabase
+            .from("user_roles")
+            .delete()
+            .neq("role", "admin");
+          pushError(errors, "user_roles (non-admin)", deleteRolesError);
+
+          const {
+            data: { users: authUsers },
+            error: listErr,
+          } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+
+          if (!pushError(errors, "auth users list", listErr)) {
+            const nonAdminAuthUsers = (authUsers ?? []).filter((authUser) => !adminIds.includes(authUser.id));
+            console.log(`Non-admin auth users to delete: ${nonAdminAuthUsers.length}`);
+
+            for (const authUser of nonAdminAuthUsers) {
+              const { error } = await supabase.auth.admin.deleteUser(authUser.id);
+              pushError(errors, `auth ${authUser.id}`, error);
+            }
+          }
+
+          for (const adminId of adminIds) {
+            const { error: adminUpdateError } = await supabase
+              .from("profiles")
+              .update({ balance: 0, has_accepted_charter: true })
+              .eq("user_id", adminId);
+            pushError(errors, `profiles reset ${adminId}`, adminUpdateError);
+          }
         }
       }
 
-      await supabase.from("platform_settings").update({ value: "false" }).eq("key", "maintenance_mode");
+      const { error: maintenanceError } = await supabase
+        .from("platform_settings")
+        .update({ value: "false" })
+        .eq("key", "maintenance_mode");
+      pushError(errors, "platform_settings (maintenance_mode)", maintenanceError);
 
       const resultMsg = errors.length > 0
         ? `Réinitialisation effectuée avec ${errors.length} erreur(s): ${errors.slice(0, 5).join("; ")}`
         : "Réinitialisation totale effectuée avec succès";
 
-      return new Response(JSON.stringify({ success: true, message: resultMsg, errors }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ success: true, message: resultMsg, errors });
     }
 
-    return new Response(JSON.stringify({ error: "Action invalide" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Action invalide" }, 400);
   } catch (err) {
     console.error("Nuclear reset error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: String(err) }, 500);
   }
 });
