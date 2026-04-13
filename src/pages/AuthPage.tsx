@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
 import { PROMO_NAMES, isValidEssecEmail } from '@/lib/pari-mutuel';
-import { CheckCircle, XCircle, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 // Emoji pool for auto-assignment
 const EMOJI_POOL = [
@@ -125,8 +125,8 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  // ─── STEP 1 VALIDATION ───
-  const canProceedToStep2 = () => {
+  // ─── INSCRIPTION ───
+  const canSignup = () => {
     return (
       selectedName &&
       email &&
@@ -140,52 +140,10 @@ export default function AuthPage() {
     );
   };
 
-  const goToStep2 = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canProceedToStep2()) return;
-    setSignupStep(2);
-    setInscriptionCode('');
-    setCodeError('');
-  };
-
-  // ─── INSCRIPTION (STEP 2 → submit) ───
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canSignup()) return;
     setLoading(true);
-    setCodeError('');
-
-    // Validate code against inscription_codes table
-    const codeUpper = inscriptionCode.trim().toUpperCase();
-    if (!codeUpper || codeUpper.length !== 6) {
-      setCodeError('Le code doit contenir exactement 6 caractères.');
-      setLoading(false);
-      return;
-    }
-
-    const { data: codeRow, error: codeErr } = await supabase
-      .from('inscription_codes')
-      .select('*')
-      .eq('code', codeUpper)
-      .maybeSingle();
-
-    if (codeErr || !codeRow) {
-      setCodeError('Code invalide ou ne correspondant pas à ton prénom.');
-      setLoading(false);
-      return;
-    }
-
-    if (codeRow.used) {
-      setCodeError('Ce code a déjà été utilisé.');
-      setLoading(false);
-      return;
-    }
-
-    // Check code matches the selected prénom
-    if (codeRow.prenom !== selectedName) {
-      setCodeError('Code invalide ou ne correspondant pas à ton prénom.');
-      setLoading(false);
-      return;
-    }
 
     // Double-check name availability at submit time
     const { data: existingProfile } = await supabase
@@ -198,7 +156,6 @@ export default function AuthPage() {
       toast.error('Ce prénom est déjà utilisé. Si c\'est le tien, contacte Jordaim Belfort.');
       setNameAvailable(false);
       setTakenNames(prev => new Set([...prev, selectedName]));
-      setSignupStep(1);
       setLoading(false);
       return;
     }
@@ -219,9 +176,6 @@ export default function AuthPage() {
       setLoading(false);
       return;
     }
-
-    // Mark code as used via RPC (security definer, bypasses RLS)
-    await supabase.rpc('mark_code_used', { p_code: codeUpper, p_prenom: selectedName });
 
     toast.success('Bienvenue sur DAIMBet ! 🦌');
     setLoading(false);
