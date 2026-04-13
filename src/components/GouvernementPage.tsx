@@ -254,6 +254,9 @@ export default function GouvernementPage() {
             <h3 className="font-display text-primary">{existingGouv.gov_name}</h3>
           </div>
           <p className="text-sm whitespace-pre-line">{existingGouv.comment}</p>
+          <p className="text-[10px] text-muted-foreground/60 italic mt-2 border-t border-border/30 pt-2">
+            🤖 Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.
+          </p>
         </motion.div>
       )}
 
