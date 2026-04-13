@@ -25,7 +25,7 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
-
+const WelcomePage = lazy(() => import("./pages/WelcomePage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 
 const PageLoader = () => (
@@ -116,29 +116,24 @@ function AppRoutes() {
   // ─── LOGGED IN ───
   return (
     <>
-      <Navbar />
-      <ResolutionNotifier />
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={<EventsPage />} />
-          <Route path="/bet/:id" element={<BetDetailPage />} />
+          <Route path="/welcome" element={<WelcomePage />} />
+          <Route path="/" element={<><Navbar /><ResolutionNotifier /><EventsPage /></>} />
+          <Route path="/bet/:id" element={<><Navbar /><ResolutionNotifier /><BetDetailPage /></>} />
           <Route path="/connexion" element={<Navigate to="/" replace />} />
           <Route path="/inscription" element={<Navigate to="/" replace />} />
-          <Route path="/gazette" element={<GazettePage />} />
-          <Route path="/classement" element={
-            <GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute>
-          } />
-          <Route path="/jeux" element={
-            <GuardedRoute tabKey="jeux"><GamesPage /></GuardedRoute>
-          } />
+          <Route path="/gazette" element={<><Navbar /><ResolutionNotifier /><GazettePage /></>} />
+          <Route path="/classement" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute></>} />
+          <Route path="/jeux" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="jeux"><GamesPage /></GuardedRoute></>} />
           <Route path="/kiss-marry" element={<Navigate to="/jeux" replace />} />
-          <Route path="/profil" element={<ProfilePage />} />
-          <Route path="/proposals" element={<ProposalsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/login" element={<AdminPage />} />
+          <Route path="/profil" element={<><Navbar /><ResolutionNotifier /><ProfilePage /></>} />
+          <Route path="/proposals" element={<><Navbar /><ResolutionNotifier /><ProposalsPage /></>} />
+          <Route path="/admin" element={<><Navbar /><ResolutionNotifier /><AdminPage /></>} />
+          <Route path="/admin/login" element={<><Navbar /><ResolutionNotifier /><AdminPage /></>} />
           <Route path="/archives" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="*" element={<NotFound />} />
+          <Route path="/reset-password" element={<><Navbar /><ResolutionNotifier /><ResetPasswordPage /></>} />
+          <Route path="*" element={<><Navbar /><NotFound /></>} />
         </Routes>
       </Suspense>
     </>

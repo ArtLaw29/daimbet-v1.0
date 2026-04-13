@@ -8,9 +8,8 @@ import { toast } from 'sonner';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
 import { PROMO_NAMES, isValidSchoolEmail } from '@/lib/pari-mutuel';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react';
 
-// Emoji pool for auto-assignment
 const EMOJI_POOL = [
   '🦌', '🐻', '🦊', '🐺', '🦁', '🐯', '🐮', '🐷', '🐸', '🐵',
   '🦉', '🦅', '🐧', '🐦', '🦋', '🐝', '🐞', '🐙', '🦑', '🐠',
@@ -29,12 +28,7 @@ function getEmojiForName(name: string): string {
   return EMOJI_POOL[Math.abs(hash) % EMOJI_POOL.length];
 }
 
-/**
- * Extract the base first name from a PROMO_NAMES entry for email cross-validation.
- * "Charles P." → "charles", "Chris-Aurélien" → "chris-aurélien", "Laura L." → "laura"
- */
 function extractBasePrenom(name: string): string {
-  // Remove trailing initial like " P.", " V.", " L."
   return name.replace(/\s+[A-Z]\.$/, '').toLowerCase();
 }
 
@@ -48,60 +42,43 @@ export default function AuthPage() {
   const [selectedName, setSelectedName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [signupDone, setSignupDone] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
 
-
-  // Real-time checks for inscription
   const [takenNames, setTakenNames] = useState<Set<string>>(new Set());
-  
   const [checkingName, setCheckingName] = useState(false);
   const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
   const [emailPrenomMatch, setEmailPrenomMatch] = useState<boolean | null>(null);
 
-  // Load taken names on mount
   useEffect(() => {
     fetchTakenNames();
   }, []);
 
   const fetchTakenNames = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('display_name');
+    const { data } = await supabase.from('profiles').select('display_name');
     if (data) {
-      const names = new Set(data.map(p => p.display_name));
-      setTakenNames(names);
+      setTakenNames(new Set(data.map(p => p.display_name)));
     }
   };
 
-  // Real-time name availability check
   useEffect(() => {
-    if (!selectedName || mode !== 'inscription') {
-      setNameAvailable(null);
-      return;
-    }
+    if (!selectedName || mode !== 'inscription') { setNameAvailable(null); return; }
     setCheckingName(true);
-    const timer = setTimeout(async () => {
-      const isTaken = takenNames.has(selectedName);
-      setNameAvailable(!isTaken);
+    const timer = setTimeout(() => {
+      setNameAvailable(!takenNames.has(selectedName));
       setCheckingName(false);
     }, 300);
     return () => clearTimeout(timer);
   }, [selectedName, takenNames, mode]);
 
-  // Real-time email validation + cross-validation with prénom
   useEffect(() => {
-    if (!email || mode !== 'inscription') {
-      setEmailValid(null);
-      setEmailPrenomMatch(null);
-      return;
-    }
+    if (!email || mode !== 'inscription') { setEmailValid(null); setEmailPrenomMatch(null); return; }
     const valid = isValidSchoolEmail(email);
     setEmailValid(valid);
-
     if (valid && selectedName) {
       const basePrenom = extractBasePrenom(selectedName);
       const emailPrefix = email.split('@')[0].split('.')[0].toLowerCase();
-      // Normalize accented characters for comparison
       const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
       setEmailPrenomMatch(normalize(emailPrefix) === normalize(basePrenom));
     } else {
@@ -109,33 +86,48 @@ export default function AuthPage() {
     }
   }, [email, selectedName, mode]);
 
-
   // ─── CONNEXION ───
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast.error('Email ou mot de passe incorrect.');
-    } else {
-      toast.success('Bienvenue sur DAIMBet ! 🦌');
+      if (error.message.includes('Email not confirmed')) {
+        toast.error('Ton email n\'est pas encore confirmé. Vérifie ta boîte mail (et tes spams) pour cliquer sur le lien de confirmation.');
+      } else {
+        toast.error('Email ou mot de passe incorrect.');
+      }
+      setLoading(false);
+      return;
     }
+
+    // Check is_activated
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (profile && !(profile as any).is_activated) {
+        await supabase.auth.signOut();
+        toast.error('Ton compte n\'est pas encore activé. Vérifie ta boîte mail (et tes spams) pour cliquer sur le lien de confirmation.');
+        setLoading(false);
+        return;
+      }
+    }
+
+    toast.success('Bienvenue sur DAIMBet ! 🦌');
     setLoading(false);
   };
 
   // ─── INSCRIPTION ───
   const canSignup = () => {
     return (
-      selectedName &&
-      email &&
-      password &&
-      confirmPassword &&
-      nameAvailable === true &&
-      emailValid === true &&
-      emailPrenomMatch === true &&
-      password === confirmPassword &&
-      password.length >= 6
+      selectedName && email && password && confirmPassword &&
+      nameAvailable === true && emailValid === true && emailPrenomMatch === true &&
+      password === confirmPassword && password.length >= 6
     );
   };
 
@@ -144,7 +136,6 @@ export default function AuthPage() {
     if (!canSignup()) return;
     setLoading(true);
 
-    // Double-check name availability at submit time
     const { data: existingProfile } = await supabase
       .from('profiles')
       .select('id')
@@ -166,7 +157,7 @@ export default function AuthPage() {
       password,
       options: {
         data: { display_name: selectedName, emoji },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: `${window.location.origin}/welcome`,
       },
     });
 
@@ -176,11 +167,45 @@ export default function AuthPage() {
       return;
     }
 
-    toast.success('Bienvenue sur DAIMBet ! 🦌');
+    setSignupEmail(email);
+    setSignupDone(true);
     setLoading(false);
   };
 
   const isFormValid = canSignup();
+
+  // ─── POST-SIGNUP: Email sent confirmation ───
+  if (signupDone) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-md text-center"
+        >
+          <div className="rounded-xl border border-border bg-card p-8 card-glow">
+            <Mail className="w-16 h-16 mx-auto mb-4 text-primary" />
+            <h2 className="text-2xl font-display gold-text mb-4">Vérifie ta boîte mail !</h2>
+            <p className="text-foreground leading-relaxed mb-2">
+              Un email de confirmation a été envoyé à{' '}
+              <span className="font-semibold text-primary">{signupEmail}</span>.
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Clique sur le lien dans l'email pour continuer ton inscription. Pense à vérifier tes spams !
+            </p>
+            <Button
+              variant="outline"
+              className="mt-6"
+              onClick={() => { setSignupDone(false); setMode('connexion'); }}
+            >
+              Retour à la connexion
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -190,7 +215,6 @@ export default function AuthPage() {
         transition={{ duration: 0.6 }}
         className="w-full max-w-md"
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <motion.img
             src={daimcoinLogo}
@@ -204,7 +228,6 @@ export default function AuthPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 card-glow">
-          {/* Mode toggle */}
           <div className="flex gap-2 mb-6">
             <Button
               variant={mode === 'connexion' ? 'default' : 'outline'}
@@ -222,38 +245,29 @@ export default function AuthPage() {
             </Button>
           </div>
 
-          {/* ─── CONNEXION ─── */}
           {mode === 'connexion' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
-                  id="login-email"
-                  type="email"
-                  value={email}
+                  id="login-email" type="email" value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="prénom.nom@essec.edu"
-                  required
+                  placeholder="prénom.nom@essec.edu" required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password">Mot de passe</Label>
                 <Input
-                  id="login-password"
-                  type="password"
-                  value={password}
+                  id="login-password" type="password" value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
+                  placeholder="••••••••" required minLength={6}
                 />
               </div>
               <Button type="submit" className="w-full gold-gradient font-semibold" disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Se connecter 🦌'}
               </Button>
               <button
-                type="button"
-                onClick={() => setShowForgot(true)}
+                type="button" onClick={() => setShowForgot(true)}
                 className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Mot de passe oublié ?
@@ -261,16 +275,13 @@ export default function AuthPage() {
             </form>
           )}
 
-          {/* ─── INSCRIPTION ─── */}
           {mode === 'inscription' && (
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Ton prénom</Label>
                 <select
-                  id="signup-name"
-                  value={selectedName}
-                  onChange={(e) => setSelectedName(e.target.value)}
-                  required
+                  id="signup-name" value={selectedName}
+                  onChange={(e) => setSelectedName(e.target.value)} required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Choisis ton prénom...</option>
@@ -294,12 +305,9 @@ export default function AuthPage() {
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
                 <Input
-                  id="signup-email"
-                  type="email"
-                  value={email}
+                  id="signup-email" type="email" value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="prénom.nom@essec.edu"
-                  required
+                  placeholder="prénom.nom@essec.edu" required
                 />
                 {email && emailValid === false && (
                   <p className="text-xs text-destructive mt-1">Format requis : prénom.nom@essec.edu</p>
@@ -315,26 +323,18 @@ export default function AuthPage() {
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Mot de passe</Label>
                 <Input
-                  id="signup-password"
-                  type="password"
-                  value={password}
+                  id="signup-password" type="password" value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
+                  placeholder="••••••••" required minLength={6}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="signup-confirm">Confirmer le mot de passe</Label>
                 <Input
-                  id="signup-confirm"
-                  type="password"
-                  value={confirmPassword}
+                  id="signup-confirm" type="password" value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
+                  placeholder="••••••••" required minLength={6}
                 />
                 {confirmPassword && password !== confirmPassword && (
                   <p className="text-xs text-destructive mt-1">Les mots de passe ne correspondent pas</p>
@@ -347,7 +347,6 @@ export default function AuthPage() {
             </form>
           )}
 
-          {/* Forgot password — message informatif */}
           {showForgot && mode === 'connexion' && (
             <div className="mt-4 pt-4 border-t border-border">
               <p className="text-sm text-foreground leading-relaxed">
@@ -356,8 +355,7 @@ export default function AuthPage() {
                 depuis ton adresse email de la promo. Dans ce mail, indique le nouveau mot de passe que tu souhaites utiliser, puis patiente le temps que l'administrateur fasse la modification.
               </p>
               <button
-                type="button"
-                onClick={() => setShowForgot(false)}
+                type="button" onClick={() => setShowForgot(false)}
                 className="mt-2 text-xs text-muted-foreground hover:text-primary transition-colors"
               >
                 Fermer
