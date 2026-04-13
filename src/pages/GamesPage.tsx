@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Lock, ShieldAlert } from 'lucide-react';
 import KissMarryPage from './KissMarryPage';
+import GameSessionsList from '@/components/GameSessionsList';
 
 interface GameTab {
   id: string;
@@ -15,10 +16,10 @@ interface GameTab {
 
 const GAME_TABS: GameTab[] = [
   { id: 'kiss-marry', emoji: '💋', label: 'Kiss/Marry', subtitleKey: 'game_subtitle_kiss_marry', defaultSubtitle: 'Vote mensuel anonyme', available: true },
-  { id: 'daimocratie', emoji: '🗳️', label: 'Daimocratie', subtitleKey: 'game_subtitle_daimocratie', defaultSubtitle: 'Sondages', available: false },
-  { id: 'you-decide', emoji: '⚔️', label: 'You Decide', subtitleKey: 'game_subtitle_you_decide', defaultSubtitle: 'Tournois', available: false },
-  { id: 'gouvernement', emoji: '🏛️', label: 'Gouvernement', subtitleKey: 'game_subtitle_gouvernement', defaultSubtitle: '', available: false },
-  { id: 'fantasy-firm', emoji: '⚖️', label: 'Daim Fantasy Firm', subtitleKey: 'game_subtitle_fantasy_firm', defaultSubtitle: '', available: false },
+  { id: 'daimocratie', emoji: '🗳️', label: 'Daimocratie', subtitleKey: 'game_subtitle_daimocratie', defaultSubtitle: 'Sondages', available: true },
+  { id: 'you-decide', emoji: '⚔️', label: 'You Decide', subtitleKey: 'game_subtitle_you_decide', defaultSubtitle: 'Tournois', available: true },
+  { id: 'gouvernement', emoji: '🏛️', label: 'Gouvernement', subtitleKey: 'game_subtitle_gouvernement', defaultSubtitle: '', available: true },
+  { id: 'fantasy-firm', emoji: '⚖️', label: 'Daim Fantasy Firm', subtitleKey: 'game_subtitle_fantasy_firm', defaultSubtitle: '', available: true },
 ];
 
 export default function GamesPage() {
@@ -117,10 +118,10 @@ export default function GamesPage() {
         ) : (
           <>
             {activeTab === 'kiss-marry' && <KissMarryPage />}
-            {activeTab === 'daimocratie' && <ComingSoon label="Daimocratie — Sondages" emoji="🗳️" />}
-            {activeTab === 'you-decide' && <ComingSoon label="You Decide — Tournois" emoji="⚔️" />}
-            {activeTab === 'gouvernement' && <ComingSoon label="Gouvernement" emoji="🏛️" />}
-            {activeTab === 'fantasy-firm' && <ComingSoon label="Daim Fantasy Firm" emoji="⚖️" />}
+            {activeTab === 'daimocratie' && <GameSessionsList gameType="sondage" emoji="🗳️" label="Daimocratie — Sondages" />}
+            {activeTab === 'you-decide' && <GameSessionsList gameType="tournoi" emoji="⚔️" label="You Decide — Tournois" />}
+            {activeTab === 'gouvernement' && <GameSessionsList gameType="gouvernement" emoji="🏛️" label="Gouvernement" />}
+            {activeTab === 'fantasy-firm' && <GameSessionsList gameType="fantasy" emoji="⚖️" label="Daim Fantasy Firm" />}
           </>
         )}
       </motion.div>
