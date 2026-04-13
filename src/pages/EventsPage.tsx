@@ -52,6 +52,9 @@ export default function EventsPage() {
   }, [user]);
 
   const fetchAll = useCallback(async () => {
+    // Check suspension
+    const { data: suspData } = await supabase.from('platform_settings').select('value').eq('key', 'suspend_paris').maybeSingle();
+    setParisSuspended(suspData?.value === 'true');
     await Promise.all([fetchBets(), fetchProposals()]);
   }, [user]);
 
