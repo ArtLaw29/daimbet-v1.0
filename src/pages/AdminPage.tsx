@@ -210,12 +210,18 @@ export default function AdminPage() {
     }
     if (gameSubRes.data) {
       const gs: Record<string, string> = {};
+      const susp: Record<string, boolean> = {};
       gameSubRes.data.forEach((r: any) => {
-        gs[r.key] = r.value;
+        if (r.key.startsWith('suspend_')) {
+          susp[r.key] = r.value === 'true';
+        } else {
+          gs[r.key] = r.value;
+        }
         if (r.key === 'km_show_coup_soir') setKmShowCoupSoir(r.value === 'true');
         if (r.key === 'km_show_plan_q') setKmShowPlanQ(r.value === 'true');
       });
       setGameSubtitles(gs);
+      setSuspensionStatus(susp);
     }
     if (retractionRes.data) {
       setRetractionStart(retractionRes.data.start_hour);
