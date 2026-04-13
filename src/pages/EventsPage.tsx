@@ -293,6 +293,21 @@ export default function EventsPage() {
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
+  if (parisSuspended) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-3xl pb-20 md:pb-6">
+        <div className="text-center mb-4">
+          <h1 className="text-3xl font-display gold-text">🎯 Les Paris du Moment</h1>
+        </div>
+        <div className="text-center py-20 space-y-3">
+          <p className="text-5xl">🚨</p>
+          <h2 className="text-xl font-display text-destructive">Paris suspendus</h2>
+          <p className="text-muted-foreground text-sm">Les paris sont temporairement suspendus par l'administrateur.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl pb-20 md:pb-6">
       <div className="text-center mb-4">
