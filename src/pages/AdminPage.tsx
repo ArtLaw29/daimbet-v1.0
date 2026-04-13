@@ -2150,6 +2150,34 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
+
+            {/* ─── KM CATEGORY VISIBILITY ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2">💋 Catégories Kiss/Marry</h3>
+              <p className="text-xs text-muted-foreground">Affiche ou cache les catégories sensibles pour tous les utilisateurs.</p>
+              {[
+                { key: 'km_show_coup_soir', label: "🌙 Coup d'un soir", value: kmShowCoupSoir, setter: setKmShowCoupSoir },
+                { key: 'km_show_plan_q', label: '🔥 Plan Q', value: kmShowPlanQ, setter: setKmShowPlanQ },
+              ].map(cat => (
+                <div key={cat.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 border border-border/50">
+                  <span className="text-sm">{cat.label}</span>
+                  <Switch
+                    checked={cat.value}
+                    onCheckedChange={async (checked) => {
+                      const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', cat.key).maybeSingle();
+                      if (existing) {
+                        await supabase.from('platform_settings').update({ value: checked ? 'true' : 'false', updated_at: new Date().toISOString() }).eq('key', cat.key);
+                      } else {
+                        await supabase.from('platform_settings').insert({ key: cat.key, value: checked ? 'true' : 'false' });
+                      }
+                      cat.setter(checked);
+                      toast.success(`Catégorie ${cat.label} ${checked ? 'affichée' : 'cachée'}`);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
             <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-pink-500/10 to-violet-500/10 p-5 space-y-4">
               <h3 className="text-lg font-display flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> 💋 Révélation Kiss/Marry</h3>
               <p className="text-sm text-muted-foreground">
