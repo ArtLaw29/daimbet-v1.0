@@ -127,6 +127,9 @@ export default function AdminPage() {
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
   const [emailTodayCount, setEmailTodayCount] = useState(0);
 
+  // Game subtitles
+  const [gameSubtitles, setGameSubtitles] = useState<Record<string, string>>({});
+
   // Kiss/Marry reveal
   const [kmRevealStep, setKmRevealStep] = useState(0);
 
@@ -169,7 +172,7 @@ export default function AdminPage() {
     const todayStart = new Date();
     todayStart.setUTCHours(0, 0, 0, 0);
 
-    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes, ticketsRes, notifRes, emailLogsRes, emailTodayRes, maintRes, navConfigRes, retractionRes, suggestionsRes] = await Promise.all([
+    const [betsRes, prRes, wagersRes, injRes, gazRes, propRes, ticketsRes, notifRes, emailLogsRes, emailTodayRes, maintRes, navConfigRes, retractionRes, suggestionsRes, gameSubRes] = await Promise.all([
       supabase.from('bets').select('*, bet_options(*)').order('created_at', { ascending: false }),
       supabase.from('profiles').select('*').order('balance', { ascending: false }),
       supabase.from('wagers').select('*').order('created_at', { ascending: false }),
@@ -184,6 +187,7 @@ export default function AdminPage() {
       supabase.from('nav_config').select('tab_key, is_visible'),
       supabase.from('retraction_config').select('*').limit(1).single(),
       supabase.from('tierce_suggestions').select('*').eq('status', 'en_attente').order('created_at', { ascending: false }),
+      supabase.from('platform_settings').select('key, value').like('key', 'game_subtitle_%'),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
@@ -199,6 +203,11 @@ export default function AdminPage() {
       const nc: Record<string, boolean> = {};
       navConfigRes.data.forEach((r: any) => { nc[r.tab_key] = r.is_visible; });
       setNavConfig(nc);
+    }
+    if (gameSubRes.data) {
+      const gs: Record<string, string> = {};
+      gameSubRes.data.forEach((r: any) => { gs[r.key] = r.value; });
+      setGameSubtitles(gs);
     }
     if (retractionRes.data) {
       setRetractionStart(retractionRes.data.start_hour);
@@ -2074,7 +2083,7 @@ export default function AdminPage() {
                   { key: 'paris', label: '🎯 Paris', maskable: false, tooltip: 'Onglet obligatoire' },
                   { key: 'gazette', label: '📰 Gazette', maskable: false, tooltip: 'Non masquable — canal de communication système' },
                   { key: 'classement', label: '🏆 Classement', maskable: true },
-                  { key: 'kiss-marry', label: '💋 Kiss/Marry', maskable: true },
+                  { key: 'jeux', label: '🎮 Jeux', maskable: true },
                   { key: 'profil', label: '👤 Profil', maskable: false, tooltip: 'Onglet obligatoire' },
                 ].map((tab) => (
                   <div key={tab.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 border border-border/50">
@@ -2099,7 +2108,42 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* ─── KISS/MARRY REVEAL ─── */}
+            {/* ─── GAME SUBTITLES ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2">🎮 Sous-titres des jeux</h3>
+              <p className="text-xs text-muted-foreground">Modifie les sous-titres affichés sous chaque jeu dans l'onglet Jeux.</p>
+              <div className="space-y-3">
+                {[
+                  { key: 'game_subtitle_kiss_marry', label: '💋 Kiss/Marry' },
+                  { key: 'game_subtitle_daimocratie', label: '🗳️ Daimocratie' },
+                  { key: 'game_subtitle_you_decide', label: '⚔️ You Decide' },
+                  { key: 'game_subtitle_gouvernement', label: '🏛️ Gouvernement' },
+                  { key: 'game_subtitle_fantasy_firm', label: '⚖️ Daim Fantasy Firm' },
+                ].map(g => (
+                  <div key={g.key} className="flex items-center gap-3">
+                    <span className="text-sm w-40 flex-shrink-0">{g.label}</span>
+                    <Input
+                      value={gameSubtitles[g.key] ?? ''}
+                      onChange={e => setGameSubtitles(prev => ({ ...prev, [g.key]: e.target.value }))}
+                      placeholder="Sous-titre..."
+                      className="text-xs flex-1"
+                    />
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      const val = gameSubtitles[g.key] ?? '';
+                      const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', g.key).maybeSingle();
+                      if (existing) {
+                        await supabase.from('platform_settings').update({ value: val, updated_at: new Date().toISOString() }).eq('key', g.key);
+                      } else {
+                        await supabase.from('platform_settings').insert({ key: g.key, value: val });
+                      }
+                      toast.success('Sous-titre mis à jour');
+                    }}>
+                      Sauver
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-pink-500/10 to-violet-500/10 p-5 space-y-4">
               <h3 className="text-lg font-display flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> 💋 Révélation Kiss/Marry</h3>
               <p className="text-sm text-muted-foreground">
