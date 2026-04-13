@@ -30,69 +30,32 @@ const deleteAllRows = async (supabase: any, table: string, errors: string[]) => 
   }
 };
 
-const purgeGameData = async (supabase: any, errors: string[]) => {
-  const { data: sessions, error: sessionsError } = await supabase
+const purgeAllGameData = async (supabase: any, errors: string[]) => {
+  // Delete ALL participations first (FK constraint: participations → sessions)
+  const { error: partErr } = await supabase
+    .from("game_participations")
+    .delete()
+    .neq("id", ZERO_UUID);
+  if (!pushError(errors, "game_participations", partErr)) {
+    console.log("Deleted all game_participations");
+  }
+
+  // Then delete ALL game sessions
+  const { error: sessErr } = await supabase
     .from("game_sessions")
-    .select("id")
-    .in("game_type", RESETTABLE_GAME_TYPES);
-
-  if (pushError(errors, "game_sessions fetch", sessionsError)) {
-    return;
+    .delete()
+    .neq("id", ZERO_UUID);
+  if (!pushError(errors, "game_sessions", sessErr)) {
+    console.log("Deleted all game_sessions");
   }
 
-  const sessionIds = (sessions ?? []).map((session: { id: string }) => session.id);
-  const participationSessionIds = Array.from(
-    new Set([...sessionIds, GOVERNMENT_SESSION_ID, FANTASY_SESSION_ID]),
-  );
-
-  if (sessionIds.length > 0) {
-    const { error: reportsError } = await supabase
-      .from("content_reports")
-      .delete()
-      .in("content_id", sessionIds);
-    pushError(errors, "content_reports (game sessions)", reportsError);
-  }
-
-  if (participationSessionIds.length > 0) {
-    const { error: participationsError } = await supabase
-      .from("game_participations")
-      .delete()
-      .in("session_id", participationSessionIds);
-    pushError(errors, "game_participations (games)", participationsError);
-
-    const { data: remainingParticipations, error: remainingParticipationsError } = await supabase
-      .from("game_participations")
-      .select("id")
-      .in("session_id", participationSessionIds);
-
-    if (!pushError(errors, "game_participations verify", remainingParticipationsError) && (remainingParticipations?.length ?? 0) > 0) {
-      const { error: retryParticipationsError } = await supabase
-        .from("game_participations")
-        .delete()
-        .in("id", remainingParticipations.map((row: { id: string }) => row.id));
-      pushError(errors, "game_participations retry", retryParticipationsError);
-    }
-  }
-
-  if (sessionIds.length > 0) {
-    const { error: deleteSessionsError } = await supabase
-      .from("game_sessions")
-      .delete()
-      .in("id", sessionIds);
-    pushError(errors, "game_sessions", deleteSessionsError);
-
-    const { data: remainingSessions, error: remainingSessionsError } = await supabase
-      .from("game_sessions")
-      .select("id")
-      .in("id", sessionIds);
-
-    if (!pushError(errors, "game_sessions verify", remainingSessionsError) && (remainingSessions?.length ?? 0) > 0) {
-      const { error: retrySessionsError } = await supabase
-        .from("game_sessions")
-        .delete()
-        .in("id", remainingSessions.map((row: { id: string }) => row.id));
-      pushError(errors, "game_sessions retry", retrySessionsError);
-    }
+  // Delete related content reports
+  const { error: repErr } = await supabase
+    .from("content_reports")
+    .delete()
+    .neq("id", ZERO_UUID);
+  if (!pushError(errors, "content_reports (purge)", repErr)) {
+    console.log("Deleted all content_reports");
   }
 };
 
@@ -205,7 +168,7 @@ Deno.serve(async (req) => {
     if (action === "execute_reset") {
       const errors: string[] = [];
 
-      await purgeGameData(supabase, errors);
+      await purgeAllGameData(supabase, errors);
 
       const deletions = [
         "gazette_reactions",
