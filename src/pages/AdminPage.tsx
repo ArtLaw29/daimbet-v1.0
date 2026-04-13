@@ -982,14 +982,35 @@ export default function AdminPage() {
                             const odds = totalPool > 0 && optPool > 0 ? (totalPool / optPool).toFixed(2) : DEFAULT_ODDS.toFixed(2);
                             const isSelected = winners.has(opt.id);
                             return (
-                              <button key={opt.id} type="button"
-                                onClick={() => toggleWinner(bet.id, opt.id, bet.max_winners)}
-                                className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
-                                  isSelected ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-border bg-secondary/50 text-muted-foreground hover:border-primary/30'
-                                }`}>
-                                <Trophy className="w-3 h-3 inline mr-1" />
-                                {opt.label} (x{odds} · {optPool} DC)
-                              </button>
+                              <div key={opt.id} className="flex items-center gap-1">
+                                <button type="button"
+                                  onClick={() => toggleWinner(bet.id, opt.id, bet.max_winners)}
+                                  className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+                                    isSelected ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-border bg-secondary/50 text-muted-foreground hover:border-primary/30'
+                                  }`}>
+                                  <Trophy className="w-3 h-3 inline mr-1" />
+                                  {opt.label} (x{odds} · {optPool} DC)
+                                </button>
+                                <button type="button" title="Supprimer cette option"
+                                  onClick={async () => {
+                                    const motif = prompt('Motif de suppression de cette option :');
+                                    if (!motif) return;
+                                    setDeleteOptionLoading(true);
+                                    const { data, error } = await supabase.functions.invoke('delete-bet-option', {
+                                      body: { option_id: opt.id, motif },
+                                    });
+                                    setDeleteOptionLoading(false);
+                                    if (error || data?.error) {
+                                      toast.error(data?.error || 'Erreur');
+                                    } else {
+                                      toast.success(`Option "${opt.label}" supprimée. ${data?.refunded_count || 0} mise(s) remboursée(s).`);
+                                      fetchAll();
+                                    }
+                                  }}
+                                  className="text-destructive hover:bg-destructive/10 p-1 rounded">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             );
                           })}
                         </div>
