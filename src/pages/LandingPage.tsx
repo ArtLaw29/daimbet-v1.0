@@ -2,15 +2,9 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { Key, Coins, Target, Trophy } from 'lucide-react';
+import { Coins, Gamepad2, Trophy } from 'lucide-react';
 
 const STEPS = [
-  {
-    icon: Key,
-    emoji: '🔑',
-    title: 'Crée ton compte',
-    desc: 'Avec ton email ESSEC et choisis ton prénom dans la liste de la promo',
-  },
   {
     icon: Coins,
     emoji: '🪙',
@@ -18,19 +12,18 @@ const STEPS = [
     desc: "À l'inscription pour commencer à parier immédiatement",
   },
   {
-    icon: Target,
-    emoji: '🎯',
-    title: 'Parie sur la promo',
-    desc: 'Sur les événements de la promo avec des cotes provisoires dynamiques',
+    icon: Gamepad2,
+    emoji: '🎮',
+    title: 'Joue sur la promo',
+    desc: 'Des jeux décalés où chaque choix peut te rapporter (ou te coûter) des DaimCoins.',
   },
   {
     icon: Trophy,
     emoji: '🏆',
     title: "Deviens l'Oracle du Daim",
-    desc: 'Gagne, grimpe dans le classement et prouve que tu connais la promo mieux que personne',
+    desc: 'Jeux, paris, tournois… Cumule les DaimCoins, grimpe le classement et prouve que personne ne connaît la promo mieux que toi.',
   },
 ];
-
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
@@ -71,13 +64,13 @@ export default function LandingPage() {
               Bienvenue sur DaimBet 🦌💸
             </h1>
             <h2 className="text-lg md:text-xl text-muted-foreground mt-4 max-w-xl mx-auto">
-              Le premier marché de prédiction où votre connaissance de la promo vaut de l'or (fictif).
+              La plateforme où ta connaissance de la promo se transforme en DaimCoins (fictifs).
             </h2>
             <p className="text-sm md:text-base text-muted-foreground mt-6 max-w-2xl mx-auto leading-relaxed">
-              DaimBet n'est pas un site de paris sportifs classique. C'est la bourse officielle de notre 
-              promotion. Ici, vous ne pariez pas contre le casino ou le marché, vous pariez contre les 
-              autres daims. Attention, le délit d'initié n'est ni recommandé, ni interdit. Les enquêteurs 
-              de l'AMF ne viendront pas vous chercher.
+              DaimBet n'est pas un simple site de paris. C'est le terrain de jeu officiel de ta promotion. 
+              Paris, mini-jeux, sondages, tournois… Ici, tu mises tes DaimCoins contre les autres daims 
+              sur tout ce qui fait vibrer la promo. Attention, le délit d'initié n'est ni recommandé, ni 
+              interdit. Les enquêteurs de l'AMF ne viendront pas vous chercher.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
@@ -101,7 +94,7 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-4xl font-display gold-text text-center mb-12">
               Comment ça marche ?
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {STEPS.map((step, i) => {
                 const Icon = step.icon;
                 return (
