@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       dateFilter(supabase.from("daimocratie_proposals").select("id, title, status, user_id, votes_positive, votes_negative, created_at")).order("created_at", { ascending: false }),
       dateFilter(supabase.from("solde_history").select("id, user_id, delta_dc, reason, created_at")).order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id, display_name, balance, created_at, is_suspended"),
-      dateFilter(supabase.from("tickets").select("id, user_id, subject, status, created_at, admin_replied_at")).order("created_at", { ascending: false })),
+      dateFilter(supabase.from("tickets").select("id, user_id, subject, status, created_at, admin_replied_at")).order("created_at", { ascending: false }),
       supabase.from("ticket_messages").select("id, ticket_id, sender, content, created_at").order("created_at", { ascending: true }),
     ]);
 
