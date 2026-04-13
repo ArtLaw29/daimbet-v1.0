@@ -123,7 +123,7 @@ export default function TicketThread({ ticketId, subject, status, isAdmin, onBac
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 min-h-[200px] max-h-[400px] pr-1">
         {messages.map(msg => {
-          const isMe = (isAdmin && msg.sender === 'admin') || (!isAdmin && msg.sender === 'user');
+          const isMe = (isAdmin && msg.sender === 'admin') || (!isAdmin && msg.sender === 'utilisateur');
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${
