@@ -25,7 +25,7 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
-
+const WelcomePage = lazy(() => import("./pages/WelcomePage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 
 const PageLoader = () => (
