@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Flag, Search, Vote, Ticket, Bell, Download, FileJson, FileSpreadsheet, TrendingUp, Percent, Mail, Send, Power, Bomb, Loader2, KeyRound, Copy, Check } from 'lucide-react';
+import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Pause, Play, Dice6, Sparkles, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Search, Vote, Ticket, Bell, Download, FileJson, FileSpreadsheet, TrendingUp, Mail, Send, Power, Bomb, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

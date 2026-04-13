@@ -52,7 +52,7 @@ export default function AuthPage() {
 
   // Real-time checks for inscription
   const [takenNames, setTakenNames] = useState<Set<string>>(new Set());
-  const [registeredNames, setRegisteredNames] = useState<string[]>([]);
+  
   const [checkingName, setCheckingName] = useState(false);
   const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
@@ -70,7 +70,6 @@ export default function AuthPage() {
     if (data) {
       const names = new Set(data.map(p => p.display_name));
       setTakenNames(names);
-      setRegisteredNames(data.map(p => p.display_name).sort());
     }
   };
 
