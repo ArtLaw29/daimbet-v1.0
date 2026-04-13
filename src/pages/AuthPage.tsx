@@ -48,7 +48,6 @@ export default function AuthPage() {
   const [selectedName, setSelectedName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
 
   // Multi-step inscription
   const [signupStep, setSignupStep] = useState(1);
