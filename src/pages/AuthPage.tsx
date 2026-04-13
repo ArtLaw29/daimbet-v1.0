@@ -106,11 +106,11 @@ export default function AuthPage() {
     if (data.user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('is_activated')
+        .select('*')
         .eq('user_id', data.user.id)
         .single();
 
-      if (profile && !profile.is_activated) {
+      if (profile && !(profile as any).is_activated) {
         await supabase.auth.signOut();
         toast.error('Ton compte n\'est pas encore activé. Vérifie ta boîte mail (et tes spams) pour cliquer sur le lien de confirmation.');
         setLoading(false);
