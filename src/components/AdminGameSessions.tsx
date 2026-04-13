@@ -65,13 +65,13 @@ export default function AdminGameSessions() {
       config.options = newOptions.split('\n').map(o => o.trim()).filter(Boolean);
     }
 
-    const { error } = await supabase.from('game_sessions').insert({
-      game_type: newType as any,
+    const { error } = await supabase.from('game_sessions').insert([{
+      game_type: newType,
       title: newTitle.trim(),
       subtitle: newSubtitle.trim() || null,
-      status: 'active' as any,
+      status: 'active',
       config,
-    });
+    }] as any);
 
     if (error) { toast.error('Erreur'); return; }
     toast.success('Session créée et active ! 🎉');

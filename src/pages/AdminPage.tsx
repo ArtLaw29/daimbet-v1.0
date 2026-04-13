@@ -21,6 +21,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { STARTING_BALANCE, DEFAULT_ODDS, PROMO_NAMES } from '@/lib/pari-mutuel';
 import TicketThread from '@/components/TicketThread';
 import AdminGlossary from '@/components/AdminGlossary';
+import AdminGameSessions from '@/components/AdminGameSessions';
 
 type Profile = Tables<'profiles'>;
 type BetRow = Tables<'bets'>;
