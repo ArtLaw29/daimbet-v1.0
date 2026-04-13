@@ -311,33 +311,6 @@ export type Database = {
           },
         ]
       }
-      inscription_codes: {
-        Row: {
-          code: string
-          created_at: string
-          id: string
-          prenom: string
-          used: boolean
-          used_at: string | null
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          id?: string
-          prenom: string
-          used?: boolean
-          used_at?: string | null
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          id?: string
-          prenom?: string
-          used?: boolean
-          used_at?: string | null
-        }
-        Relationships: []
-      }
       kiss_marry_votes: {
         Row: {
           category: Database["public"]["Enums"]["km_category"]
@@ -700,10 +673,6 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
-        Returns: boolean
-      }
-      mark_code_used: {
-        Args: { p_code: string; p_prenom: string }
         Returns: boolean
       }
       place_wager: {
