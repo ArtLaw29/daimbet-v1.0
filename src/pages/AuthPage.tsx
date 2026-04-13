@@ -235,11 +235,8 @@ export default function AuthPage() {
       return;
     }
 
-    // Mark code as used (best-effort, the account is already created)
-    await supabase
-      .from('inscription_codes')
-      .update({ used: true, used_at: new Date().toISOString() })
-      .eq('id', codeRow.id);
+    // Mark code as used via RPC (security definer, bypasses RLS)
+    await supabase.rpc('mark_code_used', { p_code: codeUpper, p_prenom: selectedName });
 
     toast.success('Bienvenue sur DAIMBet ! 🦌');
     setLoading(false);
