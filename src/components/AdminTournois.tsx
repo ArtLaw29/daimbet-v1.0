@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Plus, Trash2, Play, Trophy, ChevronDown, ChevronUp, Users, Swords, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Play, ChevronDown, ChevronUp, Swords, Loader2 } from 'lucide-react';
 import type { Json } from '@/integrations/supabase/types';
 
 interface Session {

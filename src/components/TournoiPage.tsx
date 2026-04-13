@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Users, Clock, CheckCircle, ChevronRight, Archive, ArrowLeft, Trophy, Coins, Loader2, Plus, Swords } from 'lucide-react';
+import { Users, Clock, CheckCircle, ChevronRight, Archive, Trophy, Loader2, Plus, Swords } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,7 +57,7 @@ export default function TournoiPage() {
   const [selectedSession, setSelectedSession] = useState<TournoiSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>('list');
-  const [showCoinRain, setShowCoinRain] = useState(false);
+  const [showCoinRain, setShowCoinRain] = useState<number | null>(null);
 
   // Propose form
   const [propTitle, setPropTitle] = useState('');
@@ -69,7 +69,6 @@ export default function TournoiPage() {
   const [submittingBet, setSubmittingBet] = useState(false);
 
   // Vote state
-  const [votingDuel, setVotingDuel] = useState<{ duelId: number; choice: string } | null>(null);
   const [submittingVote, setSubmittingVote] = useState(false);
 
   const fetchSessions = async () => {
@@ -278,7 +277,7 @@ export default function TournoiPage() {
 
     return (
       <div className="space-y-4">
-        {showCoinRain && <CoinRain onComplete={() => setShowCoinRain(false)} />}
+        {showCoinRain !== null && <CoinRain amount={showCoinRain} onComplete={() => setShowCoinRain(null)} />}
         <button onClick={() => { setSelectedSession(null); setView('list'); }} className="text-sm text-primary hover:underline">
           ← Retour aux tournois
         </button>
