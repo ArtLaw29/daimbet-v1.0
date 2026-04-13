@@ -627,7 +627,7 @@ export default function AdminPage() {
       )}
 
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-11 bg-secondary">
+        <TabsList className="grid w-full grid-cols-12 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
           <TabsTrigger value="proposals" className="font-display text-xs">
@@ -661,6 +661,7 @@ export default function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="messagerie" className="font-display text-xs"><Mail className="w-4 h-4 mr-1" /> Email</TabsTrigger>
           <TabsTrigger value="maintenance" className="font-display text-xs"><Power className="w-4 h-4 mr-1" /> Maint.</TabsTrigger>
+          <TabsTrigger value="sessions" className="font-display text-xs"><Sparkles className="w-4 h-4 mr-1" /> Sessions</TabsTrigger>
           <TabsTrigger value="glossaire" className="font-display text-xs">📖 Lexique</TabsTrigger>
         </TabsList>
 
