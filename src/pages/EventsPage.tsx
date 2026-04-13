@@ -9,10 +9,7 @@ import { calculateEstimatedNetGain, STARTING_BALANCE } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
 import BetBottomSheet from '@/components/BetBottomSheet';
-import ProposalCard from '@/components/ProposalCard';
 import type { Tables } from '@/integrations/supabase/types';
-
-type Proposal = Tables<'daimocratie_proposals'>;
 
 type SortMode = 'urgence' | 'categorie' | 'popularite';
 
@@ -32,9 +29,6 @@ export default function EventsPage() {
   const [betTotals, setBetTotals] = useState<Record<string, number>>({});
   const [wagerCounts, setWagerCounts] = useState<Record<string, number>>({});
   const [userWagers, setUserWagers] = useState<Record<string, UserWager>>({});
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [userVotes, setUserVotes] = useState<Record<string, string>>({});
-  const [proposerNames, setProposerNames] = useState<Record<string, string>>({});
   const [parisSuspended, setParisSuspended] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>(() => {
     return (sessionStorage.getItem('daimbet-sort') as SortMode) || 'urgence';
@@ -55,7 +49,7 @@ export default function EventsPage() {
     // Check suspension
     const { data: suspData } = await supabase.from('platform_settings').select('value').eq('key', 'suspend_paris').maybeSingle();
     setParisSuspended(suspData?.value === 'true');
-    await Promise.all([fetchBets(), fetchProposals()]);
+    await fetchBets();
   }, [user]);
 
   const fetchBets = async () => {
@@ -112,42 +106,6 @@ export default function EventsPage() {
     setLoading(false);
   };
 
-  const fetchProposals = async () => {
-    const { data } = await supabase
-      .from('daimocratie_proposals')
-      .select('*')
-      .eq('status', 'en_attente')
-      .order('votes_positive', { ascending: false });
-    const items = data || [];
-    setProposals(items);
-
-    // Fetch proposer names
-    if (items.length > 0) {
-      const userIds = [...new Set(items.map(p => p.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds);
-      if (profiles) {
-        const names: Record<string, string> = {};
-        profiles.forEach(p => { names[p.user_id] = p.display_name; });
-        setProposerNames(names);
-      }
-    }
-
-    // Fetch user votes
-    if (user) {
-      const { data: votes } = await supabase
-        .from('daimocratie_votes')
-        .select('proposal_id, vote')
-        .eq('user_id', user.id);
-      if (votes) {
-        const voteMap: Record<string, string> = {};
-        votes.forEach(v => { voteMap[v.proposal_id] = v.vote; });
-        setUserVotes(voteMap);
-      }
-    }
-  };
 
   const handleSort = (mode: SortMode) => {
     setSortMode(mode);
