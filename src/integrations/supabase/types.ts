@@ -243,6 +243,77 @@ export type Database = {
           },
         ]
       }
+      game_participations: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_participations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "game_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_sessions: {
+        Row: {
+          closed_at: string | null
+          config: Json
+          created_at: string
+          created_by: string | null
+          game_type: Database["public"]["Enums"]["game_type"]
+          id: string
+          status: Database["public"]["Enums"]["game_session_status"]
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          game_type: Database["public"]["Enums"]["game_type"]
+          id?: string
+          status?: Database["public"]["Enums"]["game_session_status"]
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          game_type?: Database["public"]["Enums"]["game_type"]
+          id?: string
+          status?: Database["public"]["Enums"]["game_session_status"]
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       gazette_messages: {
         Row: {
           content: string
@@ -708,6 +779,8 @@ export type Database = {
         | "over_under"
         | "tranches_multiples"
         | "tierce_du_daim"
+      game_session_status: "draft" | "active" | "voting" | "closed" | "archived"
+      game_type: "sondage" | "tournoi" | "gouvernement" | "fantasy"
       km_category: "kiss" | "marry" | "coup_soir" | "plan_q"
       proposal_status: "en_attente" | "valide" | "rejete"
       resolution_mode: "admin" | "tirage_sort"
@@ -855,6 +928,8 @@ export const Constants = {
         "tranches_multiples",
         "tierce_du_daim",
       ],
+      game_session_status: ["draft", "active", "voting", "closed", "archived"],
+      game_type: ["sondage", "tournoi", "gouvernement", "fantasy"],
       km_category: ["kiss", "marry", "coup_soir", "plan_q"],
       proposal_status: ["en_attente", "valide", "rejete"],
       resolution_mode: ["admin", "tirage_sort"],
