@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
 import { PROMO_NAMES, isValidEssecEmail } from '@/lib/pari-mutuel';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, ArrowLeft, ArrowRight } from 'lucide-react';
 
 // Emoji pool for auto-assignment
 const EMOJI_POOL = [
@@ -21,13 +21,21 @@ const EMOJI_POOL = [
 ];
 
 function getEmojiForName(name: string): string {
-  // Deterministic emoji based on name hash
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = ((hash << 5) - hash) + name.charCodeAt(i);
     hash |= 0;
   }
   return EMOJI_POOL[Math.abs(hash) % EMOJI_POOL.length];
+}
+
+/**
+ * Extract the base first name from a PROMO_NAMES entry for email cross-validation.
+ * "Charles P." → "charles", "Chris-Aurélien" → "chris-aurélien", "Laura L." → "laura"
+ */
+function extractBasePrenom(name: string): string {
+  // Remove trailing initial like " P.", " V.", " L."
+  return name.replace(/\s+[A-Z]\.$/, '').toLowerCase();
 }
 
 export default function AuthPage() {
@@ -42,12 +50,18 @@ export default function AuthPage() {
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
 
+  // Multi-step inscription
+  const [signupStep, setSignupStep] = useState(1);
+  const [inscriptionCode, setInscriptionCode] = useState('');
+  const [codeError, setCodeError] = useState('');
+
   // Real-time checks for inscription
   const [takenNames, setTakenNames] = useState<Set<string>>(new Set());
   const [registeredNames, setRegisteredNames] = useState<string[]>([]);
   const [checkingName, setCheckingName] = useState(false);
   const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [emailPrenomMatch, setEmailPrenomMatch] = useState<boolean | null>(null);
 
   // Load taken names on mount
   useEffect(() => {
@@ -80,14 +94,26 @@ export default function AuthPage() {
     return () => clearTimeout(timer);
   }, [selectedName, takenNames, mode]);
 
-  // Real-time email validation
+  // Real-time email validation + cross-validation with prénom
   useEffect(() => {
     if (!email || mode !== 'inscription') {
       setEmailValid(null);
+      setEmailPrenomMatch(null);
       return;
     }
-    setEmailValid(isValidEssecEmail(email));
-  }, [email, mode]);
+    const valid = isValidEssecEmail(email);
+    setEmailValid(valid);
+
+    if (valid && selectedName) {
+      const basePrenom = extractBasePrenom(selectedName);
+      const emailPrefix = email.split('@')[0].split('.')[0].toLowerCase();
+      // Normalize accented characters for comparison
+      const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      setEmailPrenomMatch(normalize(emailPrefix) === normalize(basePrenom));
+    } else {
+      setEmailPrenomMatch(null);
+    }
+  }, [email, selectedName, mode]);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,32 +140,64 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  // ─── INSCRIPTION ───
+  // ─── STEP 1 VALIDATION ───
+  const canProceedToStep2 = () => {
+    return (
+      selectedName &&
+      email &&
+      password &&
+      confirmPassword &&
+      nameAvailable === true &&
+      emailValid === true &&
+      emailPrenomMatch === true &&
+      password === confirmPassword &&
+      password.length >= 6
+    );
+  };
+
+  const goToStep2 = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canProceedToStep2()) return;
+    setSignupStep(2);
+    setInscriptionCode('');
+    setCodeError('');
+  };
+
+  // ─── INSCRIPTION (STEP 2 → submit) ───
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setCodeError('');
 
-    // Validate email
-    if (!isValidEssecEmail(email)) {
-      toast.error('Seuls les emails au format prénom.nom@essec.edu sont acceptés ! 🎓');
+    // Validate code against inscription_codes table
+    const codeUpper = inscriptionCode.trim().toUpperCase();
+    if (!codeUpper || codeUpper.length !== 6) {
+      setCodeError('Le code doit contenir exactement 6 caractères.');
       setLoading(false);
       return;
     }
 
-    if (!selectedName) {
-      toast.error('Choisis ton prénom dans la liste ! 🦌');
+    const { data: codeRow, error: codeErr } = await supabase
+      .from('inscription_codes')
+      .select('*')
+      .eq('code', codeUpper)
+      .maybeSingle();
+
+    if (codeErr || !codeRow) {
+      setCodeError('Code invalide ou ne correspondant pas à ton prénom.');
       setLoading(false);
       return;
     }
 
-    if (password !== confirmPassword) {
-      toast.error('Les mots de passe ne correspondent pas');
+    if (codeRow.used) {
+      setCodeError('Ce code a déjà été utilisé.');
       setLoading(false);
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('Le mot de passe doit contenir au moins 6 caractères');
+    // Check code matches the selected prénom
+    if (codeRow.prenom !== selectedName) {
+      setCodeError('Code invalide ou ne correspondant pas à ton prénom.');
       setLoading(false);
       return;
     }
@@ -155,6 +213,7 @@ export default function AuthPage() {
       toast.error('Ce prénom est déjà utilisé. Si c\'est le tien, contacte Jordaim Belfort.');
       setNameAvailable(false);
       setTakenNames(prev => new Set([...prev, selectedName]));
+      setSignupStep(1);
       setLoading(false);
       return;
     }
@@ -172,17 +231,18 @@ export default function AuthPage() {
 
     if (error) {
       toast.error(error.message);
-    } else {
-      toast.success('Bienvenue sur DAIMBet ! 🦌');
+      setLoading(false);
+      return;
     }
+
+    // Mark code as used via RPC (security definer, bypasses RLS)
+    await supabase.rpc('mark_code_used', { p_code: codeUpper, p_prenom: selectedName });
+
+    toast.success('Bienvenue sur DAIMBet ! 🦌');
     setLoading(false);
   };
 
-  const isSignupDisabled = loading ||
-    !email || !password || !confirmPassword || !selectedName ||
-    nameAvailable === false || emailValid === false || password !== confirmPassword;
-
-  const availableForLogin = registeredNames.length > 0 ? registeredNames : [];
+  const isStep1Valid = canProceedToStep2();
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -211,14 +271,14 @@ export default function AuthPage() {
             <Button
               variant={mode === 'connexion' ? 'default' : 'outline'}
               className="flex-1"
-              onClick={() => { setMode('connexion'); setSelectedName(''); }}
+              onClick={() => { setMode('connexion'); setSelectedName(''); setSignupStep(1); }}
             >
               Connexion
             </Button>
             <Button
               variant={mode === 'inscription' ? 'default' : 'outline'}
               className="flex-1"
-              onClick={() => { setMode('inscription'); setSelectedName(''); }}
+              onClick={() => { setMode('inscription'); setSelectedName(''); setSignupStep(1); }}
             >
               Inscription
             </Button>
@@ -263,9 +323,18 @@ export default function AuthPage() {
             </form>
           )}
 
-          {/* ─── INSCRIPTION ─── */}
-          {mode === 'inscription' && (
-            <form onSubmit={handleSignup} className="space-y-4">
+          {/* ─── INSCRIPTION STEP 1 ─── */}
+          {mode === 'inscription' && signupStep === 1 && (
+            <form onSubmit={goToStep2} className="space-y-4">
+              {/* Step indicator */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">1</span>
+                <span className="font-semibold text-foreground">Identité</span>
+                <span className="flex-1 border-t border-border" />
+                <span className="bg-secondary text-muted-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px]">2</span>
+                <span>Code</span>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="signup-name">Ton prénom</Label>
                 <select
@@ -307,8 +376,11 @@ export default function AuthPage() {
                 {email && emailValid === false && (
                   <p className="text-xs text-destructive mt-1">Format requis : prénom.nom@essec.edu</p>
                 )}
-                {email && emailValid === true && (
-                  <p className="text-xs text-primary mt-1">✓ Format valide</p>
+                {email && emailValid === true && emailPrenomMatch === false && (
+                  <p className="text-xs text-destructive mt-1">L'email doit commencer par ton prénom ({extractBasePrenom(selectedName)})</p>
+                )}
+                {email && emailValid === true && emailPrenomMatch === true && (
+                  <p className="text-xs text-primary mt-1">✓ Email valide</p>
                 )}
               </div>
 
@@ -341,9 +413,61 @@ export default function AuthPage() {
                 )}
               </div>
 
-              <Button type="submit" className="w-full gold-gradient font-semibold" disabled={isSignupDisabled}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Créer mon compte 🦌'}
+              <Button type="submit" className="w-full gold-gradient font-semibold" disabled={!isStep1Valid}>
+                Continuer <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
+            </form>
+          )}
+
+          {/* ─── INSCRIPTION STEP 2 — CODE ─── */}
+          {mode === 'inscription' && signupStep === 2 && (
+            <form onSubmit={handleSignup} className="space-y-4">
+              {/* Step indicator */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <span className="bg-primary/30 text-primary rounded-full w-5 h-5 flex items-center justify-center text-[10px]">✓</span>
+                <span>Identité</span>
+                <span className="flex-1 border-t border-primary/30" />
+                <span className="bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold">2</span>
+                <span className="font-semibold text-foreground">Code</span>
+              </div>
+
+              <div className="bg-secondary/50 rounded-lg p-3 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Inscription en tant que <strong className="text-foreground">{selectedName}</strong>
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">{email}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-code">Code d'inscription</Label>
+                <Input
+                  id="signup-code"
+                  type="text"
+                  value={inscriptionCode}
+                  onChange={(e) => { setInscriptionCode(e.target.value.toUpperCase()); setCodeError(''); }}
+                  placeholder="Ex: A3K9F2"
+                  required
+                  maxLength={6}
+                  className="text-center tracking-[0.3em] font-mono text-lg uppercase"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Entre le code personnel qui t'a été communiqué par Jordaim Belfort.
+                </p>
+                {codeError && (
+                  <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                    <XCircle className="w-3 h-3" /> {codeError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setSignupStep(1)}>
+                  <ArrowLeft className="w-4 h-4 mr-1" /> Retour
+                </Button>
+                <Button type="submit" className="flex-1 gold-gradient font-semibold" disabled={loading || inscriptionCode.length !== 6}>
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Créer mon compte 🦌'}
+                </Button>
+              </div>
             </form>
           )}
 

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Flag, Search, Vote, Ticket, Bell, Download, FileJson, FileSpreadsheet, TrendingUp, Percent, Mail, Send, Power, Bomb, Loader2 } from 'lucide-react';
+import { Shield, Plus, CheckCircle, Users, Trash2, Trophy, XCircle, BarChart3, History, Calendar, Pause, Play, Dice6, Sparkles, ArrowUpDown, Eye, Ban, RefreshCw, Coins, AlertTriangle, MessageSquare, Flag, Search, Vote, Ticket, Bell, Download, FileJson, FileSpreadsheet, TrendingUp, Percent, Mail, Send, Power, Bomb, Loader2, KeyRound, Copy, Check } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -105,6 +105,11 @@ export default function AdminPage() {
   const [injecting, setInjecting] = useState(false);
   const [showInjectionModal, setShowInjectionModal] = useState(false);
   const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
+
+  // Inscription codes
+  const [inscriptionCodes, setInscriptionCodes] = useState<{ id: string; prenom: string; code: string; used: boolean; used_at: string | null }[]>([]);
+  const [showCodesSection, setShowCodesSection] = useState(false);
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -223,6 +228,9 @@ export default function AdminPage() {
         setSuggestionProfiles(sm);
       }
     }
+    // Fetch inscription codes
+    const { data: codesData } = await supabase.from('inscription_codes').select('*').order('prenom');
+    setInscriptionCodes((codesData as any[]) || []);
     setLoading(false);
   }, []);
 
@@ -1268,6 +1276,93 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+
+            {/* ─── INSCRIPTION CODES ─── */}
+            <div className="bg-secondary/50 border border-border rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-primary" /> Codes d'inscription
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                    {inscriptionCodes.filter(c => !c.used).length}/{PROMO_NAMES.length} disponibles
+                  </span>
+                </h3>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={async () => {
+                    // Generate codes for all PROMO_NAMES that don't have one yet
+                    const existingPrenoms = new Set(inscriptionCodes.map(c => c.prenom));
+                    const missing = PROMO_NAMES.filter(n => !existingPrenoms.has(n));
+                    if (missing.length === 0) {
+                      toast.info('Tous les prénoms ont déjà un code.');
+                      return;
+                    }
+                    const generateCode = () => {
+                      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                      let code = '';
+                      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+                      return code;
+                    };
+                    const usedCodes = new Set(inscriptionCodes.map(c => c.code));
+                    const newCodes = missing.map(prenom => {
+                      let code: string;
+                      do { code = generateCode(); } while (usedCodes.has(code));
+                      usedCodes.add(code);
+                      return { prenom, code, used: false };
+                    });
+                    const { error } = await supabase.from('inscription_codes').insert(newCodes);
+                    if (error) { toast.error('Erreur : ' + error.message); return; }
+                    toast.success(`${newCodes.length} codes générés !`);
+                    fetchAll();
+                  }}>
+                    <Plus className="w-3 h-3 mr-1" /> Générer les codes manquants
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setShowCodesSection(!showCodesSection)}>
+                    {showCodesSection ? 'Masquer' : 'Afficher'}
+                  </Button>
+                </div>
+              </div>
+
+              {showCodesSection && (
+                <div className="space-y-1 max-h-80 overflow-y-auto">
+                  {inscriptionCodes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">Aucun code généré. Clique sur "Générer les codes manquants".</p>
+                  ) : (
+                    inscriptionCodes.map(c => (
+                      <div key={c.id} className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs ${c.used ? 'bg-muted/50 opacity-50' : 'bg-card'}`}>
+                        <span className="font-medium w-32 truncate">{c.prenom}</span>
+                        <code className="font-mono tracking-widest text-primary">{c.code}</code>
+                        <div className="flex items-center gap-2">
+                          {c.used ? (
+                            <span className="text-muted-foreground">✓ Utilisé</span>
+                          ) : (
+                            <>
+                              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(c.code);
+                                  setCopiedCodeId(c.id);
+                                  setTimeout(() => setCopiedCodeId(null), 2000);
+                                }}>
+                                {copiedCodeId === c.id ? <><Check className="w-3 h-3 mr-0.5" /> Copié</> : <><Copy className="w-3 h-3 mr-0.5" /> Copier</>}
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]"
+                                onClick={async () => {
+                                  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                                  let newCode = '';
+                                  for (let i = 0; i < 6; i++) newCode += chars[Math.floor(Math.random() * chars.length)];
+                                  await supabase.from('inscription_codes').update({ code: newCode }).eq('id', c.id);
+                                  toast.success(`Code régénéré pour ${c.prenom}`);
+                                  fetchAll();
+                                }}>
+                                <RefreshCw className="w-3 h-3 mr-0.5" /> Régénérer
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* User list */}
             {sortedProfiles.map((p, i) => {
