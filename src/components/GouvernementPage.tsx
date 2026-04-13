@@ -140,13 +140,19 @@ export default function GouvernementPage() {
     return idx >= 0 ? idx + 1 : sorted.length;
   }, [profiles, user]);
 
+  const handleRemanier = () => {
+    setMinisters({});
+    setCustomMinistries([{ name: '', person: '' }, { name: '', person: '' }]);
+    setExistingGouv(null);
+  };
+
   const handleSubmit = async () => {
     if (!user || !profile || !isValid) return;
     setSubmitting(true);
 
     // Count previous governments by this user
     const userGouvCount = allGouvs.filter(g => g.user_id === user.id).length;
-    const govNumber = userGouvCount + (existingGouv ? 0 : 1);
+    const govNumber = userGouvCount + 1;
     const govName = `Gouvernement ${profile.display_name} ${govNumber}`;
 
     // Check ADLC easter egg
@@ -172,19 +178,12 @@ export default function GouvernementPage() {
       gov_name: govName,
     };
 
-    // Save to DB
-    if (existingGouv) {
-      await supabase.from('game_participations')
-        .update({ data: gouvData as any })
-        .eq('session_id', '00000000-0000-0000-0000-000000000001')
-        .eq('user_id', user.id);
-    } else {
-      await supabase.from('game_participations').insert({
-        session_id: '00000000-0000-0000-0000-000000000001',
-        user_id: user.id,
-        data: gouvData as any,
-      });
-    }
+    // Always insert a new record
+    await supabase.from('game_participations').insert({
+      session_id: '00000000-0000-0000-0000-000000000001',
+      user_id: user.id,
+      data: gouvData as any,
+    });
 
     // Generate AI comment
     setLoadingComment(true);
@@ -211,11 +210,20 @@ export default function GouvernementPage() {
       const comment = fnData?.comment || 'Le Président est temporairement indisponible.';
       gouvData.comment = comment;
 
-      // Update with comment
-      await supabase.from('game_participations')
-        .update({ data: gouvData as any })
+      // Update the newly inserted record with comment
+      // Get the latest record for this user
+      const { data: latestRows } = await supabase.from('game_participations')
+        .select('id')
         .eq('session_id', '00000000-0000-0000-0000-000000000001')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (latestRows && latestRows.length > 0) {
+        await supabase.from('game_participations')
+          .update({ data: gouvData as any })
+          .eq('id', latestRows[0].id);
+      }
 
       setExistingGouv(gouvData);
     } catch (e) {
@@ -223,6 +231,11 @@ export default function GouvernementPage() {
       gouvData.comment = '🏛️ Le Président Jordaim Belfort est en réunion. Son commentaire arrivera plus tard.';
       setExistingGouv(gouvData);
     }
+
+    // Refresh allGouvs
+    const { data: refreshed } = await supabase.from('game_participations').select('*')
+      .eq('session_id', '00000000-0000-0000-0000-000000000001');
+    setAllGouvs((refreshed || []).map(p => ({ user_id: p.user_id, data: p.data as unknown as GouvData })));
 
     setLoadingComment(false);
     setSubmitting(false);
@@ -345,10 +358,17 @@ export default function GouvernementPage() {
           ))}
         </div>
 
-        <Button className="gold-gradient w-full" disabled={!isValid || submitting} onClick={handleSubmit}>
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Crown className="w-4 h-4 mr-2" />}
-          {existingGouv ? 'Remanier le gouvernement' : 'Former le gouvernement'} 🏛️
-        </Button>
+        {existingGouv ? (
+          <Button className="w-full" variant="outline" onClick={handleRemanier}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Remanier le gouvernement 🏛️
+          </Button>
+        ) : (
+          <Button className="gold-gradient w-full" disabled={!isValid || submitting} onClick={handleSubmit}>
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Crown className="w-4 h-4 mr-2" />}
+            Former le gouvernement 🏛️
+          </Button>
+        )}
       </div>
 
       {/* Other governments */}
