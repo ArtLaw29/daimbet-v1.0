@@ -204,6 +204,11 @@ export default function AdminPage() {
       navConfigRes.data.forEach((r: any) => { nc[r.tab_key] = r.is_visible; });
       setNavConfig(nc);
     }
+    if (gameSubRes.data) {
+      const gs: Record<string, string> = {};
+      gameSubRes.data.forEach((r: any) => { gs[r.key] = r.value; });
+      setGameSubtitles(gs);
+    }
     if (retractionRes.data) {
       setRetractionStart(retractionRes.data.start_hour);
       setRetractionEnd(retractionRes.data.end_hour);
