@@ -311,6 +311,33 @@ export type Database = {
           },
         ]
       }
+      inscription_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          prenom: string
+          used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          prenom: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          prenom?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       kiss_marry_votes: {
         Row: {
           category: Database["public"]["Enums"]["km_category"]
