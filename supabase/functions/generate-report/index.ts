@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
     const dateFilter = (query: any) => dateFrom ? query.gte("created_at", dateFrom) : query;
 
-    const [betsRes, wagersRes, injectionsRes, gazetteRes, proposalsRes, soldeRes, profilesRes] = await Promise.all([
+    const [betsRes, wagersRes, injectionsRes, gazetteRes, proposalsRes, soldeRes, profilesRes, ticketsRes, ticketMsgsRes] = await Promise.all([
       dateFilter(supabase.from("bets").select("id, title, status, category, type, created_at, updated_at, suppression_motif")).order("created_at", { ascending: false }),
       dateFilter(supabase.from("wagers").select("id, bet_id, user_id, montant_dc, cote_au_moment_mise, is_retracted, created_at")).order("created_at", { ascending: false }),
       dateFilter(supabase.from("liquidity_injections").select("*").order("triggered_at", { ascending: false })),
@@ -46,6 +46,8 @@ Deno.serve(async (req) => {
       dateFilter(supabase.from("daimocratie_proposals").select("id, title, status, user_id, votes_positive, votes_negative, created_at")).order("created_at", { ascending: false }),
       dateFilter(supabase.from("solde_history").select("id, user_id, delta_dc, reason, created_at")).order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id, display_name, balance, created_at, is_suspended"),
+      dateFilter(supabase.from("tickets").select("id, user_id, subject, status, created_at, admin_replied_at")).order("created_at", { ascending: false })),
+      supabase.from("ticket_messages").select("id, ticket_id, sender, content, created_at").order("created_at", { ascending: true }),
     ]);
 
     const report = {
