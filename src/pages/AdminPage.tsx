@@ -2474,6 +2474,61 @@ export default function AdminPage() {
           <AdminGlossary />
         </TabsContent>
       </Tabs>
+
+      {/* ─── TAB RESET MODAL ─── */}
+      <Dialog open={!!tabResetTarget} onOpenChange={open => { if (!open) { setTabResetTarget(null); setTabResetConfirm(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">🔴 Réinitialiser — {tabResetTarget}</DialogTitle>
+            <DialogDescription>Cette action est irréversible.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 text-xs space-y-1">
+              <p>⚠️ <strong>Attention</strong> : cette action supprimera <strong>TOUTES</strong> les données de l'onglet <strong>"{tabResetTarget}"</strong> (votes, paris, propositions, résultats).</p>
+              <p>Cette action est <strong>irréversible</strong>.</p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Tape <strong className="text-destructive">CONFIRMER</strong> pour valider :</p>
+              <Input
+                value={tabResetConfirm}
+                onChange={e => setTabResetConfirm(e.target.value)}
+                placeholder="CONFIRMER"
+                className="font-mono text-center tracking-widest"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setTabResetTarget(null)}>
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                disabled={tabResetConfirm !== 'CONFIRMER' || tabResetExecuting}
+                onClick={async () => {
+                  if (!tabResetTarget) return;
+                  setTabResetExecuting(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke('nuclear-reset-tab', {
+                      body: { tab: tabResetTarget },
+                    });
+                    if (error) throw error;
+                    toast.success(`🔴 Onglet "${tabResetTarget}" réinitialisé avec succès.`);
+                    setTabResetTarget(null);
+                    setTabResetConfirm('');
+                    fetchAll();
+                  } catch (err: any) {
+                    toast.error('Erreur : ' + (err?.message || String(err)));
+                  } finally {
+                    setTabResetExecuting(false);
+                  }
+                }}
+              >
+                {tabResetExecuting ? <Loader2 className="w-4 h-4 animate-spin" /> : '🔴 Réinitialiser'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
