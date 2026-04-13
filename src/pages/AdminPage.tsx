@@ -106,6 +106,10 @@ export default function AdminPage() {
   const [showInjectionModal, setShowInjectionModal] = useState(false);
   const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
 
+  // Per-tab nuclear reset
+  const [tabResetTarget, setTabResetTarget] = useState<string | null>(null);
+  const [tabResetConfirm, setTabResetConfirm] = useState('');
+  const [tabResetExecuting, setTabResetExecuting] = useState(false);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
