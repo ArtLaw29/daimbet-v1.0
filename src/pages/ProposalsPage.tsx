@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { ThumbsUp, ThumbsDown, MessageSquarePlus } from 'lucide-react';
+import { MessageSquarePlus, CheckCircle } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Proposal = Tables<'daimocratie_proposals'>;
@@ -14,88 +14,65 @@ type Proposal = Tables<'daimocratie_proposals'>;
 export default function ProposalsPage() {
   const { user } = useAuth();
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [proposerNames, setProposerNames] = useState<Record<string, string>>({});
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(true);
-  const [userVotes, setUserVotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchProposals();
-    fetchUserVotes();
   }, [user]);
 
   const fetchProposals = async () => {
     const { data } = await supabase
       .from('daimocratie_proposals')
       .select('*')
-      .order('votes_positive', { ascending: false });
-    setProposals(data || []);
-    setLoading(false);
-  };
+      .order('created_at', { ascending: false });
+    const items = data || [];
+    setProposals(items);
 
-  const fetchUserVotes = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('daimocratie_votes')
-      .select('proposal_id, vote')
-      .eq('user_id', user.id);
-    const votes: Record<string, string> = {};
-    data?.forEach((v) => (votes[v.proposal_id] = v.vote));
-    setUserVotes(votes);
+    if (items.length > 0) {
+      const uids = [...new Set(items.map(p => p.user_id))];
+      const { data: profiles } = await supabase.from('profiles').select('user_id, display_name').in('user_id', uids);
+      if (profiles) {
+        const names: Record<string, string> = {};
+        profiles.forEach(p => { names[p.user_id] = p.display_name; });
+        setProposerNames(names);
+      }
+    }
+
+    setLoading(false);
   };
 
   const submitProposal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !title.trim()) return;
 
-    const { error } = await supabase.from('daimocratie_proposals').insert({
+    const { data: inserted, error } = await supabase.from('daimocratie_proposals').insert({
       title: title.trim(),
       type: description.trim() || null,
       user_id: user.id,
-    });
+    }).select().single();
 
-    if (error) toast.error('Erreur');
-    else {
-      toast.success('Proposition soumise ! 🎉');
-      setTitle('');
-      setDescription('');
-      fetchProposals();
-    }
-  };
-
-  const vote = async (proposalId: string, voteType: 'positif' | 'negatif') => {
-    if (!user) return;
-    const existing = userVotes[proposalId];
-
-    if (existing) {
-      toast.info('Tu as déjà voté sur cette proposition !');
+    if (error || !inserted) {
+      toast.error('Erreur lors de la soumission');
       return;
     }
 
-    const { error } = await supabase.from('daimocratie_votes').insert({
-      proposal_id: proposalId,
-      user_id: user.id,
-      vote: voteType,
+    // Auto-activate: immediately create the bet
+    const { data: activateResult, error: activateErr } = await supabase.functions.invoke('activate-proposal', {
+      body: { proposal_id: inserted.id },
     });
 
-    if (error) {
-      toast.error('Erreur de vote');
-      return;
+    if (activateErr || activateResult?.error) {
+      toast.warning('Proposition créée mais activation en attente.');
+    } else {
+      toast.success('Proposition soumise et pari créé ! 🎉');
     }
 
-    // Update counts locally
-    const field = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
-    const proposal = proposals.find((p) => p.id === proposalId);
-    if (proposal) {
-      await supabase
-        .from('daimocratie_proposals')
-        .update({ [field]: proposal[field] + 1 })
-        .eq('id', proposalId);
-    }
-
-    setUserVotes({ ...userVotes, [proposalId]: voteType });
+    setTitle('');
+    setDescription('');
     fetchProposals();
-    toast.success('Vote enregistré !');
   };
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
@@ -105,7 +82,7 @@ export default function ProposalsPage() {
       <div className="text-center mb-8">
         <MessageSquarePlus className="w-12 h-12 mx-auto text-primary mb-2" />
         <h1 className="text-4xl font-display gold-text">Pipeline</h1>
-        <p className="text-muted-foreground mt-1">Suggère un pari et vote pour ceux des autres !</p>
+        <p className="text-muted-foreground mt-1">Propose un pari — il sera immédiatement actif !</p>
       </div>
 
       <form onSubmit={submitProposal} className="rounded-xl border border-border bg-card p-5 mb-8 card-glow">
@@ -131,7 +108,7 @@ export default function ProposalsPage() {
         </div>
       </form>
 
-      <h2 className="text-xl font-display mb-4">Propositions en cours</h2>
+      <h2 className="text-xl font-display mb-4">Propositions récentes</h2>
 
       {proposals.length === 0 && (
         <p className="text-center text-muted-foreground py-8">Aucune proposition pour le moment. Sois le premier !</p>
@@ -146,29 +123,20 @@ export default function ProposalsPage() {
             transition={{ delay: i * 0.05 }}
             className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card"
           >
-            <div className="flex flex-col items-center gap-1">
-              <button
-                onClick={() => vote(p.id, 'positif')}
-                className={`p-1 rounded transition-colors ${
-                  userVotes[p.id] === 'positif' ? 'text-primary' : 'text-muted-foreground hover:text-primary'
-                }`}
-              >
-                <ThumbsUp className="w-5 h-5" />
-              </button>
-              <span className="text-sm font-bold text-primary">{p.votes_positive - p.votes_negative}</span>
-              <button
-                onClick={() => vote(p.id, 'negatif')}
-                className={`p-1 rounded transition-colors ${
-                  userVotes[p.id] === 'negatif' ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'
-                }`}
-              >
-                <ThumbsDown className="w-5 h-5" />
-              </button>
-            </div>
             <div className="flex-1">
               <h3 className="font-semibold">{p.title}</h3>
+              <p className="text-xs text-muted-foreground">
+                Par {proposerNames[p.user_id] || 'Inconnu'} · {new Date(p.created_at).toLocaleDateString('fr-FR')}
+              </p>
               {p.type && <p className="text-sm text-muted-foreground mt-0.5">{p.type}</p>}
             </div>
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              p.status === 'valide' ? 'bg-primary/20 text-primary' : 
+              p.status === 'rejete' ? 'bg-destructive/20 text-destructive' :
+              'bg-muted text-muted-foreground'
+            }`}>
+              {p.status === 'valide' ? '✅ Actif' : p.status === 'rejete' ? '❌ Supprimé' : '⏳ En cours'}
+            </span>
           </motion.div>
         ))}
       </div>

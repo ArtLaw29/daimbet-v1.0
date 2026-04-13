@@ -95,6 +95,7 @@ export default function AdminPage() {
   const [aiLoading, setAiLoading] = useState(false);
   // Delete motif
   const [deleteMotif, setDeleteMotif] = useState('');
+  const [deleteOptionLoading, setDeleteOptionLoading] = useState(false);
   // User management
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [userSortBy, setUserSortBy] = useState<'balance' | 'display_name' | 'created_at'>('balance');
@@ -630,12 +631,7 @@ export default function AdminPage() {
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
           <TabsTrigger value="proposals" className="font-display text-xs">
-            <Vote className="w-4 h-4 mr-1" /> Votes
-            {adminProposals.filter(p => p.status === 'en_attente').length > 0 && (
-              <span className="ml-1 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full">
-                {adminProposals.filter(p => p.status === 'en_attente').length}
-              </span>
-            )}
+            <Vote className="w-4 h-4 mr-1" /> Pipeline
           </TabsTrigger>
           <TabsTrigger value="results" className="font-display text-xs"><History className="w-4 h-4 mr-1" /> Archive</TabsTrigger>
           <TabsTrigger value="users" className="font-display text-xs"><Users className="w-4 h-4 mr-1" /> Joueurs</TabsTrigger>
@@ -869,79 +865,42 @@ export default function AdminPage() {
         {/* ═══════════════ PROPOSALS ═══════════════ */}
         <TabsContent value="proposals">
           <div className="space-y-4">
-            <h2 className="text-xl font-display">Propositions communautaires</h2>
+            <h2 className="text-xl font-display">Pipeline — Propositions</h2>
+            <p className="text-sm text-muted-foreground">Les propositions sont automatiquement actives. Vous pouvez supprimer une proposition/pari a posteriori.</p>
 
-            {adminProposals.filter(p => p.status === 'en_attente').length === 0 && (
-              <p className="text-muted-foreground text-center py-8">Aucune proposition en attente.</p>
+            {adminProposals.length === 0 && (
+              <p className="text-muted-foreground text-center py-8">Aucune proposition.</p>
             )}
 
-            {adminProposals.filter(p => p.status === 'en_attente').map(prop => (
-              <div key={prop.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
+            {adminProposals.map(prop => (
+              <div key={prop.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold">{prop.title}</h3>
                     <p className="text-xs text-muted-foreground">
                       Par {proposalProfiles[prop.user_id] || 'Inconnu'} · {new Date(prop.created_at).toLocaleDateString('fr-FR')}
                     </p>
-                    {prop.type && <p className="text-xs text-muted-foreground mt-0.5">Type : {prop.type}</p>}
-                    {prop.end_date_proposed && (
-                      <p className="text-xs text-muted-foreground">Fin proposée : {new Date(prop.end_date_proposed).toLocaleString('fr-FR')}</p>
-                    )}
+                    {prop.type && <p className="text-xs text-muted-foreground mt-0.5">{prop.type}</p>}
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm">👍 {prop.votes_positive} · 👎 {prop.votes_negative}</p>
-                    <p className="text-[10px] text-muted-foreground">Seuil : 15👍 & &lt;5👎</p>
-                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    prop.status === 'valide' ? 'bg-primary/20 text-primary' : 
+                    prop.status === 'rejete' ? 'bg-destructive/20 text-destructive' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {prop.status === 'valide' ? '✅ Actif' : prop.status === 'rejete' ? '❌ Supprimé' : '⏳ En attente'}
+                  </span>
                 </div>
-
-                <div className="flex gap-2">
-                  <Button size="sm" className="gold-gradient flex-1" onClick={async () => {
-                    // Accept: create bet from proposal
-                    const { data, error } = await supabase.functions.invoke('activate-proposal', {
-                      body: { proposal_id: prop.id },
-                    });
-                    if (error || data?.error) {
-                      // If threshold not met, force-activate by updating votes first
-                      await supabase.from('daimocratie_proposals').update({
-                        votes_positive: 15, votes_negative: 0,
-                      }).eq('id', prop.id);
-                      await supabase.functions.invoke('activate-proposal', { body: { proposal_id: prop.id } });
-                    }
-                    toast.success('Proposition validée et pari créé ! ✅');
-                    fetchAll();
-                  }}>
-                    <CheckCircle className="w-4 h-4 mr-1" /> Accepter
-                  </Button>
-                  <Button size="sm" variant="destructive" className="flex-1" onClick={async () => {
+                {prop.status !== 'rejete' && (
+                  <Button size="sm" variant="destructive" onClick={async () => {
                     await supabase.from('daimocratie_proposals').update({ status: 'rejete' as any }).eq('id', prop.id);
-                    toast.success('Proposition rejetée ❌');
+                    toast.success('Proposition supprimée ❌');
                     fetchAll();
                   }}>
-                    <XCircle className="w-4 h-4 mr-1" /> Rejeter
+                    <Trash2 className="w-4 h-4 mr-1" /> Supprimer
                   </Button>
-                </div>
+                )}
               </div>
             ))}
-
-            {/* Processed proposals */}
-            {adminProposals.filter(p => p.status !== 'en_attente').length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-sm font-display text-muted-foreground mb-3">Historique</h3>
-                {adminProposals.filter(p => p.status !== 'en_attente').map(prop => (
-                  <div key={prop.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/50 mb-2">
-                    <div>
-                      <span className="text-sm">{prop.title}</span>
-                      <span className="text-xs text-muted-foreground ml-2">par {proposalProfiles[prop.user_id] || '?'}</span>
-                    </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      prop.status === 'valide' ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'
-                    }`}>
-                      {prop.status === 'valide' ? '✅ Validé' : '❌ Rejeté'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </TabsContent>
 
@@ -1020,14 +979,35 @@ export default function AdminPage() {
                             const odds = totalPool > 0 && optPool > 0 ? (totalPool / optPool).toFixed(2) : DEFAULT_ODDS.toFixed(2);
                             const isSelected = winners.has(opt.id);
                             return (
-                              <button key={opt.id} type="button"
-                                onClick={() => toggleWinner(bet.id, opt.id, bet.max_winners)}
-                                className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
-                                  isSelected ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-border bg-secondary/50 text-muted-foreground hover:border-primary/30'
-                                }`}>
-                                <Trophy className="w-3 h-3 inline mr-1" />
-                                {opt.label} (x{odds} · {optPool} DC)
-                              </button>
+                              <div key={opt.id} className="flex items-center gap-1">
+                                <button type="button"
+                                  onClick={() => toggleWinner(bet.id, opt.id, bet.max_winners)}
+                                  className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+                                    isSelected ? 'border-primary bg-primary/20 text-primary font-bold' : 'border-border bg-secondary/50 text-muted-foreground hover:border-primary/30'
+                                  }`}>
+                                  <Trophy className="w-3 h-3 inline mr-1" />
+                                  {opt.label} (x{odds} · {optPool} DC)
+                                </button>
+                                <button type="button" title="Supprimer cette option"
+                                  onClick={async () => {
+                                    const motif = prompt('Motif de suppression de cette option :');
+                                    if (!motif) return;
+                                    setDeleteOptionLoading(true);
+                                    const { data, error } = await supabase.functions.invoke('delete-bet-option', {
+                                      body: { option_id: opt.id, motif },
+                                    });
+                                    setDeleteOptionLoading(false);
+                                    if (error || data?.error) {
+                                      toast.error(data?.error || 'Erreur');
+                                    } else {
+                                      toast.success(`Option "${opt.label}" supprimée. ${data?.refunded_count || 0} mise(s) remboursée(s).`);
+                                      fetchAll();
+                                    }
+                                  }}
+                                  className="text-destructive hover:bg-destructive/10 p-1 rounded">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
                             );
                           })}
                         </div>

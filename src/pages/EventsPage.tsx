@@ -5,14 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Timer, Tag, Flame } from 'lucide-react';
-import { calculateEstimatedNetGain, STARTING_BALANCE } from '@/lib/pari-mutuel';
+import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
 import BetBottomSheet from '@/components/BetBottomSheet';
-import ProposalCard from '@/components/ProposalCard';
-import type { Tables } from '@/integrations/supabase/types';
-
-type Proposal = Tables<'daimocratie_proposals'>;
 
 type SortMode = 'urgence' | 'categorie' | 'popularite';
 
@@ -32,9 +28,6 @@ export default function EventsPage() {
   const [betTotals, setBetTotals] = useState<Record<string, number>>({});
   const [wagerCounts, setWagerCounts] = useState<Record<string, number>>({});
   const [userWagers, setUserWagers] = useState<Record<string, UserWager>>({});
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [userVotes, setUserVotes] = useState<Record<string, string>>({});
-  const [proposerNames, setProposerNames] = useState<Record<string, string>>({});
   const [parisSuspended, setParisSuspended] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>(() => {
     return (sessionStorage.getItem('daimbet-sort') as SortMode) || 'urgence';
@@ -55,7 +48,7 @@ export default function EventsPage() {
     // Check suspension
     const { data: suspData } = await supabase.from('platform_settings').select('value').eq('key', 'suspend_paris').maybeSingle();
     setParisSuspended(suspData?.value === 'true');
-    await Promise.all([fetchBets(), fetchProposals()]);
+    await fetchBets();
   }, [user]);
 
   const fetchBets = async () => {
@@ -112,42 +105,6 @@ export default function EventsPage() {
     setLoading(false);
   };
 
-  const fetchProposals = async () => {
-    const { data } = await supabase
-      .from('daimocratie_proposals')
-      .select('*')
-      .eq('status', 'en_attente')
-      .order('votes_positive', { ascending: false });
-    const items = data || [];
-    setProposals(items);
-
-    // Fetch proposer names
-    if (items.length > 0) {
-      const userIds = [...new Set(items.map(p => p.user_id))];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds);
-      if (profiles) {
-        const names: Record<string, string> = {};
-        profiles.forEach(p => { names[p.user_id] = p.display_name; });
-        setProposerNames(names);
-      }
-    }
-
-    // Fetch user votes
-    if (user) {
-      const { data: votes } = await supabase
-        .from('daimocratie_votes')
-        .select('proposal_id, vote')
-        .eq('user_id', user.id);
-      if (votes) {
-        const voteMap: Record<string, string> = {};
-        votes.forEach(v => { voteMap[v.proposal_id] = v.vote; });
-        setUserVotes(voteMap);
-      }
-    }
-  };
 
   const handleSort = (mode: SortMode) => {
     setSortMode(mode);
@@ -239,57 +196,6 @@ export default function EventsPage() {
     await Promise.all([fetchBets(), refreshProfile()]);
   };
 
-  const voteProposal = async (proposalId: string, voteType: 'positif' | 'negatif') => {
-    if (!user) return;
-    const existing = userVotes[proposalId];
-    const proposal = proposals.find(p => p.id === proposalId);
-    if (!proposal) return;
-
-    if (existing === voteType) {
-      // Same vote → do nothing
-      toast.info('Tu as déjà voté ainsi !');
-      return;
-    }
-
-    if (existing) {
-      // Change vote: delete old, insert new, update counters
-      await supabase.from('daimocratie_votes').delete()
-        .eq('proposal_id', proposalId).eq('user_id', user.id);
-
-      const oldField = existing === 'positif' ? 'votes_positive' : 'votes_negative';
-      const newField = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
-      await supabase.from('daimocratie_proposals').update({
-        [oldField]: Math.max(0, proposal[oldField] - 1),
-        [newField]: proposal[newField] + 1,
-      }).eq('id', proposalId);
-    } else {
-      // New vote
-      const field = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
-      await supabase.from('daimocratie_proposals').update({
-        [field]: proposal[field] + 1,
-      }).eq('id', proposalId);
-    }
-
-    const { error } = await supabase.from('daimocratie_votes').insert({
-      proposal_id: proposalId,
-      user_id: user.id,
-      vote: voteType,
-    });
-    if (error) { toast.error('Erreur de vote'); return; }
-
-    setUserVotes(prev => ({ ...prev, [proposalId]: voteType }));
-    toast.success('Vote enregistré !');
-
-    // Check auto-activation threshold
-    const updatedPositive = (existing === 'positif' ? proposal.votes_positive - 1 : proposal.votes_positive) + (voteType === 'positif' ? 1 : 0);
-    const updatedNegative = (existing === 'negatif' ? proposal.votes_negative - 1 : proposal.votes_negative) + (voteType === 'negatif' ? 1 : 0);
-
-    if (updatedPositive >= 15 && updatedNegative < 5) {
-      supabase.functions.invoke('activate-proposal', { body: { proposal_id: proposalId } });
-    }
-
-    fetchProposals();
-  };
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
@@ -338,7 +244,7 @@ export default function EventsPage() {
         })}
       </div>
 
-      {bets.length === 0 && proposals.length === 0 && (
+      {bets.length === 0 && (
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-lg">Aucun pari en ce moment 🦌 — revenez bientôt !</p>
         </div>
@@ -378,37 +284,6 @@ export default function EventsPage() {
           </div>
         ))}
       </div>
-
-      {/* Proposals section */}
-      {proposals.length > 0 && (
-        <>
-          <div className="flex items-center gap-3 my-8">
-            <div className="h-0.5 flex-1 bg-border" />
-            <span className="text-sm font-display text-muted-foreground whitespace-nowrap">— 🗳️ EN ATTENTE DE VALIDATION —</span>
-            <div className="h-0.5 flex-1 bg-border" />
-          </div>
-
-          <div className="space-y-3">
-            {proposals.map((p, i) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <ProposalCard
-                  proposal={{
-                    ...p,
-                    proposer_name: proposerNames[p.user_id],
-                  }}
-                  userVote={userVotes[p.id]}
-                  onVote={voteProposal}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
 
       {/* Bottom sheet for binary/over-under */}
       {sheetBet && (
