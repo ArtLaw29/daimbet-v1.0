@@ -197,57 +197,6 @@ export default function EventsPage() {
     await Promise.all([fetchBets(), refreshProfile()]);
   };
 
-  const voteProposal = async (proposalId: string, voteType: 'positif' | 'negatif') => {
-    if (!user) return;
-    const existing = userVotes[proposalId];
-    const proposal = proposals.find(p => p.id === proposalId);
-    if (!proposal) return;
-
-    if (existing === voteType) {
-      // Same vote → do nothing
-      toast.info('Tu as déjà voté ainsi !');
-      return;
-    }
-
-    if (existing) {
-      // Change vote: delete old, insert new, update counters
-      await supabase.from('daimocratie_votes').delete()
-        .eq('proposal_id', proposalId).eq('user_id', user.id);
-
-      const oldField = existing === 'positif' ? 'votes_positive' : 'votes_negative';
-      const newField = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
-      await supabase.from('daimocratie_proposals').update({
-        [oldField]: Math.max(0, proposal[oldField] - 1),
-        [newField]: proposal[newField] + 1,
-      }).eq('id', proposalId);
-    } else {
-      // New vote
-      const field = voteType === 'positif' ? 'votes_positive' : 'votes_negative';
-      await supabase.from('daimocratie_proposals').update({
-        [field]: proposal[field] + 1,
-      }).eq('id', proposalId);
-    }
-
-    const { error } = await supabase.from('daimocratie_votes').insert({
-      proposal_id: proposalId,
-      user_id: user.id,
-      vote: voteType,
-    });
-    if (error) { toast.error('Erreur de vote'); return; }
-
-    setUserVotes(prev => ({ ...prev, [proposalId]: voteType }));
-    toast.success('Vote enregistré !');
-
-    // Check auto-activation threshold
-    const updatedPositive = (existing === 'positif' ? proposal.votes_positive - 1 : proposal.votes_positive) + (voteType === 'positif' ? 1 : 0);
-    const updatedNegative = (existing === 'negatif' ? proposal.votes_negative - 1 : proposal.votes_negative) + (voteType === 'negatif' ? 1 : 0);
-
-    if (updatedPositive >= 15 && updatedNegative < 5) {
-      supabase.functions.invoke('activate-proposal', { body: { proposal_id: proposalId } });
-    }
-
-    fetchProposals();
-  };
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
 
@@ -296,7 +245,7 @@ export default function EventsPage() {
         })}
       </div>
 
-      {bets.length === 0 && proposals.length === 0 && (
+      {bets.length === 0 && (
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-lg">Aucun pari en ce moment 🦌 — revenez bientôt !</p>
         </div>
@@ -336,37 +285,6 @@ export default function EventsPage() {
           </div>
         ))}
       </div>
-
-      {/* Proposals section */}
-      {proposals.length > 0 && (
-        <>
-          <div className="flex items-center gap-3 my-8">
-            <div className="h-0.5 flex-1 bg-border" />
-            <span className="text-sm font-display text-muted-foreground whitespace-nowrap">— 🗳️ EN ATTENTE DE VALIDATION —</span>
-            <div className="h-0.5 flex-1 bg-border" />
-          </div>
-
-          <div className="space-y-3">
-            {proposals.map((p, i) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <ProposalCard
-                  proposal={{
-                    ...p,
-                    proposer_name: proposerNames[p.user_id],
-                  }}
-                  userVote={userVotes[p.id]}
-                  onVote={voteProposal}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </>
-      )}
 
       {/* Bottom sheet for binary/over-under */}
       {sheetBet && (
