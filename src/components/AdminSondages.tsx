@@ -37,6 +37,8 @@ export default function AdminSondages() {
   const [newOptions, setNewOptions] = useState('');
   const [newEndDate, setNewEndDate] = useState('');
   const [newBonus, setNewBonus] = useState('');
+  const [newFormat, setNewFormat] = useState<'simple' | 'combinaison' | 'predefined_libre'>('simple');
+  const [newSubtitle, setNewSubtitle] = useState('');
 
   // Delete option modal
   const [deleteOptionModal, setDeleteOptionModal] = useState<{ sessionId: string; option: string } | null>(null);
@@ -69,15 +71,35 @@ export default function AdminSondages() {
 
   const createSondage = async () => {
     if (!newTitle.trim()) return;
-    const config: Record<string, unknown> = {};
-    if (newOptions.trim()) config.options = newOptions.split('\n').map(o => o.trim()).filter(Boolean);
+    const config: Record<string, unknown> = { format: newFormat };
+    if (newFormat === 'predefined_libre') {
+      // Pre-populate with JO options if title mentions JO/médaille
+      if (!newOptions.trim()) {
+        config.options = [
+          '🏀 Basketball - Samory', '🥊 Boxe - Paul', '📣 Cheerleading - Anaïs',
+          '🤺 Escrime - Augustin', '⚽ Football - Alexandre', '🏋️ Haltérophilie - Charles V.',
+          '🏃 Marathon - Nicolas', '🏊 Natation - Mathilde', '⛷️ Ski alpin, descente - Grégoire',
+          '🎾 Tennis - Léa', '🎾 Tennis - Pierre',
+        ];
+      } else {
+        config.options = newOptions.split('\n').map(o => o.trim()).filter(Boolean);
+      }
+    } else if (newOptions.trim()) {
+      config.options = newOptions.split('\n').map(o => o.trim()).filter(Boolean);
+    }
     if (newEndDate) config.end_date = new Date(newEndDate).toISOString();
     if (newBonus) config.bonus_amount = parseInt(newBonus);
 
-    await supabase.from('game_sessions').insert([{ game_type: 'sondage' as any, title: newTitle.trim(), status: 'active' as any, config }] as any);
+    await supabase.from('game_sessions').insert([{
+      game_type: 'sondage' as any,
+      title: newTitle.trim(),
+      subtitle: newSubtitle.trim() || null,
+      status: 'active' as any,
+      config,
+    }] as any);
     await supabase.from('gazette_messages').insert({ content: `🗳️ Nouveau sondage : "${newTitle.trim()}" — Venez voter !`, is_system_message: true });
     toast.success('Sondage créé !');
-    setNewTitle(''); setNewOptions(''); setNewEndDate(''); setNewBonus('');
+    setNewTitle(''); setNewOptions(''); setNewEndDate(''); setNewBonus(''); setNewSubtitle('');
     setShowCreate(false);
     fetchSessions();
   };
@@ -173,8 +195,29 @@ export default function AdminSondages() {
 
       {showCreate && (
         <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {([
+              { v: 'simple' as const, l: '📝 Simple', d: 'Choix parmi élèves + noms libres' },
+              { v: 'combinaison' as const, l: '🔗 Combinaison', d: 'Élève + Motif' },
+              { v: 'predefined_libre' as const, l: '📋 Prédéfini + Libre', d: 'Choix prédéfinis + ajout libre' },
+            ]).map(f => (
+              <button key={f.v} type="button" onClick={() => setNewFormat(f.v)}
+                className={`px-3 py-2 rounded-lg border text-sm transition-colors text-left ${
+                  newFormat === f.v ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border bg-secondary/50'
+                }`}>
+                <p className="font-medium">{f.l}</p>
+                <p className="text-[10px] text-muted-foreground">{f.d}</p>
+              </button>
+            ))}
+          </div>
           <Input placeholder="Question du sondage" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
-          <Textarea placeholder="Options (une par ligne)" value={newOptions} onChange={e => setNewOptions(e.target.value)} rows={4} />
+          <Input placeholder="Sous-titre (optionnel)" value={newSubtitle} onChange={e => setNewSubtitle(e.target.value)} />
+          {newFormat !== 'combinaison' && (
+            <Textarea placeholder={newFormat === 'predefined_libre' ? 'Options prédéfinies (une par ligne, ex: 🏀 Basketball - Samory)' : 'Options (une par ligne, optionnel)'} value={newOptions} onChange={e => setNewOptions(e.target.value)} rows={4} />
+          )}
+          {newFormat === 'combinaison' && (
+            <p className="text-xs text-muted-foreground">Les combos sont créés par les utilisateurs (Élève + Motif). Motifs prédéfinis : trafic d'influence, délit d'initié, fraude fiscale, etc.</p>
+          )}
           <Input type="datetime-local" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
           <Input placeholder="Montant bonus pronostic (DC, optionnel)" type="number" value={newBonus} onChange={e => setNewBonus(e.target.value)} />
           <Button className="gold-gradient" onClick={createSondage} disabled={!newTitle.trim()}>Créer 🚀</Button>
@@ -191,7 +234,9 @@ export default function AdminSondages() {
               <div className="flex items-start justify-between cursor-pointer" onClick={() => setSelectedId(isSelected ? null : s.id)}>
                 <div>
                   <h3 className="font-semibold">{s.title}</h3>
-                  <p className="text-xs text-muted-foreground">{s.status} • {new Date(s.created_at).toLocaleDateString('fr-FR')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.config?.format === 'combinaison' ? '🔗 Combo' : s.config?.format === 'predefined_libre' ? '📋 Libre' : '📝 Simple'} • {s.status} • {new Date(s.created_at).toLocaleDateString('fr-FR')}
+                  </p>
                 </div>
                 <Eye className="w-4 h-4 text-muted-foreground" />
               </div>
