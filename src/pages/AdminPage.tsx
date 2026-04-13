@@ -137,6 +137,8 @@ export default function AdminPage() {
 
   // Maintenance
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  // Emergency suspension
+  const [suspensionStatus, setSuspensionStatus] = useState<Record<string, boolean>>({});
   const [nuclearOpen, setNuclearOpen] = useState(false);
   const [nuclearStep, setNuclearStep] = useState(1);
   const [nuclearCheck1, setNuclearCheck1] = useState(false);
@@ -189,7 +191,7 @@ export default function AdminPage() {
       supabase.from('nav_config').select('tab_key, is_visible'),
       supabase.from('retraction_config').select('*').limit(1).single(),
       supabase.from('tierce_suggestions').select('*').eq('status', 'en_attente').order('created_at', { ascending: false }),
-      supabase.from('platform_settings').select('key, value').or('key.like.game_subtitle_%,key.like.km_show_%'),
+      supabase.from('platform_settings').select('key, value').or('key.like.game_subtitle_%,key.like.km_show_%,key.like.suspend_%'),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
@@ -208,12 +210,18 @@ export default function AdminPage() {
     }
     if (gameSubRes.data) {
       const gs: Record<string, string> = {};
+      const susp: Record<string, boolean> = {};
       gameSubRes.data.forEach((r: any) => {
-        gs[r.key] = r.value;
+        if (r.key.startsWith('suspend_')) {
+          susp[r.key] = r.value === 'true';
+        } else {
+          gs[r.key] = r.value;
+        }
         if (r.key === 'km_show_coup_soir') setKmShowCoupSoir(r.value === 'true');
         if (r.key === 'km_show_plan_q') setKmShowPlanQ(r.value === 'true');
       });
       setGameSubtitles(gs);
+      setSuspensionStatus(susp);
     }
     if (retractionRes.data) {
       setRetractionStart(retractionRes.data.start_hour);
@@ -2111,6 +2119,51 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* ─── EMERGENCY SUSPENSION ─── */}
+            <div className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2 text-destructive">🚨 Contrôle d'urgence</h3>
+              <p className="text-xs text-muted-foreground">Suspendre ou réactiver instantanément un jeu ou les paris. Aucune donnée n'est supprimée.</p>
+              <div className="space-y-2">
+                {[
+                  { key: 'suspend_paris', label: '🎯 Paris', emoji: '🎯' },
+                  { key: 'suspend_kiss-marry', label: '💋 Kiss/Marry', emoji: '💋' },
+                  { key: 'suspend_daimocratie', label: '🗳️ Daimocratie', emoji: '🗳️' },
+                  { key: 'suspend_you-decide', label: '⚔️ You Decide', emoji: '⚔️' },
+                  { key: 'suspend_gouvernement', label: '🏛️ Gouvernement', emoji: '🏛️' },
+                  { key: 'suspend_fantasy-firm', label: '⚖️ Fantasy Firm', emoji: '⚖️' },
+                ].map(item => {
+                  const isSuspended = !!suspensionStatus[item.key];
+                  return (
+                    <div key={item.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-card border border-border/50">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${isSuspended ? 'bg-destructive' : 'bg-primary'}`} />
+                        <span className="text-sm">{item.label}</span>
+                        {isSuspended && <span className="text-[10px] text-destructive font-medium">SUSPENDU</span>}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={isSuspended ? 'outline' : 'destructive'}
+                        className="text-xs h-7"
+                        onClick={async () => {
+                          const newVal = isSuspended ? 'false' : 'true';
+                          const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', item.key).maybeSingle();
+                          if (existing) {
+                            await supabase.from('platform_settings').update({ value: newVal, updated_at: new Date().toISOString() }).eq('key', item.key);
+                          } else {
+                            await supabase.from('platform_settings').insert({ key: item.key, value: newVal });
+                          }
+                          setSuspensionStatus(prev => ({ ...prev, [item.key]: !isSuspended }));
+                          toast.success(`${item.label} ${isSuspended ? 'réactivé ✅' : 'suspendu 🚨'}`);
+                        }}
+                      >
+                        {isSuspended ? <><Play className="w-3 h-3 mr-1" /> Activer</> : <><Pause className="w-3 h-3 mr-1" /> Suspendre</>}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
