@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
     if (action === "execute_reset") {
       const errors: string[] = [];
 
-      await purgeGameData(supabase, errors);
+      await purgeAllGameData(supabase, errors);
 
       const deletions = [
         "gazette_reactions",
