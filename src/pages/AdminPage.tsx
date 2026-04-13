@@ -132,6 +132,8 @@ export default function AdminPage() {
 
   // Kiss/Marry reveal
   const [kmRevealStep, setKmRevealStep] = useState(0);
+  const [kmShowCoupSoir, setKmShowCoupSoir] = useState(false);
+  const [kmShowPlanQ, setKmShowPlanQ] = useState(false);
 
   // Maintenance
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -187,7 +189,7 @@ export default function AdminPage() {
       supabase.from('nav_config').select('tab_key, is_visible'),
       supabase.from('retraction_config').select('*').limit(1).single(),
       supabase.from('tierce_suggestions').select('*').eq('status', 'en_attente').order('created_at', { ascending: false }),
-      supabase.from('platform_settings').select('key, value').like('key', 'game_subtitle_%'),
+      supabase.from('platform_settings').select('key, value').or('key.like.game_subtitle_%,key.like.km_show_%'),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
@@ -206,7 +208,11 @@ export default function AdminPage() {
     }
     if (gameSubRes.data) {
       const gs: Record<string, string> = {};
-      gameSubRes.data.forEach((r: any) => { gs[r.key] = r.value; });
+      gameSubRes.data.forEach((r: any) => {
+        gs[r.key] = r.value;
+        if (r.key === 'km_show_coup_soir') setKmShowCoupSoir(r.value === 'true');
+        if (r.key === 'km_show_plan_q') setKmShowPlanQ(r.value === 'true');
+      });
       setGameSubtitles(gs);
     }
     if (retractionRes.data) {
@@ -2144,6 +2150,34 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
+
+            {/* ─── KM CATEGORY VISIBILITY ─── */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <h3 className="text-sm font-display flex items-center gap-2">💋 Catégories Kiss/Marry</h3>
+              <p className="text-xs text-muted-foreground">Affiche ou cache les catégories sensibles pour tous les utilisateurs.</p>
+              {[
+                { key: 'km_show_coup_soir', label: "🌙 Coup d'un soir", value: kmShowCoupSoir, setter: setKmShowCoupSoir },
+                { key: 'km_show_plan_q', label: '🔥 Plan Q', value: kmShowPlanQ, setter: setKmShowPlanQ },
+              ].map(cat => (
+                <div key={cat.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 border border-border/50">
+                  <span className="text-sm">{cat.label}</span>
+                  <Switch
+                    checked={cat.value}
+                    onCheckedChange={async (checked) => {
+                      const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', cat.key).maybeSingle();
+                      if (existing) {
+                        await supabase.from('platform_settings').update({ value: checked ? 'true' : 'false', updated_at: new Date().toISOString() }).eq('key', cat.key);
+                      } else {
+                        await supabase.from('platform_settings').insert({ key: cat.key, value: checked ? 'true' : 'false' });
+                      }
+                      cat.setter(checked);
+                      toast.success(`Catégorie ${cat.label} ${checked ? 'affichée' : 'cachée'}`);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+
             <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-pink-500/10 to-violet-500/10 p-5 space-y-4">
               <h3 className="text-lg font-display flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> 💋 Révélation Kiss/Marry</h3>
               <p className="text-sm text-muted-foreground">

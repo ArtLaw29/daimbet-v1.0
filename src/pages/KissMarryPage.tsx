@@ -38,6 +38,26 @@ export default function KissMarryPage() {
   const [revealStep, setRevealStep] = useState(-1);
   const [revealData, setRevealData] = useState<Record<string, { name: string; count: number }[]>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set(['coup_soir', 'plan_q']));
+
+  // Fetch visibility settings for optional categories
+  useEffect(() => {
+    const fetchVisibility = async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['km_show_coup_soir', 'km_show_plan_q']);
+      const hidden = new Set<string>();
+      const showCoupSoir = data?.find(r => r.key === 'km_show_coup_soir')?.value === 'true';
+      const showPlanQ = data?.find(r => r.key === 'km_show_plan_q')?.value === 'true';
+      if (!showCoupSoir) hidden.add('coup_soir');
+      if (!showPlanQ) hidden.add('plan_q');
+      setHiddenCategories(hidden);
+    };
+    fetchVisibility();
+  }, []);
+
+  const visibleCategories = ALL_CATEGORIES.filter(c => !hiddenCategories.has(c));
 
   const now = new Date();
   // Current voting month
@@ -88,7 +108,7 @@ export default function KissMarryPage() {
 
     // Generate safe indices (max 2)
     const generated: string[] = [];
-    for (const cat of ALL_CATEGORIES) {
+    for (const cat of visibleCategories) {
       if (generated.length >= 2) break;
       const entries = catData[cat] || [];
       if (entries.length < 3) continue; // Too few votes to be safe
@@ -201,7 +221,7 @@ export default function KissMarryPage() {
           </motion.div>
         ) : (
           <div className="space-y-6">
-            {ALL_CATEGORIES.map((cat, catIdx) => {
+            {visibleCategories.map((cat, catIdx) => {
               const catEntries = revealData[cat];
               if (!catEntries || catEntries.length === 0) return null;
               const isVisible = revealStep >= catIdx;
@@ -304,7 +324,7 @@ export default function KissMarryPage() {
       </p>
 
       <div className="space-y-5">
-        {ALL_CATEGORIES.map(cat => {
+        {visibleCategories.map(cat => {
           const config = CATEGORY_CONFIG[cat];
           const isRequired = CATEGORIES_REQUIRED.includes(cat as any);
           const search = searchTerms[cat] || '';
@@ -377,7 +397,7 @@ export default function KissMarryPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-2">
-            {ALL_CATEGORIES.map(cat => {
+            {visibleCategories.map(cat => {
               if (!selections[cat]) return null;
               return (
                 <div key={cat} className="flex items-center gap-2 text-sm">
