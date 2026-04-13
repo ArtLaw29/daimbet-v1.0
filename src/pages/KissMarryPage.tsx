@@ -38,6 +38,26 @@ export default function KissMarryPage() {
   const [revealStep, setRevealStep] = useState(-1);
   const [revealData, setRevealData] = useState<Record<string, { name: string; count: number }[]>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set(['coup_soir', 'plan_q']));
+
+  // Fetch visibility settings for optional categories
+  useEffect(() => {
+    const fetchVisibility = async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['km_show_coup_soir', 'km_show_plan_q']);
+      const hidden = new Set<string>();
+      const showCoupSoir = data?.find(r => r.key === 'km_show_coup_soir')?.value === 'true';
+      const showPlanQ = data?.find(r => r.key === 'km_show_plan_q')?.value === 'true';
+      if (!showCoupSoir) hidden.add('coup_soir');
+      if (!showPlanQ) hidden.add('plan_q');
+      setHiddenCategories(hidden);
+    };
+    fetchVisibility();
+  }, []);
+
+  const visibleCategories = ALL_CATEGORIES.filter(c => !hiddenCategories.has(c));
 
   const now = new Date();
   // Current voting month
