@@ -71,6 +71,24 @@ export type Database = {
         }
         Relationships: []
       }
+      banned_words: {
+        Row: {
+          created_at: string
+          id: string
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          word: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          word?: string
+        }
+        Relationships: []
+      }
       bet_options: {
         Row: {
           bet_id: string
@@ -172,12 +190,41 @@ export type Database = {
         }
         Relationships: []
       }
+      content_reports: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          reason: string | null
+          reporter_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reporter_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reporter_id?: string
+        }
+        Relationships: []
+      }
       daimocratie_proposals: {
         Row: {
           created_at: string
           end_date_proposed: string | null
           id: string
+          is_hidden: boolean
           options_json: Json | null
+          report_count: number
           status: Database["public"]["Enums"]["proposal_status"]
           title: string
           type: string | null
@@ -189,7 +236,9 @@ export type Database = {
           created_at?: string
           end_date_proposed?: string | null
           id?: string
+          is_hidden?: boolean
           options_json?: Json | null
+          report_count?: number
           status?: Database["public"]["Enums"]["proposal_status"]
           title: string
           type?: string | null
@@ -201,7 +250,9 @@ export type Database = {
           created_at?: string
           end_date_proposed?: string | null
           id?: string
+          is_hidden?: boolean
           options_json?: Json | null
+          report_count?: number
           status?: Database["public"]["Enums"]["proposal_status"]
           title?: string
           type?: string | null
@@ -283,6 +334,8 @@ export type Database = {
           created_by: string | null
           game_type: Database["public"]["Enums"]["game_type"]
           id: string
+          is_hidden: boolean
+          report_count: number
           status: Database["public"]["Enums"]["game_session_status"]
           subtitle: string | null
           title: string
@@ -295,6 +348,8 @@ export type Database = {
           created_by?: string | null
           game_type: Database["public"]["Enums"]["game_type"]
           id?: string
+          is_hidden?: boolean
+          report_count?: number
           status?: Database["public"]["Enums"]["game_session_status"]
           subtitle?: string | null
           title: string
@@ -307,6 +362,8 @@ export type Database = {
           created_by?: string | null
           game_type?: Database["public"]["Enums"]["game_type"]
           id?: string
+          is_hidden?: boolean
+          report_count?: number
           status?: Database["public"]["Enums"]["game_session_status"]
           subtitle?: string | null
           title?: string

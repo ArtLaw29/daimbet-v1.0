@@ -24,6 +24,7 @@ import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
 import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
+import AdminModeration from '@/components/AdminModeration';
 
 type Profile = Tables<'profiles'>;
 type BetRow = Tables<'bets'>;
@@ -630,7 +631,7 @@ export default function AdminPage() {
       )}
 
       <Tabs defaultValue="create" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-12 bg-secondary">
+        <TabsList className="grid w-full grid-cols-13 bg-secondary">
           <TabsTrigger value="create" className="font-display text-xs"><Plus className="w-4 h-4 mr-1" /> Créer</TabsTrigger>
           <TabsTrigger value="manage" className="font-display text-xs"><CheckCircle className="w-4 h-4 mr-1" /> Gérer</TabsTrigger>
           <TabsTrigger value="proposals" className="font-display text-xs">
@@ -668,6 +669,7 @@ export default function AdminPage() {
            <TabsTrigger value="sondages" className="font-display text-xs">🗳️ Sondages</TabsTrigger>
            <TabsTrigger value="tournois" className="font-display text-xs">⚔️ Tournois</TabsTrigger>
           <TabsTrigger value="glossaire" className="font-display text-xs">📖 Lexique</TabsTrigger>
+          <TabsTrigger value="moderation" className="font-display text-xs">🛡️ Modérer</TabsTrigger>
         </TabsList>
 
         {/* ═══════════════ CREATE ═══════════════ */}
@@ -2470,6 +2472,10 @@ export default function AdminPage() {
         {/* ═══════════════ GLOSSAIRE ═══════════════ */}
         <TabsContent value="glossaire">
           <AdminGlossary />
+        </TabsContent>
+
+        <TabsContent value="moderation">
+          <AdminModeration />
         </TabsContent>
       </Tabs>
 
