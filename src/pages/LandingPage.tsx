@@ -14,7 +14,7 @@ const STEPS = [
   {
     icon: Gamepad2,
     emoji: '🎮',
-    title: 'Joue sur la promo',
+    title: 'Des jeux créés pour ta promo',
     desc: 'Des jeux décalés où chaque choix peut te rapporter (ou te coûter) des DaimCoins.',
   },
   {
