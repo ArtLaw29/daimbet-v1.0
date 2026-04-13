@@ -65,6 +65,11 @@ Deno.serve(async (req) => {
       gazette_messages: gazetteRes.data ?? [],
       proposals: proposalsRes.data ?? [],
       solde_modifications: soldeRes.data ?? [],
+      tickets: (ticketsRes.data ?? []).map((t: any) => {
+        const msgs = (ticketMsgsRes.data ?? []).filter((m: any) => m.ticket_id === t.id);
+        const userName = (profilesRes.data ?? []).find((p: any) => p.user_id === t.user_id)?.display_name || "Inconnu";
+        return { ...t, user_name: userName, messages: msgs };
+      }),
       users_anonymized: (profilesRes.data ?? []).map((p: any) => ({
         id_hash: p.user_id.substring(0, 8),
         display_name: p.display_name,
