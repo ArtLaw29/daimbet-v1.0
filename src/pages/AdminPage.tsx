@@ -208,7 +208,11 @@ export default function AdminPage() {
     }
     if (gameSubRes.data) {
       const gs: Record<string, string> = {};
-      gameSubRes.data.forEach((r: any) => { gs[r.key] = r.value; });
+      gameSubRes.data.forEach((r: any) => {
+        gs[r.key] = r.value;
+        if (r.key === 'km_show_coup_soir') setKmShowCoupSoir(r.value === 'true');
+        if (r.key === 'km_show_plan_q') setKmShowPlanQ(r.value === 'true');
+      });
       setGameSubtitles(gs);
     }
     if (retractionRes.data) {
