@@ -3,16 +3,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { Loader2, CheckCircle } from 'lucide-react';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRecovery, setIsRecovery] = useState(false);
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,23 +33,20 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast.error('Les mots de passe ne correspondent pas');
-      return;
-    }
-    if (password.length < 6) {
-      toast.error('Le mot de passe doit contenir au moins 6 caractères');
-      return;
-    }
+    if (password !== confirmPassword) return;
+    if (password.length < 6) return;
+
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success('Mot de passe mis à jour ! 🦌');
-      navigate('/');
+      setLoading(false);
+      return;
     }
+
+    setSuccess(true);
     setLoading(false);
+    await supabase.auth.signOut();
+    setTimeout(() => navigate('/connexion'), 3000);
   };
 
   if (!isRecovery) {
@@ -56,8 +54,24 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">Lien de réinitialisation invalide ou expiré.</p>
-          <Button onClick={() => navigate('/')} variant="outline">Retour à l'accueil</Button>
+          <Button onClick={() => navigate('/connexion')} variant="outline">Retour à la connexion</Button>
         </div>
+      </div>
+    );
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center space-y-4"
+        >
+          <CheckCircle className="w-16 h-16 mx-auto text-primary" />
+          <h2 className="text-2xl font-display gold-text">Mot de passe modifié ✅</h2>
+          <p className="text-muted-foreground">Redirection vers la connexion...</p>
+        </motion.div>
       </div>
     );
   }
@@ -80,29 +94,28 @@ export default function ResetPasswordPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Nouveau mot de passe</Label>
               <Input
-                id="password"
-                type="password"
-                value={password}
+                id="password" type="password" value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
+                placeholder="••••••••" required minLength={6}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
               <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
+                id="confirmPassword" type="password" value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
+                placeholder="••••••••" required minLength={6}
               />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-destructive mt-1">Les mots de passe ne correspondent pas</p>
+              )}
             </div>
-            <Button type="submit" className="w-full gold-gradient font-semibold" disabled={loading}>
-              {loading ? '...' : 'Mettre à jour'}
+            <Button
+              type="submit"
+              className="w-full gold-gradient font-semibold"
+              disabled={loading || password.length < 6 || password !== confirmPassword}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Valider'}
             </Button>
           </form>
         </div>

@@ -42,6 +42,9 @@ export default function AuthPage() {
   const [selectedName, setSelectedName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const [signupDone, setSignupDone] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
 
@@ -267,7 +270,7 @@ export default function AuthPage() {
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Se connecter 🦌'}
               </Button>
               <button
-                type="button" onClick={() => setShowForgot(true)}
+                type="button" onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotSent(false); }}
                 className="w-full text-sm text-muted-foreground hover:text-primary transition-colors"
               >
                 Mot de passe oublié ?
@@ -348,15 +351,40 @@ export default function AuthPage() {
           )}
 
           {showForgot && mode === 'connexion' && (
-            <div className="mt-4 pt-4 border-t border-border">
+            <div className="mt-4 pt-4 border-t border-border space-y-3">
               <p className="text-sm text-foreground leading-relaxed">
-                D'abord, essaie de te souvenir de ton mot de passe. Si vraiment tu ne t'en souviens pas, envoie un mail à{' '}
-                <a href="mailto:jordaim.belfort@daimbet.com" className="text-primary font-semibold hover:underline">jordaim.belfort@daimbet.com</a>{' '}
-                depuis ton adresse email de la promo. Dans ce mail, indique le nouveau mot de passe que tu souhaites utiliser, puis patiente le temps que l'administrateur fasse la modification.
+                Essaie d'abord de te souvenir de ton mot de passe. Si vraiment tu ne t'en souviens plus, indique ton adresse email ci-dessous et clique sur le bouton. Tu recevras un email avec un lien pour choisir un nouveau mot de passe.
               </p>
+              <p className="text-xs text-muted-foreground">
+                ⚠️ Clique une seule fois sur le bouton, même si ça semble ne rien faire — le mail peut mettre quelques instants à arriver (vérifie aussi tes spams).
+              </p>
+              <Input
+                type="email"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="prénom.nom@essec.edu"
+              />
+              <Button
+                type="button"
+                className="w-full"
+                disabled={forgotSent || forgotLoading || !forgotEmail}
+                onClick={async () => {
+                  setForgotLoading(true);
+                  await supabase.auth.resetPasswordForEmail(forgotEmail, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  setForgotSent(true);
+                  setForgotLoading(false);
+                }}
+              >
+                {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : forgotSent ? 'Lien envoyé ✅' : 'Recevoir le lien'}
+              </Button>
+              {forgotSent && (
+                <p className="text-sm text-primary">Si cette adresse est associée à un compte, un email a été envoyé.</p>
+              )}
               <button
-                type="button" onClick={() => setShowForgot(false)}
-                className="mt-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+                type="button" onClick={() => { setShowForgot(false); setForgotSent(false); }}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
               >
                 Fermer
               </button>
