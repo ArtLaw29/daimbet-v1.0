@@ -94,7 +94,11 @@ export default function AdminPage() {
   const [aiComment, setAiComment] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   // Delete motif
-  const [deleteMotif, setDeleteMotif] = useState('');
+  const [deleteMotif, setDeleteMotif] = '';
+  // Delete option
+  const [deleteOptionId, setDeleteOptionId] = useState<string | null>(null);
+  const [deleteOptionMotif, setDeleteOptionMotif] = useState('');
+  const [deleteOptionLoading, setDeleteOptionLoading] = useState(false);
   // User management
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [userSortBy, setUserSortBy] = useState<'balance' | 'display_name' | 'created_at'>('balance');
