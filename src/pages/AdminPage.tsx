@@ -1511,7 +1511,10 @@ export default function AdminPage() {
         <TabsContent value="tickets">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-display">🎫 Tickets ({adminTickets.length})</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-display">🎫 Tickets ({adminTickets.length})</h2>
+                <span className="text-[10px] text-muted-foreground">Double-clic pour supprimer</span>
+              </div>
               <select value={ticketSortBy} onChange={e => setTicketSortBy(e.target.value as any)}
                 className="rounded-md border border-input bg-background px-2 py-1 text-xs">
                 <option value="date">📅 Par date</option>
@@ -1554,6 +1557,14 @@ export default function AdminPage() {
                   };
                   return (
                     <div key={t.id} onClick={() => setActiveAdminTicketId(t.id)}
+                      onDoubleClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`Supprimer définitivement le ticket "${t.subject}" ?`)) return;
+                        await supabase.from('ticket_messages').delete().eq('ticket_id', t.id);
+                        await supabase.from('tickets').delete().eq('id', t.id);
+                        toast.success('Ticket supprimé');
+                        fetchAll();
+                      }}
                       className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card cursor-pointer hover:border-primary/30 transition-colors">
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm">{t.subject}</p>
