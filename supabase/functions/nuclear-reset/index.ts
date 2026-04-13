@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
     if (action === "send_report") {
       const resendApiKey = Deno.env.get("RESEND_API_KEY");
-      const [betsRes, wagersRes, profilesRes, gazetteRes, proposalsRes, soldeRes, ticketsRes] = await Promise.all([
+      const [betsRes, wagersRes, profilesRes, gazetteRes, proposalsRes, soldeRes, ticketsRes, gameSessionsRes, gameParticipationsRes] = await Promise.all([
         supabase.from("bets").select("*"),
         supabase.from("wagers").select("*"),
         supabase.from("profiles").select("*"),
@@ -41,6 +41,8 @@ Deno.serve(async (req) => {
         supabase.from("daimocratie_proposals").select("*"),
         supabase.from("solde_history").select("*"),
         supabase.from("tickets").select("*"),
+        supabase.from("game_sessions").select("*"),
+        supabase.from("game_participations").select("*"),
       ]);
 
       const report = {
@@ -54,6 +56,8 @@ Deno.serve(async (req) => {
           proposals: proposalsRes.data ?? [],
           solde_history: soldeRes.data ?? [],
           tickets: ticketsRes.data ?? [],
+          game_sessions: gameSessionsRes.data ?? [],
+          game_participations: gameParticipationsRes.data ?? [],
         },
       };
 
@@ -85,21 +89,24 @@ Deno.serve(async (req) => {
       const errors: string[] = [];
 
       const deletions = [
-        { table: "gazette_reactions", fk: false },
-        { table: "gazette_messages", fk: false },
-        { table: "ticket_messages", fk: false },
-        { table: "tickets", fk: false },
-        { table: "daimocratie_votes", fk: false },
-        { table: "daimocratie_proposals", fk: false },
-        { table: "tierce_suggestions", fk: false },
-        { table: "wagers", fk: false },
-        { table: "bet_options", fk: false },
-        { table: "bets", fk: false },
-        { table: "kiss_marry_votes", fk: false },
-        { table: "solde_history", fk: false },
-        { table: "liquidity_injections", fk: false },
-        { table: "admin_notifications", fk: false },
-        { table: "admin_emails_log", fk: false },
+        { table: "gazette_reactions" },
+        { table: "gazette_messages" },
+        { table: "ticket_messages" },
+        { table: "tickets" },
+        { table: "daimocratie_votes" },
+        { table: "daimocratie_proposals" },
+        { table: "tierce_suggestions" },
+        { table: "wagers" },
+        { table: "bet_options" },
+        { table: "bets" },
+        { table: "kiss_marry_votes" },
+        { table: "game_participations" },
+        { table: "game_sessions" },
+        { table: "content_reports" },
+        { table: "solde_history" },
+        { table: "liquidity_injections" },
+        { table: "admin_notifications" },
+        { table: "admin_emails_log" },
       ];
 
       // Delete all data from tables sequentially (order matters for FK)
