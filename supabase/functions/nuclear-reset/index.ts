@@ -56,6 +56,8 @@ Deno.serve(async (req) => {
           proposals: proposalsRes.data ?? [],
           solde_history: soldeRes.data ?? [],
           tickets: ticketsRes.data ?? [],
+          game_sessions: gameSessionsRes.data ?? [],
+          game_participations: gameParticipationsRes.data ?? [],
         },
       };
 
