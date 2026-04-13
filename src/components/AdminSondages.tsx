@@ -71,15 +71,35 @@ export default function AdminSondages() {
 
   const createSondage = async () => {
     if (!newTitle.trim()) return;
-    const config: Record<string, unknown> = {};
-    if (newOptions.trim()) config.options = newOptions.split('\n').map(o => o.trim()).filter(Boolean);
+    const config: Record<string, unknown> = { format: newFormat };
+    if (newFormat === 'predefined_libre') {
+      // Pre-populate with JO options if title mentions JO/médaille
+      if (!newOptions.trim()) {
+        config.options = [
+          '🏀 Basketball - Samory', '🥊 Boxe - Paul', '📣 Cheerleading - Anaïs',
+          '🤺 Escrime - Augustin', '⚽ Football - Alexandre', '🏋️ Haltérophilie - Charles V.',
+          '🏃 Marathon - Nicolas', '🏊 Natation - Mathilde', '⛷️ Ski alpin, descente - Grégoire',
+          '🎾 Tennis - Léa', '🎾 Tennis - Pierre',
+        ];
+      } else {
+        config.options = newOptions.split('\n').map(o => o.trim()).filter(Boolean);
+      }
+    } else if (newOptions.trim()) {
+      config.options = newOptions.split('\n').map(o => o.trim()).filter(Boolean);
+    }
     if (newEndDate) config.end_date = new Date(newEndDate).toISOString();
     if (newBonus) config.bonus_amount = parseInt(newBonus);
 
-    await supabase.from('game_sessions').insert([{ game_type: 'sondage' as any, title: newTitle.trim(), status: 'active' as any, config }] as any);
+    await supabase.from('game_sessions').insert([{
+      game_type: 'sondage' as any,
+      title: newTitle.trim(),
+      subtitle: newSubtitle.trim() || null,
+      status: 'active' as any,
+      config,
+    }] as any);
     await supabase.from('gazette_messages').insert({ content: `🗳️ Nouveau sondage : "${newTitle.trim()}" — Venez voter !`, is_system_message: true });
     toast.success('Sondage créé !');
-    setNewTitle(''); setNewOptions(''); setNewEndDate(''); setNewBonus('');
+    setNewTitle(''); setNewOptions(''); setNewEndDate(''); setNewBonus(''); setNewSubtitle('');
     setShowCreate(false);
     fetchSessions();
   };
