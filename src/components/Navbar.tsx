@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavConfig } from '@/contexts/NavConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { Target, Newspaper, Trophy, Heart, User, LogOut } from 'lucide-react';
+import { Target, Newspaper, Trophy, Gamepad2, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface NavTab {
@@ -20,7 +20,7 @@ const ALL_TABS: NavTab[] = [
   { to: '/', label: 'Paris', shortLabel: 'Paris', emoji: '🎯', icon: Target },
   { to: '/gazette', label: 'Gazette', shortLabel: 'Gazette', emoji: '📰', icon: Newspaper },
   { to: '/classement', label: 'Classement', shortLabel: 'Class.', emoji: '🏆', icon: Trophy, configKey: 'classement' },
-  { to: '/kiss-marry', label: 'Kiss/Marry', shortLabel: 'K/M', emoji: '💋', icon: Heart, configKey: 'kiss-marry' },
+  { to: '/jeux', label: 'Jeux', shortLabel: 'Jeux', emoji: '🎮', icon: Gamepad2, configKey: 'jeux' },
   { to: '/profil', label: 'Profil', shortLabel: 'Profil', emoji: '👤', icon: User },
 ];
 

@@ -17,6 +17,7 @@ const EventsPage = lazy(() => import("./pages/EventsPage"));
 const BetDetailPage = lazy(() => import("./pages/BetDetailPage"));
 const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const KissMarryPage = lazy(() => import("./pages/KissMarryPage"));
+const GamesPage = lazy(() => import("./pages/GamesPage"));
 const ProposalsPage = lazy(() => import("./pages/ProposalsPage"));
 const GazettePage = lazy(() => import("./pages/GazettePage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
@@ -127,9 +128,10 @@ function AppRoutes() {
           <Route path="/classement" element={
             <GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute>
           } />
-          <Route path="/kiss-marry" element={
-            <GuardedRoute tabKey="kiss-marry"><KissMarryPage /></GuardedRoute>
+          <Route path="/jeux" element={
+            <GuardedRoute tabKey="jeux"><GamesPage /></GuardedRoute>
           } />
+          <Route path="/kiss-marry" element={<Navigate to="/jeux" replace />} />
           <Route path="/profil" element={<ProfilePage />} />
           <Route path="/proposals" element={<ProposalsPage />} />
           <Route path="/admin" element={<AdminPage />} />
