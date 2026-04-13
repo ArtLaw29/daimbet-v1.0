@@ -31,7 +31,7 @@ const GLOSSARY: { term: string; definition: string }[] = [
   { term: 'Classement', definition: 'Classement des joueurs par solde décroissant. Masquable par l\'admin.' },
   { term: 'Kiss/Marry', definition: 'Sondage anonyme mensuel en 4 catégories. Votes hachés (jamais de user_id direct).' },
   { term: 'Gazette du Daim', definition: 'Chat anonyme de la plateforme. Messages système automatiques. Auteur et horodatage invisibles côté utilisateur. Non masquable.' },
-  { term: 'Daimocratie', definition: 'Système de propositions de paris par les utilisateurs. Soumises au vote puis activées/rejetées par l\'admin.' },
+  { term: 'Pipeline', definition: 'Système de propositions de paris par les utilisateurs. Soumises au vote puis activées/rejetées par l\'admin.' },
   { term: 'Tirage au sort', definition: 'Mode de résolution alternatif : le gagnant est choisi aléatoirement parmi les parieurs (pondéré par mise).' },
   { term: 'Injection de liquidité', definition: 'Ajout de 250 DC au solde de tous les joueurs. Déclenché par l\'admin.' },
   { term: 'Suspension', definition: 'Blocage temporaire d\'un compte utilisateur par l\'admin.' },

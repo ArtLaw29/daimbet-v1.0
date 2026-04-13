@@ -104,7 +104,7 @@ export default function ProposalsPage() {
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="text-center mb-8">
         <MessageSquarePlus className="w-12 h-12 mx-auto text-primary mb-2" />
-        <h1 className="text-4xl font-display gold-text">Daim-ocratie</h1>
+        <h1 className="text-4xl font-display gold-text">Pipeline</h1>
         <p className="text-muted-foreground mt-1">Suggère un pari et vote pour ceux des autres !</p>
       </div>
 
