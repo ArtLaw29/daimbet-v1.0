@@ -49,10 +49,6 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
 
-  // Multi-step inscription
-  const [signupStep, setSignupStep] = useState(1);
-  const [inscriptionCode, setInscriptionCode] = useState('');
-  const [codeError, setCodeError] = useState('');
 
   // Real-time checks for inscription
   const [takenNames, setTakenNames] = useState<Set<string>>(new Set());

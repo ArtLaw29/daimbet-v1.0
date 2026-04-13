@@ -106,10 +106,6 @@ export default function AdminPage() {
   const [showInjectionModal, setShowInjectionModal] = useState(false);
   const [injections, setInjections] = useState<{ id: string; amount_dc: number; triggered_at: string }[]>([]);
 
-  // Inscription codes
-  const [inscriptionCodes, setInscriptionCodes] = useState<{ id: string; prenom: string; code: string; used: boolean; used_at: string | null }[]>([]);
-  const [showCodesSection, setShowCodesSection] = useState(false);
-  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
