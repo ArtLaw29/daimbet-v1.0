@@ -2074,7 +2074,7 @@ export default function AdminPage() {
                   { key: 'paris', label: '🎯 Paris', maskable: false, tooltip: 'Onglet obligatoire' },
                   { key: 'gazette', label: '📰 Gazette', maskable: false, tooltip: 'Non masquable — canal de communication système' },
                   { key: 'classement', label: '🏆 Classement', maskable: true },
-                  { key: 'kiss-marry', label: '💋 Kiss/Marry', maskable: true },
+                  { key: 'jeux', label: '🎮 Jeux', maskable: true },
                   { key: 'profil', label: '👤 Profil', maskable: false, tooltip: 'Onglet obligatoire' },
                 ].map((tab) => (
                   <div key={tab.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/50 border border-border/50">
