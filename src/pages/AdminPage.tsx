@@ -137,6 +137,8 @@ export default function AdminPage() {
 
   // Maintenance
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  // Emergency suspension
+  const [suspensionStatus, setSuspensionStatus] = useState<Record<string, boolean>>({});
   const [nuclearOpen, setNuclearOpen] = useState(false);
   const [nuclearStep, setNuclearStep] = useState(1);
   const [nuclearCheck1, setNuclearCheck1] = useState(false);
