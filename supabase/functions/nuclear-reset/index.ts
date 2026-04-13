@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
 
     if (action === "send_report") {
       const resendApiKey = Deno.env.get("RESEND_API_KEY");
-      const [betsRes, wagersRes, profilesRes, gazetteRes, proposalsRes, soldeRes, ticketsRes] = await Promise.all([
+      const [betsRes, wagersRes, profilesRes, gazetteRes, proposalsRes, soldeRes, ticketsRes, gameSessionsRes, gameParticipationsRes] = await Promise.all([
         supabase.from("bets").select("*"),
         supabase.from("wagers").select("*"),
         supabase.from("profiles").select("*"),
@@ -41,6 +41,8 @@ Deno.serve(async (req) => {
         supabase.from("daimocratie_proposals").select("*"),
         supabase.from("solde_history").select("*"),
         supabase.from("tickets").select("*"),
+        supabase.from("game_sessions").select("*"),
+        supabase.from("game_participations").select("*"),
       ]);
 
       const report = {
