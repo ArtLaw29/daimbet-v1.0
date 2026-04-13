@@ -191,7 +191,7 @@ export default function AdminPage() {
       supabase.from('nav_config').select('tab_key, is_visible'),
       supabase.from('retraction_config').select('*').limit(1).single(),
       supabase.from('tierce_suggestions').select('*').eq('status', 'en_attente').order('created_at', { ascending: false }),
-      supabase.from('platform_settings').select('key, value').or('key.like.game_subtitle_%,key.like.km_show_%'),
+      supabase.from('platform_settings').select('key, value').or('key.like.game_subtitle_%,key.like.km_show_%,key.like.suspend_%'),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
