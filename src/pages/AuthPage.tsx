@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
-import { PROMO_NAMES, isValidEssecEmail } from '@/lib/pari-mutuel';
+import { PROMO_NAMES, isValidSchoolEmail } from '@/lib/pari-mutuel';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 // Emoji pool for auto-assignment
@@ -95,7 +95,7 @@ export default function AuthPage() {
       setEmailPrenomMatch(null);
       return;
     }
-    const valid = isValidEssecEmail(email);
+    const valid = isValidSchoolEmail(email);
     setEmailValid(valid);
 
     if (valid && selectedName) {
@@ -353,7 +353,7 @@ export default function AuthPage() {
               <p className="text-sm text-foreground leading-relaxed">
                 D'abord, essaie de te souvenir de ton mot de passe. Si vraiment tu ne t'en souviens pas, envoie un mail à{' '}
                 <a href="mailto:jordaim.belfort@daimbet.com" className="text-primary font-semibold hover:underline">jordaim.belfort@daimbet.com</a>{' '}
-                depuis ton adresse <strong>@essec.edu</strong>. Dans ce mail, indique le nouveau mot de passe que tu souhaites utiliser, puis patiente le temps que l'administrateur fasse la modification.
+                depuis ton adresse email de la promo. Dans ce mail, indique le nouveau mot de passe que tu souhaites utiliser, puis patiente le temps que l'administrateur fasse la modification.
               </p>
               <button
                 type="button"

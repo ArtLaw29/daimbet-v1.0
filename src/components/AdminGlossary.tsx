@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const GLOSSARY: { term: string; definition: string }[] = [
   { term: 'DaimCoins (DC)', definition: 'Monnaie virtuelle de la plateforme DaimBet. Capital de départ : 1 000 DC par joueur.' },
-  { term: 'Daim', definition: 'Surnom de la promotion ESSEC. Utilisé comme identité culturelle de la plateforme.' },
+  { term: 'Daim', definition: 'Surnom de la promo. Utilisé comme identité culturelle de la plateforme.' },
   { term: 'Jordaim Belfort', definition: 'Persona de l\'administrateur de la plateforme. Seul compte avec accès au portail admin.' },
   { term: 'Pari (bet)', definition: 'Événement créé par l\'admin sur lequel les joueurs peuvent miser.' },
   { term: 'Mise (wager)', definition: 'Montant en DC placé par un joueur sur une option d\'un pari.' },

@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const prompt = `Tu es un expert en paris prédictifs pour une communauté étudiante (ESSEC). Évalue ce pari sur 100 :
+    const prompt = `Tu es un expert en paris prédictifs pour une communauté étudiante. Évalue ce pari sur 100 :
 - Titre : "${title}"
 - Type : ${type}
 - Catégorie : ${category}

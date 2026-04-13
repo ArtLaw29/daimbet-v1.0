@@ -2239,8 +2239,8 @@ export default function AdminPage() {
                   <p className="text-[10px] text-muted-foreground mb-1">Sélection rapide (utilisateurs inscrits) :</p>
                   <div className="flex flex-wrap gap-1">
                     <Button type="button" variant="outline" size="sm" className="text-[10px] h-6 text-primary border-primary/30" onClick={() => {
-                      // We don't have emails from profiles, but users registered with ESSEC emails
-                      // Add all profiles as display_name@essec.edu pattern
+                      // We don't have emails from profiles directly
+                      // Users registered with school emails
                       toast.info('Les emails des utilisateurs ne sont pas disponibles côté client. Utilise le champ de saisie.');
                     }}>
                       📋 Tous les inscrits

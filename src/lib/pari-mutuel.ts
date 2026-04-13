@@ -71,8 +71,11 @@ export function maxBetAmount(balance: number, isLongTerm: boolean = false): numb
 }
 
 /**
- * Validate ESSEC email format: prénom.nom@essec.edu
+ * Validate school email format: prénom.nom@essec.edu
  */
-export function isValidEssecEmail(email: string): boolean {
+export function isValidSchoolEmail(email: string): boolean {
   return /^[a-zà-ÿ\-]+\.[a-zà-ÿ\-]+@essec\.edu$/i.test(email.trim());
 }
+
+/** @deprecated Use isValidSchoolEmail instead */
+export const isValidEssecEmail = isValidSchoolEmail;
