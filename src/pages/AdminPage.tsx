@@ -95,9 +95,6 @@ export default function AdminPage() {
   const [aiLoading, setAiLoading] = useState(false);
   // Delete motif
   const [deleteMotif, setDeleteMotif] = useState('');
-  // Delete option
-  const [deleteOptionId, setDeleteOptionId] = useState<string | null>(null);
-  const [deleteOptionMotif, setDeleteOptionMotif] = useState('');
   const [deleteOptionLoading, setDeleteOptionLoading] = useState(false);
   // User management
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
