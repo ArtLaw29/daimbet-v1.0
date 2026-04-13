@@ -358,10 +358,17 @@ export default function GouvernementPage() {
           ))}
         </div>
 
-        <Button className="gold-gradient w-full" disabled={!isValid || submitting} onClick={handleSubmit}>
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Crown className="w-4 h-4 mr-2" />}
-          {existingGouv ? 'Remanier le gouvernement' : 'Former le gouvernement'} 🏛️
-        </Button>
+        {existingGouv ? (
+          <Button className="w-full" variant="outline" onClick={handleRemanier}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Remanier le gouvernement 🏛️
+          </Button>
+        ) : (
+          <Button className="gold-gradient w-full" disabled={!isValid || submitting} onClick={handleSubmit}>
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Crown className="w-4 h-4 mr-2" />}
+            Former le gouvernement 🏛️
+          </Button>
+        )}
       </div>
 
       {/* Other governments */}
