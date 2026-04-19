@@ -528,12 +528,18 @@ export default function ProfilePage() {
                 user_id: user.id,
                 subject: newTicketSubject,
               }).select().single();
-              if (error || !ticket) { toast.error('Erreur'); setCreatingTicket(false); return; }
-              await supabase.from('ticket_messages').insert({
+              if (error || !ticket) { toast.error('Erreur lors de la création du ticket'); setCreatingTicket(false); return; }
+              const { error: msgError } = await supabase.from('ticket_messages').insert({
                 ticket_id: ticket.id,
-                sender: 'user',
+                sender: 'utilisateur',
                 content: newTicketMessage.trim(),
               });
+              if (msgError) {
+                toast.error('Ticket créé, mais le message n\'a pas pu être envoyé. Réessaie depuis la conversation.');
+                setCreatingTicket(false);
+                fetchAll();
+                return;
+              }
               toast.success('✅ Ton ticket a été envoyé. Jordaim Belfort te répondra dans les meilleurs délais.');
               setNewTicketSubject('');
               setNewTicketMessage('');
