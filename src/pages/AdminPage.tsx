@@ -1879,11 +1879,11 @@ export default function AdminPage() {
               <p className="text-xs text-muted-foreground">Modifie les sous-titres affichés sous chaque jeu dans l'onglet Jeux.</p>
               <div className="space-y-3">
                 {[
-                  { key: 'game_subtitle_kiss_marry', label: '💋 Kiss/Marry' },
                   { key: 'game_subtitle_daimocratie', label: '🗳️ Daimocratie' },
-                  { key: 'game_subtitle_you_decide', label: '⚔️ You Decide' },
+                  { key: 'game_subtitle_you_decide', label: '⚔️ Tournois' },
                   { key: 'game_subtitle_gouvernement', label: '🏛️ Gouvernement' },
-                  { key: 'game_subtitle_fantasy_firm', label: '⚖️ Daim Fantasy Firm' },
+                  { key: 'game_subtitle_fantasy_firm', label: '⚖️ Fantasy Firm' },
+                  { key: 'game_subtitle_kiss_marry', label: '💋 Kiss/Marry' },
                 ].map(g => (
                   <div key={g.key} className="flex items-center gap-3">
                     <span className="text-sm w-40 flex-shrink-0">{g.label}</span>

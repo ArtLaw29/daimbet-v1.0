@@ -33,7 +33,7 @@ const GLOSSARY: { term: string; definition: string }[] = [
   { term: 'Daimocratie — Sondages', definition: 'Jeu de sondages avec mise de DC et pronostic secret. Les joueurs votent et parient sur le résultat.' },
   { term: 'You Decide — Tournois', definition: 'Jeu de duels façon coupe du monde avec bracket et mises. Les choix s\'affrontent en duels successifs.' },
   { term: 'Gouvernement', definition: 'Jeu de simulation de composition de gouvernement. L\'utilisateur nomme des membres de la promo aux postes ministériels.' },
-  { term: 'Daim Fantasy Firm', definition: 'Jeu de création de cabinet d\'avocats fictif. L\'utilisateur compose son cabinet et génère un nom corporate.' },
+  { term: 'Fantasy Firm', definition: 'Jeu de création de cabinet d\'avocats fictif. L\'utilisateur compose son cabinet et génère un nom corporate.' },
   { term: 'Pronostic secret', definition: 'Prédiction personnelle stockée en base, invisible des autres joueurs, récompensée si correcte.' },
   { term: 'Session', definition: 'Instance d\'un jeu. Plusieurs sessions peuvent coexister simultanément.' },
   { term: 'Kiss/Marry', definition: 'Sondage anonyme mensuel en 4 catégories. Votes hachés (jamais de user_id direct).' },

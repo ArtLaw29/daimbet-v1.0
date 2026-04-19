@@ -19,15 +19,15 @@ interface GameTab {
 }
 
 const GAME_TABS: GameTab[] = [
-  { id: 'kiss-marry', emoji: '💋', label: 'Kiss/Marry', subtitleKey: 'game_subtitle_kiss_marry', defaultSubtitle: 'Vote mensuel anonyme', available: true },
   { id: 'daimocratie', emoji: '🗳️', label: 'Daimocratie', subtitleKey: 'game_subtitle_daimocratie', defaultSubtitle: 'Sondages', available: true },
-  { id: 'you-decide', emoji: '⚔️', label: 'You Decide', subtitleKey: 'game_subtitle_you_decide', defaultSubtitle: 'Tournois', available: true },
+  { id: 'you-decide', emoji: '⚔️', label: 'Tournois', subtitleKey: 'game_subtitle_you_decide', defaultSubtitle: 'Tournois', available: true },
   { id: 'gouvernement', emoji: '🏛️', label: 'Gouvernement', subtitleKey: 'game_subtitle_gouvernement', defaultSubtitle: '', available: true },
-  { id: 'fantasy-firm', emoji: '⚖️', label: 'Daim Fantasy Firm', subtitleKey: 'game_subtitle_fantasy_firm', defaultSubtitle: '', available: true },
+  { id: 'fantasy-firm', emoji: '⚖️', label: 'Fantasy Firm', subtitleKey: 'game_subtitle_fantasy_firm', defaultSubtitle: '', available: true },
+  { id: 'kiss-marry', emoji: '💋', label: 'Kiss/Marry', subtitleKey: 'game_subtitle_kiss_marry', defaultSubtitle: 'Vote mensuel anonyme', available: true },
 ];
 
 export default function GamesPage() {
-  const [activeTab, setActiveTab] = useState('kiss-marry');
+  const [activeTab, setActiveTab] = useState('daimocratie');
   const [subtitles, setSubtitles] = useState<Record<string, string>>({});
   const [suspended, setSuspended] = useState<Record<string, boolean>>({});
 
