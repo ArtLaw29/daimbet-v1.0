@@ -241,7 +241,7 @@ export default function AuthPage() {
             transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
           />
           <h1 className="text-5xl font-display gold-text">DAIMBET</h1>
-          <p className="text-muted-foreground mt-2">La plateforme de paris entre DAIM 🦌</p>
+          <p className="text-muted-foreground mt-2">La plateforme de jeux entre DAIM 🦌</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6 card-glow">
