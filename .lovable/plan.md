@@ -1,46 +1,61 @@
 
 
-## Plan : améliorer notifications tickets + email quotidien
+L'utilisateur a validé : footer landing+connexion, similaire aux tickets mais différencié dans l'admin, exige nom + email de réponse, validation @essec.edu stricte, immédiat (notif rouge + email Resend), fire-and-forget.
 
-### Problèmes identifiés
+## Plan : portail "Contacter l'admin" public
 
-1. **Pas de notification admin** sur création de ticket ni sur nouveau message dans une conversation existante.
-2. **Le 1er message du ticket disparaît** : le code insère `sender: 'user'` mais le CHECK constraint en base n'autorise que `'utilisateur'` ou `'admin'` → l'insertion échoue silencieusement.
-3. **Email à 2 notifications non traitées** déclenche du bruit. Préférence : un récap quotidien à 21h.
+### 1. Base de données (migration)
+Nouvelle table `public_contact_messages` :
+- `id`, `created_at`
+- `nom` (text, qui est derrière le message)
+- `email` (text, @essec.edu, validé)
+- `subject` (text, ex: "Mot de passe oublié")
+- `message` (text, max 1000)
+- `ip_address` (text, pour rate-limit)
+- `is_handled` (bool, default false)
 
-### Solution
+RLS :
+- SELECT : admin uniquement
+- UPDATE : admin uniquement (marquer traité)
+- INSERT : refusé en direct (uniquement via edge function avec service role)
+- DELETE : admin uniquement
 
-**1. Notifications rouges admin pour les tickets**
+### 2. Edge function publique `public-contact` (`verify_jwt = false`)
+- Valide les inputs avec zod : `nom` (1-80), `email` (regex `@essec.edu`), `subject` (enum), `message` (1-1000), honeypot vide
+- Rate-limit : refuse si > 1 message/IP/5min ou > 5/IP/24h (lecture sur `public_contact_messages`)
+- Insert dans `public_contact_messages` via service role
+- Insert dans `admin_notifications` (type `public_contact`, titre `📬 Contact public : <subject>`, detail = nom + email + extrait message)
+- Envoie email immédiat à l'admin via Resend (template HTML DAIMBet, sujet `[DAIMBet] Contact public : <subject>`, contient nom, email de réponse, message)
+- Retourne toujours un message générique de succès
 
-- **Trigger Postgres** sur `tickets` (AFTER INSERT) : crée une `admin_notifications` de type `new_ticket` avec titre `Nouveau ticket : <subject>` et `reference_id = ticket.id`.
-- **Trigger Postgres** sur `ticket_messages` (AFTER INSERT) : si `sender = 'utilisateur'`, crée une `admin_notifications` de type `ticket_message` avec titre `Nouveau message ticket : <subject>`. (On évite de notifier sur les réponses de l'admin.)
-- Avantage : indépendant du client, fiable, et la pastille rouge admin existante (basée sur `is_read = false`) se mettra à jour toute seule via realtime.
+### 3. Page `/contact` (publique, hors auth)
+- Form : Nom, Email (@essec.edu, message d'erreur si autre), Sujet (Select : Mot de passe oublié / Email non reçu / Compte bloqué / Inscription / Autre), Message (textarea + compteur 1000 char)
+- Honeypot caché (champ `website` masqué visuellement)
+- Cooldown 60 s côté client après envoi
+- Après succès : écran de confirmation "Message envoyé ✅ — l'admin te répondra par email à <ton email>"
 
-**2. Réparer le 1er message du ticket**
+### 4. Liens d'accès
+- **Footer** de `LandingPage.tsx` : ajouter "Bloqué ? Contacter l'admin →" pointant vers `/contact`
+- **Footer/bas du formulaire** de `AuthPage.tsx` (page connexion) : même lien
+- Ajouter route `/contact` dans `App.tsx` (accessible logged-in OR out)
 
-- Dans `src/pages/ProfilePage.tsx` (ligne 534), remplacer `sender: 'user'` par `sender: 'utilisateur'` pour respecter la contrainte CHECK.
-- Ajouter un toast d'erreur si l'insertion du message échoue (au lieu d'un succès silencieux).
+### 5. Côté admin
+Nouveau composant `AdminPublicContacts.tsx` ajouté dans la sidebar admin (section dédiée, distincte de "Tickets") :
+- Liste des messages, badge non-traités
+- Affiche nom, email (cliquable `mailto:`), sujet, message complet, date
+- Bouton "Marquer traité" → update `is_handled = true`
+- Filtres : non-traités / tous
 
-**3. Email quotidien à 21h au lieu d'un email à 2 notifications**
-
-- Garder la fonction `admin-notify-email` (elle envoie déjà un récap des notifications non lues), mais :
-  - Retirer toute logique côté client/edge qui déclenche l'envoi à partir de 2 notifications (vérifier qu'il n'y en a pas — d'après ma recherche, l'envoi semble manuel/non câblé actuellement).
-  - **Mettre à jour `admin-notify-email`** pour qu'elle envoie réellement l'email via Resend (aujourd'hui elle ne fait que logger dans `admin_emails_log` avec status `logged`).
-  - Supprimer la condition `unread.length < 2` → envoyer dès qu'il y a ≥ 1 notification non lue.
-- **Planifier un cron quotidien à 21h (Europe/Paris = 19h UTC)** via `pg_cron` + `pg_net` qui appelle `admin-notify-email`. Migration utilisateur-spécifique (avec URL + anon key) insérée via l'outil `insert`, pas via migration classique.
-
-### Détail technique
-
-- Triggers SQL avec `SECURITY DEFINER` et `search_path = public` pour pouvoir insérer dans `admin_notifications` malgré la RLS.
-- Type `new_ticket` et `ticket_message` ajoutés librement (la colonne `type` est `text`, pas un enum).
-- Cron : `0 19 * * *` UTC (21h Paris en hiver ; en été ce sera 20h Paris — acceptable pour un récap, sinon on peut faire `0 19 * * *` toute l'année et accepter le décalage saisonnier d'1 h).
-- Realtime déjà activé sur `admin_notifications` côté `AdminPage` (à vérifier ; si non, on l'ajoute pour que la pastille rouge bouge en direct).
+### 6. Notifications admin
+Le clic sur une notif `public_contact` dans le panel admin ouvre la section "Contacts publics".
 
 ### Fichiers touchés
-
-- Migration SQL : 2 nouveaux triggers (tickets + ticket_messages).
-- `src/pages/ProfilePage.tsx` : fix `sender: 'utilisateur'` + gestion d'erreur.
-- `supabase/functions/admin-notify-email/index.ts` : envoi réel via Resend, suppression du seuil 2.
-- Insertion SQL (via `insert`, pas migration) : `cron.schedule` quotidien à 19h UTC.
-- Vérification realtime sur `admin_notifications` côté `AdminPage` (ajout si absent).
+- Nouvelle migration SQL : table + RLS
+- Nouvelle edge function `supabase/functions/public-contact/index.ts`
+- Nouvelle page `src/pages/ContactPage.tsx`
+- Nouveau composant `src/components/AdminPublicContacts.tsx`
+- `src/App.tsx` : route `/contact`
+- `src/pages/LandingPage.tsx` : lien footer
+- `src/pages/AuthPage.tsx` : lien sous le formulaire
+- `src/pages/AdminPage.tsx` : nouvelle entrée sidebar + handler notif
 
