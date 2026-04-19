@@ -1,61 +1,46 @@
 
 
-L'utilisateur demande des conseils/un plan sur les procédures à mettre en place pour un flux de reset password sécurisé et fluide. Je regarde l'état actuel : `ResetPasswordPage.tsx` existe déjà, le flux "mot de passe oublié" dans `AuthPage.tsx` existe aussi, et la route est probablement déjà câblée. Donc la base est là — je dois identifier ce qui manque pour rendre l'expérience vraiment robuste, sécurisée et fluide.
+## Plan : améliorer notifications tickets + email quotidien
 
-Lacunes probables actuelles :
-- Pas de feedback visuel (toast) sur succès/échec dans `ResetPasswordPage`
-- Pas d'indicateur de force du mot de passe
-- Longueur minimale faible (6 caractères)
-- Pas de protection HIBP (mots de passe compromis)
-- Pas de bouton "voir/masquer" le mot de passe
-- Pas de gestion explicite du cas "lien expiré" avec CTA pour redemander un lien
-- Email de reset non brandé (template Supabase par défaut)
-- Pas de déconnexion forcée des autres sessions après reset
-- Le `signOut()` après update est bien présent mais on pourrait clarifier l'UX
+### Problèmes identifiés
 
-## Plan : flux de réinitialisation de mot de passe complet et sécurisé
+1. **Pas de notification admin** sur création de ticket ni sur nouveau message dans une conversation existante.
+2. **Le 1er message du ticket disparaît** : le code insère `sender: 'user'` mais le CHECK constraint en base n'autorise que `'utilisateur'` ou `'admin'` → l'insertion échoue silencieusement.
+3. **Email à 2 notifications non traitées** déclenche du bruit. Préférence : un récap quotidien à 21h.
 
-### Ce qui existe déjà
-- Bouton "Mot de passe oublié ?" sur `/connexion` qui envoie un lien via `resetPasswordForEmail`
-- Page `/reset-password` qui détecte le `type=recovery` et appelle `updateUser({ password })`
-- Redirection vers `/connexion` après succès
+### Solution
 
-### Ce qu'il faut ajouter / améliorer
+**1. Notifications rouges admin pour les tickets**
 
-**1. Sécurité du mot de passe (`ResetPasswordPage.tsx`)**
-- Passer la longueur minimale de 6 → 8 caractères
-- Ajouter un indicateur visuel de force (faible / moyen / fort) basé sur longueur + variété (majuscule, chiffre, symbole)
-- Bouton œil pour afficher/masquer le mot de passe sur les deux champs
-- Refuser explicitement les mots de passe identiques à l'email ou au prénom
-- Activer la **protection HIBP** (Have I Been Pwned) côté Lovable Cloud pour bloquer les mots de passe déjà compromis
+- **Trigger Postgres** sur `tickets` (AFTER INSERT) : crée une `admin_notifications` de type `new_ticket` avec titre `Nouveau ticket : <subject>` et `reference_id = ticket.id`.
+- **Trigger Postgres** sur `ticket_messages` (AFTER INSERT) : si `sender = 'utilisateur'`, crée une `admin_notifications` de type `ticket_message` avec titre `Nouveau message ticket : <subject>`. (On évite de notifier sur les réponses de l'admin.)
+- Avantage : indépendant du client, fiable, et la pastille rouge admin existante (basée sur `is_read = false`) se mettra à jour toute seule via realtime.
 
-**2. Feedback utilisateur**
-- Ajouter des toasts (`sonner`) pour succès et erreur dans `ResetPasswordPage`
-- Afficher un message d'erreur clair et lisible si `updateUser` échoue (lien expiré, session invalide, mot de passe trop faible…)
-- Si le lien est invalide/expiré, afficher un CTA "Demander un nouveau lien" qui renvoie vers `/connexion` avec le formulaire "mot de passe oublié" déjà ouvert
+**2. Réparer le 1er message du ticket**
 
-**3. UX du lien email**
-- Personnaliser le template email de récupération Supabase aux couleurs DAIMBet (logo, ton, FR) via `scaffold_auth_email_templates` — nécessite qu'un domaine email soit configuré
-- Texte clair dans l'email : "Ce lien expire dans 1 heure", "Si tu n'as pas demandé ça, ignore cet email"
+- Dans `src/pages/ProfilePage.tsx` (ligne 534), remplacer `sender: 'user'` par `sender: 'utilisateur'` pour respecter la contrainte CHECK.
+- Ajouter un toast d'erreur si l'insertion du message échoue (au lieu d'un succès silencieux).
 
-**4. Sécurité post-réinitialisation**
-- Après `updateUser({ password })`, appeler `signOut({ scope: 'global' })` pour déconnecter toutes les sessions actives sur tous les appareils (déjà presque fait, à passer en `global`)
-- Forcer une nouvelle connexion avec le nouveau mot de passe (déjà fait via redirection)
+**3. Email quotidien à 21h au lieu d'un email à 2 notifications**
 
-**5. Anti-abus côté formulaire "mot de passe oublié"**
-- Le bouton se désactive déjà après envoi (bien)
-- Ajouter un cooldown de 60 s avant de pouvoir redemander un lien depuis le même formulaire (compteur visible)
-- Conserver le message générique "Si cette adresse est associée à un compte…" (déjà en place — bon pour ne pas révéler l'existence du compte)
+- Garder la fonction `admin-notify-email` (elle envoie déjà un récap des notifications non lues), mais :
+  - Retirer toute logique côté client/edge qui déclenche l'envoi à partir de 2 notifications (vérifier qu'il n'y en a pas — d'après ma recherche, l'envoi semble manuel/non câblé actuellement).
+  - **Mettre à jour `admin-notify-email`** pour qu'elle envoie réellement l'email via Resend (aujourd'hui elle ne fait que logger dans `admin_emails_log` avec status `logged`).
+  - Supprimer la condition `unread.length < 2` → envoyer dès qu'il y a ≥ 1 notification non lue.
+- **Planifier un cron quotidien à 21h (Europe/Paris = 19h UTC)** via `pg_cron` + `pg_net` qui appelle `admin-notify-email`. Migration utilisateur-spécifique (avec URL + anon key) insérée via l'outil `insert`, pas via migration classique.
 
 ### Détail technique
-- `ResetPasswordPage.tsx` : ajouter `useState` pour visibilité mot de passe, calcul de force (regex), toasts via `sonner`, gestion explicite du cas `!isRecovery` avec CTA retour
-- `AuthPage.tsx` : ajouter un `setTimeout` de 60 s qui réactive le bouton "Recevoir le lien" avec un compteur affiché
-- Lovable Cloud : activer le **Password HIBP Check** dans Cloud → Users → Auth Settings → Email
-- Email template : appeler `scaffold_auth_email_templates` (nécessite domaine email configuré au préalable)
 
-### Ordre de mise en œuvre suggéré
-1. Renforcer `ResetPasswordPage` (force, visibilité, toasts, gestion erreurs, signOut global)
-2. Ajouter le cooldown sur le formulaire "mot de passe oublié" dans `AuthPage`
-3. Activer la protection HIBP
-4. (Optionnel) Personnaliser le template email — nécessite un domaine email
+- Triggers SQL avec `SECURITY DEFINER` et `search_path = public` pour pouvoir insérer dans `admin_notifications` malgré la RLS.
+- Type `new_ticket` et `ticket_message` ajoutés librement (la colonne `type` est `text`, pas un enum).
+- Cron : `0 19 * * *` UTC (21h Paris en hiver ; en été ce sera 20h Paris — acceptable pour un récap, sinon on peut faire `0 19 * * *` toute l'année et accepter le décalage saisonnier d'1 h).
+- Realtime déjà activé sur `admin_notifications` côté `AdminPage` (à vérifier ; si non, on l'ajoute pour que la pastille rouge bouge en direct).
+
+### Fichiers touchés
+
+- Migration SQL : 2 nouveaux triggers (tickets + ticket_messages).
+- `src/pages/ProfilePage.tsx` : fix `sender: 'utilisateur'` + gestion d'erreur.
+- `supabase/functions/admin-notify-email/index.ts` : envoi réel via Resend, suppression du seuil 2.
+- Insertion SQL (via `insert`, pas migration) : `cron.schedule` quotidien à 19h UTC.
+- Vérification realtime sur `admin_notifications` côté `AdminPage` (ajout si absent).
 
