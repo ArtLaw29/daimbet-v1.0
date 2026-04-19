@@ -410,6 +410,11 @@ export default function AuthPage() {
             </div>
           )}
         </div>
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          <a href="/contact" className="hover:text-primary transition-colors">
+            Bloqué ? Contacter l'admin →
+          </a>
+        </p>
       </motion.div>
     </div>
   );

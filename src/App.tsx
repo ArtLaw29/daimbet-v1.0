@@ -12,6 +12,7 @@ import Navbar from "./components/Navbar";
 // Lazy-loaded pages for performance
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const EventsPage = lazy(() => import("./pages/EventsPage"));
 const BetDetailPage = lazy(() => import("./pages/BetDetailPage"));
@@ -101,6 +102,7 @@ function AppRoutes() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/connexion" element={<AuthPage />} />
           <Route path="/inscription" element={<AuthPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route path="*" element={<LandingPage />} />
@@ -119,6 +121,7 @@ function AppRoutes() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/welcome" element={<WelcomePage />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/" element={<><Navbar /><ResolutionNotifier /><EventsPage /></>} />
           <Route path="/bet/:id" element={<><Navbar /><ResolutionNotifier /><BetDetailPage /></>} />
           <Route path="/connexion" element={<Navigate to="/" replace />} />
