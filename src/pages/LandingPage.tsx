@@ -2,11 +2,12 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { Coins, Gamepad2, Trophy } from 'lucide-react';
+import daimcoinStep from '@/assets/daimcoin-step.png';
+import { Gamepad2, Trophy } from 'lucide-react';
 
 const STEPS = [
   {
-    icon: Coins,
+    image: daimcoinStep,
     emoji: '🪙',
     title: 'Reçois 1 000 DAIMcoins',
     desc: "À l'inscription pour commencer à parier immédiatement",
