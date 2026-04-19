@@ -180,7 +180,7 @@ export default function BetDetailPage() {
           <div className="flex flex-wrap gap-2 text-xs">
             <StatusBadge status={bet.status} />
             <span className="bg-secondary px-2 py-1 rounded-full text-muted-foreground">{bet.type.replace(/_/g, ' ')}</span>
-            {isLongTerm && <span className="bg-accent/10 text-accent px-2 py-1 rounded-full">📅 Long terme · Mise max 15%</span>}
+            {isLongTerm && <span className="bg-accent/10 text-accent px-2 py-1 rounded-full">📅 Long terme · Mise max 15 %</span>}
           </div>
 
           <CountdownBanner bet={bet} />
@@ -436,14 +436,14 @@ export default function BetDetailPage() {
                         <button onClick={() => setAmount(String(max))} className="flex-1 text-xs py-1.5 rounded-lg bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors">MAX</button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1.5">
-                        Maximum : {isLongTerm ? '15%' : '30%'} de ton solde = <span className="text-primary font-semibold">{max} DC</span>
+                        Maximum : {isLongTerm ? '15 %' : '30 %'} de ton solde = <span className="text-primary font-semibold">{max} DC</span>
                       </p>
                     </div>
 
                     {numAmount > 0 && (
                       <div className="bg-secondary/50 border border-border rounded-xl p-3 space-y-1 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Gain estimé (après rake 5%)</span>
+                          <span className="text-muted-foreground">Gain estimé (après rake 5 %)</span>
                           <span className="text-primary font-bold">{estimatedNet} DC</span>
                         </div>
                         <div className="flex justify-between">

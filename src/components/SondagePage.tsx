@@ -528,7 +528,7 @@ function SimpleVoteForm({ options, selectedVote, setSelectedVote, pronostic, set
 
       {/* Bet */}
       <div className="space-y-2">
-        <p className="text-sm font-semibold">💰 Ta mise (max {maxBet} DC — 20% de ton solde) :</p>
+        <p className="text-sm font-semibold">💰 Ta mise (max {maxBet} DC — 20 % de ton solde) :</p>
         <div className="flex items-center gap-3">
           <Slider value={[betAmount]} onValueChange={([v]) => setBetAmount(v)} min={1} max={Math.max(1, maxBet)} step={1} className="flex-1" />
           <span className="text-sm font-bold w-16 text-right">{betAmount} DC</span>

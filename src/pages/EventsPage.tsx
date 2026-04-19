@@ -192,7 +192,7 @@ export default function EventsPage() {
     if (result.error) { toast.error(result.error); return; }
     const newOdds = result.new_odds || 1.10;
     const estimatedNet = calculateEstimatedNetGain(amount, newOdds);
-    toast.success(`Mise placée ! 🎰 Gain estimé (après rake 5%) : ${estimatedNet} DC`);
+    toast.success(`Mise placée ! 🎰 Gain estimé (après rake 5 %) : ${estimatedNet} DC`);
     await Promise.all([fetchBets(), refreshProfile()]);
   };
 

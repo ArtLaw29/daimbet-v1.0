@@ -50,9 +50,9 @@ const TYPE_OPTIONS: { value: BetType; label: string; emoji: string; desc: string
 ];
 
 const CATEGORY_OPTIONS: { value: BetCategory; label: string }[] = [
-  { value: 'urgent', label: '⚡ Urgent (max 30%)' },
-  { value: 'long_terme', label: '📅 Long terme (max 15%)' },
-  { value: 'culture_daim', label: '🎪 Culture Daim (max 30%)' },
+  { value: 'urgent', label: '⚡ Urgent (max 30 %)' },
+  { value: 'long_terme', label: '📅 Long terme (max 15 %)' },
+  { value: 'culture_daim', label: '🎪 Culture Daim (max 30 %)' },
 ];
 
 const ADMIN_SECTIONS = [

@@ -444,7 +444,7 @@ export default function TournoiPage() {
         <h2 className="text-xl font-display mt-1">You Decide — Tournois</h2>
         <p className="text-xs text-muted-foreground max-w-md mx-auto mt-2">
           Bienvenue dans You Decide — Tournois ! Les choix s'affrontent en duels successifs façon coupe du monde.
-          Vote pour ton favori à chaque duel et parie sur le vainqueur final pour gagner des DaimCoins !
+          Vote pour ton favori à chaque duel et parie sur le vainqueur final pour gagner des DAIMcoins !
         </p>
       </div>
 

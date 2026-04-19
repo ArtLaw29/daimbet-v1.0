@@ -96,7 +96,7 @@ export default function BetCard({ bet, pools, totalPool, profileBalance, userWag
             )}
             {isLongTerm && (
               <span className="inline-flex items-center text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                Mise max 15%
+                Mise max 15 %
               </span>
             )}
           </div>
