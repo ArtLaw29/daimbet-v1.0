@@ -25,6 +25,7 @@ import AdminGameSessions from '@/components/AdminGameSessions';
 import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
 import AdminModeration from '@/components/AdminModeration';
+import AdminPublicContacts from '@/components/AdminPublicContacts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type Profile = Tables<'profiles'>;
@@ -61,6 +62,7 @@ const ADMIN_SECTIONS = [
   { id: 'gazette', label: 'Gazette', emoji: '📰' },
   { id: 'users', label: 'Utilisateurs', emoji: '👥' },
   { id: 'tickets', label: 'Tickets', emoji: '🎫' },
+  { id: 'contacts_publics', label: 'Contacts publics', emoji: '📬' },
   { id: 'moderation', label: 'Modération', emoji: '🛡️' },
   { id: 'urgence', label: "Contrôle d'urgence", emoji: '🚨' },
   { id: 'pipeline', label: 'Pipeline', emoji: '📋' },
@@ -645,6 +647,7 @@ export default function AdminPage() {
     if (sectionId === 'gazette') return flaggedGazetteCount;
     if (sectionId === 'dashboard') return unreadNotifCount;
     if (sectionId === 'pipeline') return adminProposals.filter(p => p.status === 'en_attente').length;
+    if (sectionId === 'contacts_publics') return adminNotifications.filter(n => !n.is_read && n.type === 'public_contact').length;
     return 0;
   };
 
@@ -725,6 +728,7 @@ export default function AdminPage() {
             {activeSection === 'gazette' && 'Modérer les messages de la Gazette.'}
             {activeSection === 'users' && 'Gérer les comptes, soldes et accès des joueurs.'}
             {activeSection === 'tickets' && 'Répondre aux tickets de support.'}
+            {activeSection === 'contacts_publics' && 'Messages reçus via le portail public (utilisateurs hors plateforme).'}
             {activeSection === 'moderation' && 'Mots interdits, signalements et logs.'}
             {activeSection === 'urgence' && 'Suspension, réinitialisation et configuration d\'urgence.'}
             {activeSection === 'pipeline' && 'Propositions de la communauté.'}
@@ -2143,6 +2147,11 @@ export default function AdminPage() {
         {/* ═══════════════ LEXIQUE ═══════════════ */}
         {/* ═══════════════════════════════════════════════ */}
         {activeSection === 'lexique' && <AdminGlossary />}
+
+        {/* ═══════════════════════════════════════════════ */}
+        {/* ═══════════ CONTACTS PUBLICS ═══════════════════ */}
+        {/* ═══════════════════════════════════════════════ */}
+        {activeSection === 'contacts_publics' && <AdminPublicContacts />}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════════ EXPORTS ═══════════════ */}

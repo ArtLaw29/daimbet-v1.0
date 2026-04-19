@@ -124,9 +124,14 @@ export default function LandingPage() {
 
       {/* ─── FOOTER ─── */}
       <footer className="border-t border-border py-6">
-        <div className="container mx-auto px-4 text-center">
+        <div className="container mx-auto px-4 text-center space-y-2">
           <p className="text-xs text-muted-foreground">
             © DaimBet · Promo DAIM · Monnaie fictive — aucun enjeu financier réel.
+          </p>
+          <p className="text-xs">
+            <Link to="/contact" className="text-muted-foreground hover:text-primary transition-colors">
+              Bloqué ? Contacter l'admin →
+            </Link>
           </p>
         </div>
       </footer>
