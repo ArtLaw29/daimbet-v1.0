@@ -2,11 +2,12 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { Coins, Gamepad2, Trophy } from 'lucide-react';
+import daimcoinStep from '@/assets/daimcoin-step.png';
+import { Gamepad2, Trophy } from 'lucide-react';
 
 const STEPS = [
   {
-    icon: Coins,
+    image: daimcoinStep,
     emoji: '🪙',
     title: 'Reçois 1 000 DAIMcoins',
     desc: "À l'inscription pour commencer à parier immédiatement",
@@ -95,7 +96,7 @@ export default function LandingPage() {
               Comment ça marche ?
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {STEPS.map((step, i) => {
+              {STEPS.map((step: any, i) => {
                 const Icon = step.icon;
                 return (
                   <motion.div
@@ -105,8 +106,19 @@ export default function LandingPage() {
                     transition={{ delay: 0.2 + i * 0.15, duration: 0.5 }}
                     className="rounded-xl border border-border bg-card p-6 card-glow flex items-start gap-4"
                   >
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Icon className="w-6 h-6 text-primary" />
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                      {step.image ? (
+                        <img
+                          src={step.image}
+                          alt="DAIMcoin doré avec un daim"
+                          loading="lazy"
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 object-contain"
+                        />
+                      ) : Icon ? (
+                        <Icon className="w-6 h-6 text-primary" />
+                      ) : null}
                     </div>
                     <div>
                       <h3 className="font-display text-lg tracking-wider text-foreground">
