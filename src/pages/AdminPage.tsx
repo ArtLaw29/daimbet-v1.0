@@ -1622,7 +1622,7 @@ export default function AdminPage() {
 
             {injections.length > 0 && (
               <div className="bg-secondary/50 border border-border rounded-xl p-3">
-                <p className="text-xs font-semibold text-muted-foreground mb-2">🪙 Historique des injections</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5"><img src={daimcoinLogo} alt="" className="w-3.5 h-3.5 rounded-full" />Historique des injections</p>
                 <div className="space-y-1">
                   {injections.slice(0, 5).map(inj => (
                     <div key={inj.id} className="flex justify-between text-xs text-muted-foreground">
@@ -2436,7 +2436,7 @@ export default function AdminPage() {
       <AlertDialog open={showInjectionModal} onOpenChange={setShowInjectionModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display">🪙 Injection de liquidités</AlertDialogTitle>
+            <AlertDialogTitle className="font-display flex items-center gap-2"><img src={daimcoinLogo} alt="" className="w-5 h-5 rounded-full" />Injection de liquidités</AlertDialogTitle>
             <AlertDialogDescription>
               +250 DC seront ajoutés au solde de tous les utilisateurs actifs ({profiles.filter(p => !p.is_suspended).length} joueurs).
               Les utilisateurs suspendus ne recevront pas l'injection.
