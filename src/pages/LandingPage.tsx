@@ -64,13 +64,13 @@ export default function LandingPage() {
               Bienvenue sur DaimBet 🦌💸
             </h1>
             <h2 className="text-lg md:text-xl text-muted-foreground mt-4 max-w-xl mx-auto">
-              La plateforme où ta connaissance de la promo se transforme en DaimCoins (fictifs).
+              La plateforme où ta connaissance de la promo se transforme en DAIMcoins (fictifs).
             </h2>
             <p className="text-sm md:text-base text-muted-foreground mt-6 max-w-2xl mx-auto leading-relaxed">
               DaimBet n'est pas un simple site de paris. C'est le terrain de jeu officiel de ta promotion. 
-              Paris, mini-jeux, sondages, tournois… Ici, tu mises tes DaimCoins contre les autres daims 
-              sur tout ce qui fait vibrer la promo. Attention, le délit d'initié n'est ni recommandé, ni 
-              interdit. Les enquêteurs de l'AMF ne viendront pas vous chercher.
+              Paris, mini-jeux, sondages, tournois… Ici, tu mises tes DAIMcoins contre les autres daims 
+              sur tout ce qui fait vibrer la promo. Attention, le délit d'initié n'est pas recommandé… 
+              mais pas interdit non plus. Les enquêteurs de l'AMF ne viendront pas vous chercher.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">

@@ -30,7 +30,7 @@ export default function WelcomePage() {
 
         <div className="rounded-xl border border-border bg-card p-6 card-glow mb-6">
           <p className="text-foreground text-lg leading-relaxed">
-            Tu as reçu <span className="font-bold text-primary">1 000 DaimCoins</span> pour commencer.
+            Tu as reçu <span className="font-bold text-primary">1 000 DAIMcoins</span> pour commencer.
           </p>
           <p className="text-muted-foreground mt-3">
             Paris, jeux, sondages, tournois… Tout est prêt. À toi de jouer !

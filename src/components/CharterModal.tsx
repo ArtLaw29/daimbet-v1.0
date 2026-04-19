@@ -65,12 +65,12 @@ export default function CharterModal({ userId, onAccepted }: CharterModalProps) 
             <p className="text-sm leading-relaxed text-foreground">
               🦌 <strong>Jordaim Belfort veille au grain.</strong> Tous les paris sont modérés, 
               leur résolution est assurée par l'admin, et une règle est sacrée sur DaimBet : 
-              <strong> on rigole ensemble.</strong> Les paris 
+              <strong> on rigole ensemble, jamais aux dépens de quelqu'un.</strong> Les paris 
               méchants ou humiliants n'ont pas leur place ici — et cette règle sera appliquée 
               sans exception.
             </p>
             <p className="text-sm leading-relaxed text-foreground mt-3">
-              Un <strong>rake de 5%</strong> sur les gains nets est prélevé automatiquement à 
+              Un <strong>rake de 5 %</strong> sur les gains nets est prélevé automatiquement à 
               chaque résolution — cela maintient l'économie équilibrée sur la durée.
             </p>
             <p className="text-sm leading-relaxed text-foreground mt-3">

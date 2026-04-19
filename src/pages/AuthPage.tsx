@@ -301,7 +301,7 @@ export default function AuthPage() {
                   onChange={(e) => setSelectedName(e.target.value)} required
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  <option value="">Choisis ton prénom...</option>
+                  <option value="">Choisis ton prénom…</option>
                   {PROMO_NAMES.map((name) => (
                     <option key={name} value={name}>{name}</option>
                   ))}
@@ -309,7 +309,7 @@ export default function AuthPage() {
                 {selectedName && (
                   <div className="flex items-center gap-2 text-sm mt-1">
                     {checkingName ? (
-                      <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> <span className="text-muted-foreground">Vérification...</span></>
+                      <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> <span className="text-muted-foreground">Vérification…</span></>
                     ) : nameAvailable === true ? (
                       <><CheckCircle className="w-4 h-4 text-primary" /> <span className="text-primary">Prénom disponible ✓</span></>
                     ) : nameAvailable === false ? (
@@ -330,7 +330,7 @@ export default function AuthPage() {
                   <p className="text-xs text-destructive mt-1">Format requis : prénom.nom@essec.edu</p>
                 )}
                 {email && emailValid === true && emailPrenomMatch === false && (
-                  <p className="text-xs text-destructive mt-1">L'email doit commencer par ton prénom ({extractBasePrenom(selectedName)})</p>
+                  <p className="text-xs text-destructive mt-1">L'email doit commencer par ton prénom ({extractBasePrenom(selectedName)}).</p>
                 )}
                 {email && emailValid === true && emailPrenomMatch === true && (
                   <p className="text-xs text-primary mt-1">✓ Email valide</p>
@@ -354,7 +354,7 @@ export default function AuthPage() {
                   placeholder="••••••••" required minLength={6}
                 />
                 {confirmPassword && password !== confirmPassword && (
-                  <p className="text-xs text-destructive mt-1">Les mots de passe ne correspondent pas</p>
+                  <p className="text-xs text-destructive mt-1">Les mots de passe ne correspondent pas.</p>
                 )}
               </div>
 

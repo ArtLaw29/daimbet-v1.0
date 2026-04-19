@@ -485,8 +485,8 @@ export default function ProfilePage() {
               <strong> on rigole ensemble, jamais aux dépens de quelqu'un</strong>.
             </p>
             <p className="text-sm leading-relaxed">
-              Un <strong>rake de 5%</strong> sur les gains nets est prélevé automatiquement.
-              Mise max : <strong>30%</strong> du capital (15% long terme).
+              Un <strong>rake de 5 %</strong> sur les gains nets est prélevé automatiquement.
+              Mise max : <strong>30 %</strong> du capital (15 % long terme).
             </p>
             <p className="text-sm leading-relaxed">Bonne chance à toi. 💸</p>
           </div>
@@ -514,7 +514,7 @@ export default function ProfilePage() {
               </SelectContent>
             </Select>
             <Textarea
-              placeholder="Décris ton problème..."
+              placeholder="Décris ton problème…"
               value={newTicketMessage}
               onChange={e => setNewTicketMessage(e.target.value)}
               rows={4}

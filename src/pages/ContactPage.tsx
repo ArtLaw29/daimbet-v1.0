@@ -154,7 +154,7 @@ export default function ContactPage() {
                 className={!emailValid ? 'border-destructive' : ''}
               />
               {!emailValid && (
-                <p className="text-xs text-destructive mt-1">L'email doit se terminer par @essec.edu</p>
+                <p className="text-xs text-destructive mt-1">L'email doit se terminer par @essec.edu.</p>
               )}
             </div>
 
@@ -193,12 +193,12 @@ export default function ContactPage() {
               {loading
                 ? 'Envoi en cours…'
                 : cooldown > 0
-                  ? `Réessayer dans ${cooldown}s`
+                  ? `Réessayer dans ${cooldown} s`
                   : 'Envoyer le message'}
             </Button>
 
             <p className="text-xs text-muted-foreground text-center">
-              Ton message arrive directement chez l'admin. Réponse par email sous 24h.
+              Ton message arrive directement chez l'admin. Réponse par email sous 24 h.
             </p>
           </form>
 
