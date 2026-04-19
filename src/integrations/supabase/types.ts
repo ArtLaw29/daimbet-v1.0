@@ -571,6 +571,39 @@ export type Database = {
         }
         Relationships: []
       }
+      public_contact_messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          is_handled: boolean
+          message: string
+          nom: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          is_handled?: boolean
+          message: string
+          nom: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          is_handled?: boolean
+          message?: string
+          nom?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       retraction_config: {
         Row: {
           end_hour: number
