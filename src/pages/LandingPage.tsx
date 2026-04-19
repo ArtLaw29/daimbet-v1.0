@@ -8,9 +8,8 @@ import { Gamepad2, Trophy } from 'lucide-react';
 const STEPS = [
   {
     image: daimcoinStep,
-    emoji: '🪙',
     title: 'Reçois 1 000 DAIMcoins',
-    desc: "À l'inscription pour commencer à parier immédiatement",
+    desc: "À l'inscription pour commencer à jouer immédiatement",
   },
   {
     icon: Gamepad2,
@@ -121,8 +120,9 @@ export default function LandingPage() {
                       ) : null}
                     </div>
                     <div>
-                      <h3 className="font-display text-lg tracking-wider text-foreground">
-                        {step.emoji} {step.title}
+                      <h3 className="font-display text-lg tracking-wider text-foreground flex items-center gap-2 flex-wrap">
+                        {step.emoji && <span>{step.emoji}</span>}
+                        {step.title}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">{step.desc}</p>
                     </div>

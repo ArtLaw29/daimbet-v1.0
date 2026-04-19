@@ -130,7 +130,7 @@ export default function Navbar() {
               </span>
             )}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary border border-border">
-              <span className="text-sm">🪙</span>
+              <img src={daimcoinLogo} alt="DC" className="w-4 h-4 rounded-full" loading="lazy" width={16} height={16} />
               <span className="font-semibold text-primary text-sm">{liveBalance} DC</span>
             </div>
             {rankText && (
