@@ -45,6 +45,7 @@ export default function AuthPage() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotCooldown, setForgotCooldown] = useState(0);
   const [signupDone, setSignupDone] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
 
@@ -56,7 +57,20 @@ export default function AuthPage() {
 
   useEffect(() => {
     fetchTakenNames();
-  }, []);
+    // Auto-open forgot panel if ?forgot=1 in URL
+    const params = new URLSearchParams(location.search);
+    if (params.get('forgot') === '1') {
+      setMode('connexion');
+      setShowForgot(true);
+    }
+  }, [location.search]);
+
+  // Cooldown countdown for forgot-password button
+  useEffect(() => {
+    if (forgotCooldown <= 0) return;
+    const t = setTimeout(() => setForgotCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [forgotCooldown]);
 
   const fetchTakenNames = async () => {
     const { data } = await supabase.from('profiles').select('display_name');
@@ -367,7 +381,7 @@ export default function AuthPage() {
               <Button
                 type="button"
                 className="w-full"
-                disabled={forgotSent || forgotLoading || !forgotEmail}
+                disabled={forgotLoading || !forgotEmail || forgotCooldown > 0}
                 onClick={async () => {
                   setForgotLoading(true);
                   await supabase.auth.resetPasswordForEmail(forgotEmail, {
@@ -375,9 +389,14 @@ export default function AuthPage() {
                   });
                   setForgotSent(true);
                   setForgotLoading(false);
+                  setForgotCooldown(60);
                 }}
               >
-                {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : forgotSent ? 'Lien envoyé ✅' : 'Recevoir le lien'}
+                {forgotLoading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : forgotCooldown > 0
+                    ? `Renvoyer dans ${forgotCooldown}s`
+                    : forgotSent ? 'Renvoyer le lien' : 'Recevoir le lien'}
               </Button>
               {forgotSent && (
                 <p className="text-sm text-primary">Si cette adresse est associée à un compte, un email a été envoyé.</p>
