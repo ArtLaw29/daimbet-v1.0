@@ -1,61 +1,51 @@
 
 
-L'utilisateur a validé : footer landing+connexion, similaire aux tickets mais différencié dans l'admin, exige nom + email de réponse, validation @essec.edu stricte, immédiat (notif rouge + email Resend), fire-and-forget.
+## Plan : corrections d'orthographe, grammaire et cohérence (FR)
 
-## Plan : portail "Contacter l'admin" public
+J'ai parcouru les principaux écrans utilisateurs (Landing, Auth, Welcome, Contact, Profile, TabIntro, Charter, Tournoi, Glossary…). La langue est globalement bonne — je n'ai trouvé aucune faute d'orthographe grossière. En revanche, j'ai relevé une dizaine de petites coquilles typographiques, d'incohérences et d'erreurs grammaticales légères à corriger.
 
-### 1. Base de données (migration)
-Nouvelle table `public_contact_messages` :
-- `id`, `created_at`
-- `nom` (text, qui est derrière le message)
-- `email` (text, @essec.edu, validé)
-- `subject` (text, ex: "Mot de passe oublié")
-- `message` (text, max 1000)
-- `ip_address` (text, pour rate-limit)
-- `is_handled` (bool, default false)
+### Corrections proposées
 
-RLS :
-- SELECT : admin uniquement
-- UPDATE : admin uniquement (marquer traité)
-- INSERT : refusé en direct (uniquement via edge function avec service role)
-- DELETE : admin uniquement
+**Typographie — espace insécable avant `%`** (règle française stricte)
+- `src/components/CharterModal.tsx` ligne 73 : `rake de 5%` → `rake de 5 %`
+- `src/pages/ProfilePage.tsx` lignes 488-489 : `5%` / `30%` / `15%` → `5 %` / `30 %` / `15 %`
+- `src/pages/EventsPage.tsx` ligne 195 : `rake 5%` → `rake 5 %`
+- `src/pages/BetDetailPage.tsx` lignes 183, 439, 446 : `15%`, `30%`, `5%` → `15 %`, `30 %`, `5 %`
+- `src/pages/AdminPage.tsx` lignes 53-55, 937 : idem (`30%`, `15%`, `5 %` est déjà correct ligne 937)
+- `src/components/BetCard.tsx` ligne 99 : `Mise max 15%` → `Mise max 15 %`
+- `src/components/SondagePage.tsx` ligne 531 : `20%` → `20 %`
 
-### 2. Edge function publique `public-contact` (`verify_jwt = false`)
-- Valide les inputs avec zod : `nom` (1-80), `email` (regex `@essec.edu`), `subject` (enum), `message` (1-1000), honeypot vide
-- Rate-limit : refuse si > 1 message/IP/5min ou > 5/IP/24h (lecture sur `public_contact_messages`)
-- Insert dans `public_contact_messages` via service role
-- Insert dans `admin_notifications` (type `public_contact`, titre `📬 Contact public : <subject>`, detail = nom + email + extrait message)
-- Envoie email immédiat à l'admin via Resend (template HTML DAIMBet, sujet `[DAIMBet] Contact public : <subject>`, contient nom, email de réponse, message)
-- Retourne toujours un message générique de succès
+**Cohérence de marque — DaimCoins / DaimBet**
+La mémoire dit "DAIMcoin (DC)" mais le code mélange `DaimCoins`, `DAIMcoin`, `DAIMBet`, `DaimBet`. Pour rester cohérent avec la mémoire et l'UI actuelle :
+- `src/pages/WelcomePage.tsx` ligne 33 : `1 000 DaimCoins` → `1 000 DAIMcoins` (alignement avec landing page)
+- Vérifier dans `TournoiPage.tsx` (ligne 447) et autres : harmoniser sur `DAIMcoins` partout côté UI utilisateur.
 
-### 3. Page `/contact` (publique, hors auth)
-- Form : Nom, Email (@essec.edu, message d'erreur si autre), Sujet (Select : Mot de passe oublié / Email non reçu / Compte bloqué / Inscription / Autre), Message (textarea + compteur 1000 char)
-- Honeypot caché (champ `website` masqué visuellement)
-- Cooldown 60 s côté client après envoi
-- Après succès : écran de confirmation "Message envoyé ✅ — l'admin te répondra par email à <ton email>"
+**Petites améliorations grammaticales / ponctuation**
+- `src/pages/AuthPage.tsx` ligne 244 : `La plateforme de jeux entre DAIM 🦌` → OK, déjà corrigé récemment. RAS.
+- `src/pages/AuthPage.tsx` ligne 333 : `L'email doit commencer par ton prénom` → ajouter point final.
+- `src/pages/AuthPage.tsx` ligne 357 : `Les mots de passe ne correspondent pas` → ajouter point final.
+- `src/pages/ContactPage.tsx` ligne 157 : `L'email doit se terminer par @essec.edu` → ajouter point final.
+- `src/pages/ContactPage.tsx` ligne 201 : `sous 24h` → `sous 24 h` (espace insécable + h minuscule, norme FR).
+- `src/pages/AuthPage.tsx` ligne 373 : `Renvoyer dans ${forgotCooldown}s` → `${forgotCooldown} s`.
+- `src/pages/ContactPage.tsx` ligne 196 : `Réessayer dans ${cooldown}s` → `${cooldown} s`.
 
-### 4. Liens d'accès
-- **Footer** de `LandingPage.tsx` : ajouter "Bloqué ? Contacter l'admin →" pointant vers `/contact`
-- **Footer/bas du formulaire** de `AuthPage.tsx` (page connexion) : même lien
-- Ajouter route `/contact` dans `App.tsx` (accessible logged-in OR out)
+**Ellipse — uniformisation**
+Mélange de `…` (caractère unicode) et `...` (trois points). On garde `…` partout pour le rendu propre :
+- `src/pages/WelcomePage.tsx` ligne 36 : `Paris, jeux, sondages, tournois…` ✅ déjà OK.
+- `src/pages/ProfilePage.tsx` ligne 517 : `Décris ton problème...` → `Décris ton problème…`
+- `src/pages/AuthPage.tsx` ligne 304 : `Choisis ton prénom...` → `Choisis ton prénom…`
+- `src/pages/AuthPage.tsx` ligne 312 : `Vérification...` → `Vérification…`
 
-### 5. Côté admin
-Nouveau composant `AdminPublicContacts.tsx` ajouté dans la sidebar admin (section dédiée, distincte de "Tickets") :
-- Liste des messages, badge non-traités
-- Affiche nom, email (cliquable `mailto:`), sujet, message complet, date
-- Bouton "Marquer traité" → update `is_handled = true`
-- Filtres : non-traités / tous
+**Reformulations mineures**
+- `src/components/CharterModal.tsx` ligne 68 : `<strong> on rigole ensemble.</strong>` → harmoniser avec TabIntro et ProfilePage : `<strong> on rigole ensemble, jamais aux dépens de quelqu'un.</strong>` (la version courte est isolée, les deux autres écrans utilisent la version longue).
+- `src/pages/LandingPage.tsx` ligne 71 : `Attention, le délit d'initié n'est ni recommandé, ni interdit.` → tournure ambiguë (« ni recommandé, ni interdit » = double négation paradoxale voulue, mais peut être lu comme erreur). Remplacer par : `Attention, le délit d'initié n'est pas recommandé… mais pas interdit non plus.` (clarifie l'humour).
 
-### 6. Notifications admin
-Le clic sur une notif `public_contact` dans le panel admin ouvre la section "Contacts publics".
+### Hors-scope (volontaire)
+- Textes admin déjà cohérents.
+- Emojis et anglicismes assumés (rake, pari mutuel) : conservés tels quels (lexique métier validé en mémoire).
 
-### Fichiers touchés
-- Nouvelle migration SQL : table + RLS
-- Nouvelle edge function `supabase/functions/public-contact/index.ts`
-- Nouvelle page `src/pages/ContactPage.tsx`
-- Nouveau composant `src/components/AdminPublicContacts.tsx`
-- `src/App.tsx` : route `/contact`
-- `src/pages/LandingPage.tsx` : lien footer
-- `src/pages/AuthPage.tsx` : lien sous le formulaire
-- `src/pages/AdminPage.tsx` : nouvelle entrée sidebar + handler notif
+### Fichiers touchés (8)
+`AuthPage.tsx`, `ContactPage.tsx`, `WelcomePage.tsx`, `ProfilePage.tsx`, `LandingPage.tsx`, `CharterModal.tsx`, `BetCard.tsx`, `BetDetailPage.tsx`, `EventsPage.tsx`, `AdminPage.tsx`, `SondagePage.tsx`, `TournoiPage.tsx`.
+
+Aucune modification de logique, uniquement du texte.
 
