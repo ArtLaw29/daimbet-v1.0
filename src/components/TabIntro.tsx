@@ -1,4 +1,5 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TabIntroProps {
   children: ReactNode;
@@ -9,6 +10,40 @@ export default function TabIntro({ children }: TabIntroProps) {
     <div className="bg-secondary/30 border border-border rounded-xl p-4 mb-6 text-sm text-muted-foreground leading-relaxed">
       {children}
     </div>
+  );
+}
+
+export function IntroKissMarry() {
+  const [showSensitive, setShowSensitive] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['km_show_coup_soir', 'km_show_plan_q']);
+      const coup = data?.find(r => r.key === 'km_show_coup_soir')?.value === 'true';
+      const planq = data?.find(r => r.key === 'km_show_plan_q')?.value === 'true';
+      setShowSensitive(coup || planq);
+    })();
+  }, []);
+
+  return (
+    <TabIntro>
+      <p className="font-medium text-foreground mb-2">
+        Le jeu dont tout le monde parle, mais dont personne ne connaît les votes.
+      </p>
+      <p>
+        Ici, l'anonymat des votes est le secret le mieux gardé.
+      </p>
+      <ul className="mt-3 space-y-1 text-xs list-disc list-inside">
+        <li>💋 <strong>Kiss</strong> et 💍 <strong>Marry</strong> — obligatoires</li>
+        {showSensitive && (
+          <li>🌙 <strong>Coup d'un soir</strong> et 🔥 <strong>Plan Q</strong> — optionnels</li>
+        )}
+        <li>⚠️ Une seule chance par mois. Non modifiable après confirmation.</li>
+      </ul>
+    </TabIntro>
   );
 }
 

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Eye } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
-import { INTRO_KISS_MARRY } from '@/components/TabIntro';
+import { IntroKissMarry } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const CATEGORIES_REQUIRED = ['kiss', 'marry'] as const;
@@ -276,7 +276,7 @@ export default function KissMarryPage() {
         <div className="text-center mb-6">
           <h1 className="text-3xl font-display gold-text">💋 Kiss / Marry</h1>
         </div>
-        {INTRO_KISS_MARRY}
+        <IntroKissMarry />
 
         <div className="text-center p-6 rounded-2xl bg-primary/10 border border-primary/20 mb-6">
           <Lock className="w-8 h-8 mx-auto text-primary mb-2" />
@@ -314,7 +314,7 @@ export default function KissMarryPage() {
       <div className="text-center mb-6">
         <h1 className="text-3xl font-display gold-text">💋 Kiss / Marry</h1>
       </div>
-      {INTRO_KISS_MARRY}
+      <IntroKissMarry />
 
       <p className="text-xs text-primary/80 mb-4 text-center font-medium">
         ⚠️ Choisis un prénom différent pour chaque catégorie !
