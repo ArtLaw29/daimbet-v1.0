@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Eye } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
-import { INTRO_KISS_MARRY } from '@/components/TabIntro';
+import { IntroKissMarry } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const CATEGORIES_REQUIRED = ['kiss', 'marry'] as const;
