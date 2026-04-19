@@ -281,7 +281,7 @@ export default function FantasyFirmPage() {
     return (
       <div className="space-y-6">
         <TabIntro>
-          <p className="font-medium text-foreground mb-2">⚖️ Daim Fantasy Firm</p>
+          <p className="font-medium text-foreground mb-2">⚖️ Fantasy Firm</p>
           <p>Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo.</p>
         </TabIntro>
 
@@ -356,7 +356,7 @@ export default function FantasyFirmPage() {
     return (
       <div className="space-y-6">
         <TabIntro>
-          <p className="font-medium text-foreground mb-2">⚖️ Daim Fantasy Firm</p>
+          <p className="font-medium text-foreground mb-2">⚖️ Fantasy Firm</p>
           <p>Choisis le nom de ton cabinet.</p>
         </TabIntro>
 
@@ -400,7 +400,7 @@ export default function FantasyFirmPage() {
   return (
     <div className="space-y-6">
       <TabIntro>
-        <p className="font-medium text-foreground mb-2">⚖️ Daim Fantasy Firm</p>
+        <p className="font-medium text-foreground mb-2">⚖️ Fantasy Firm</p>
         <p>Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo. Minimum 2 membres.</p>
       </TabIntro>
 
