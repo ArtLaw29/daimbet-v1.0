@@ -647,6 +647,7 @@ export default function AdminPage() {
     if (sectionId === 'gazette') return flaggedGazetteCount;
     if (sectionId === 'dashboard') return unreadNotifCount;
     if (sectionId === 'pipeline') return adminProposals.filter(p => p.status === 'en_attente').length;
+    if (sectionId === 'contacts_publics') return adminNotifications.filter(n => !n.is_read && n.type === 'public_contact').length;
     return 0;
   };
 
