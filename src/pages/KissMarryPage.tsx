@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Eye } from 'lucide-react';
+import { Lock, Eye, CalendarClock } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { fetchHiddenNames, filterNames } from '@/lib/visibility';
 import { IntroKissMarry } from '@/components/TabIntro';
@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import ContactFooter from '@/components/ContactFooter';
+import { useCountdown } from '@/hooks/useCountdown';
 
 const CATEGORIES_REQUIRED = ['kiss', 'marry'] as const;
 const CATEGORIES_OPTIONAL = ['coup_soir', 'plan_q'] as const;
