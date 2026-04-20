@@ -493,6 +493,39 @@ export type Database = {
         }
         Relationships: []
       }
+      moderation_log: {
+        Row: {
+          action_type: string
+          actor_id: string | null
+          created_at: string
+          description: string
+          id: string
+          motif: string | null
+          target_id: string | null
+          target_type: string
+        }
+        Insert: {
+          action_type: string
+          actor_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          motif?: string | null
+          target_id?: string | null
+          target_type: string
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          motif?: string | null
+          target_id?: string | null
+          target_type?: string
+        }
+        Relationships: []
+      }
       nav_config: {
         Row: {
           id: string

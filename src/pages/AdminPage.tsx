@@ -28,6 +28,7 @@ import AdminGouvernements from '@/components/AdminGouvernements';
 import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
 import AdminModeration from '@/components/AdminModeration';
+import AdminModerationLog from '@/components/AdminModerationLog';
 import AdminPublicContacts from '@/components/AdminPublicContacts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -68,6 +69,7 @@ const ADMIN_SECTIONS = [
   { id: 'tickets', label: 'Tickets', emoji: '🎫' },
   { id: 'contacts_publics', label: 'Contacts publics', emoji: '📬' },
   { id: 'moderation', label: 'Modération', emoji: '🛡️' },
+  { id: 'journal', label: 'Journal de modération', emoji: '📋' },
   { id: 'urgence', label: "Contrôle d'urgence", emoji: '🚨' },
   { id: 'pipeline', label: 'Pipeline', emoji: '📋' },
   { id: 'lexique', label: 'Lexique', emoji: '📖' },
@@ -2248,6 +2250,8 @@ export default function AdminPage() {
         {/* ═══════════════ LEXIQUE ═══════════════ */}
         {/* ═══════════════════════════════════════════════ */}
         {activeSection === 'lexique' && <AdminGlossary />}
+
+        {activeSection === 'journal' && <AdminModerationLog />}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════ CONTACTS PUBLICS ═══════════════════ */}
