@@ -406,6 +406,11 @@ export default function FantasyFirmPage() {
         <p>Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo. Minimum 2 membres.</p>
       </TabIntro>
 
+      <div className="flex justify-center">
+        <ProposeNewDialog kind="fantasy" buttonLabel="Proposer une variante" />
+      </div>
+      <PendingProposalsSection kind="fantasy" />
+
       <div className="max-w-lg mx-auto space-y-3">
         {members.map((member, i) => (
           <motion.div
