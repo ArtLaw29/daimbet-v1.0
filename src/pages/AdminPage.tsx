@@ -563,6 +563,12 @@ export default function AdminPage() {
     toast.success(suspend ? 'Utilisateur suspendu ⛔' : 'Utilisateur réactivé ✅');
     const profile = profiles.find(p => p.user_id === userId);
     if (profile) setSelectedUser({ ...profile, is_suspended: suspend });
+    logModerationAction({
+      action_type: suspend ? 'suspension' : 'validation',
+      target_type: 'utilisateur',
+      target_id: userId,
+      description: suspend ? `Utilisateur suspendu : ${profile?.display_name}` : `Utilisateur réactivé : ${profile?.display_name}`,
+    });
     fetchAll();
   };
 
@@ -2252,6 +2258,12 @@ export default function AdminPage() {
                         const { data, error } = await supabase.functions.invoke('activate-proposal', { body: { proposal_id: prop.id } });
                         if (error || (data as any)?.error) { toast.error((data as any)?.error || 'Erreur'); return; }
                         toast.success('Proposition validée et publiée ✅');
+                        logModerationAction({
+                          action_type: 'validation',
+                          target_type: 'proposition',
+                          target_id: prop.id,
+                          description: `Proposition validée : "${prop.title}" (${prop.proposal_kind})`,
+                        });
                         fetchAll();
                       }}>
                         <CheckCircle className="w-4 h-4 mr-1" /> Valider maintenant
@@ -2261,6 +2273,12 @@ export default function AdminPage() {
                       <Button size="sm" variant="destructive" onClick={async () => {
                         await supabase.from('daimocratie_proposals').update({ status: 'rejete' as any }).eq('id', prop.id);
                         toast.success('Proposition rejetée ❌');
+                        logModerationAction({
+                          action_type: 'rejet',
+                          target_type: 'proposition',
+                          target_id: prop.id,
+                          description: `Proposition rejetée : "${prop.title}" (${prop.proposal_kind})`,
+                        });
                         fetchAll();
                       }}>
                         <Trash2 className="w-4 h-4 mr-1" /> Rejeter
@@ -2552,6 +2570,12 @@ export default function AdminPage() {
                       toast.error(data?.error || error?.message || 'Erreur');
                     } else {
                       toast.success(`Compte de ${selectedUser.display_name} supprimé`);
+                      logModerationAction({
+                        action_type: 'suppression',
+                        target_type: 'utilisateur',
+                        target_id: selectedUser.user_id,
+                        description: `Compte utilisateur supprimé : ${selectedUser.display_name}`,
+                      });
                       setSelectedUser(null);
                       fetchAll();
                     }
