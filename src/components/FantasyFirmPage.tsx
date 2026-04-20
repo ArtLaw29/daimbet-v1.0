@@ -486,6 +486,7 @@ export default function FantasyFirmPage() {
           )}
         </div>
       </div>
+      <ContactFooter />
     </div>
   );
 }

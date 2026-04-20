@@ -310,6 +310,8 @@ export default function EventsPage() {
           existingWagerOptionId={userWagers[sheetBet.id]?.option_id}
         />
       )}
+
+      <ContactFooter />
     </div>
   );
 }

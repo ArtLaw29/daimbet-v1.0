@@ -429,6 +429,7 @@ export default function KissMarryPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ContactFooter />
     </div>
   );
 }

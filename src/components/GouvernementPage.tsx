@@ -406,6 +406,7 @@ export default function GouvernementPage() {
           })}
         </div>
       )}
+      <ContactFooter />
     </div>
   );
 }
