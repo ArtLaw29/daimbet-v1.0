@@ -62,6 +62,12 @@ const COPY: Record<ProposalKind, {
     questionLabel: 'Intitulé',
     questionPlaceholder: 'Ex : Cabinet pénal uniquement',
   },
+  kiss_marry: {
+    dialogTitle: 'Propose une variante de Kiss/Marry',
+    dialogHelp: "Ta proposition sera visible par tous et publiée après validation.",
+    questionLabel: 'Intitulé',
+    questionPlaceholder: 'Ex : Catégorie spéciale du mois',
+  },
 };
 
 export default function ProposeNewDialog({ kind, onSubmitted, buttonLabel, buttonVariant = 'outline' }: Props) {
