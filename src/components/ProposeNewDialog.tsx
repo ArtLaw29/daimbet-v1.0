@@ -27,7 +27,8 @@ export default function ProposeNewDialog({ kind, onSubmitted, buttonLabel, butto
   const [submitting, setSubmitting] = useState(false);
 
   const label = KIND_LABELS[kind];
-  const showOptions = kind === 'sondage' || kind === 'tournoi' || kind === 'bet';
+  const showOptions = kind === 'sondage' || kind === 'tournoi';
+  const isBet = kind === 'bet';
 
   const submit = async () => {
     if (!user || !title.trim()) {
