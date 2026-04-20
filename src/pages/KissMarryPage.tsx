@@ -170,9 +170,10 @@ export default function KissMarryPage() {
   }, [monthYear]);
 
   useEffect(() => {
+    if (!revealConfig) return; // wait until period ID is resolved
     if (user) checkIfVoted();
     generateIndices();
-  }, [user, checkIfVoted, generateIndices]);
+  }, [user, checkIfVoted, generateIndices, revealConfig]);
 
   const handleSubmit = async () => {
     if (!user || submitting) return;
