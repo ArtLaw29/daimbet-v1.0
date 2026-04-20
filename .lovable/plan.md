@@ -1,33 +1,35 @@
 
-## Plan : masquer toute trace de "Coup d'un soir" et "Plan Q" quand désactivés
+## Plan : bouton "Cacher" pour chaque jeu (indépendant de "Suspendre")
 
-### Contexte
-Ces deux catégories Kiss/Marry sont contrôlées par un toggle admin (probablement via `nav_config` ou un flag équivalent). Quand elles sont cachées, des mentions résiduelles subsistent dans l'UI (intros, légendes, messages d'annonce, etc.) — il faut tout supprimer côté utilisateur.
-
-### Exploration nécessaire
-1. Lire `src/components/TabIntro.tsx` → supprimer la ligne `🌙 Coup d'un soir et 🔥 Plan Q — optionnels` du bloc `INTRO_KISS_MARRY` (ou la rendre conditionnelle).
-2. Lire `src/pages/KissMarryPage.tsx` pour identifier toutes les mentions textuelles de "Coup d'un soir" / "Plan Q" / "🌙" / "🔥" (titres, sous-titres, instructions, écrans de confirmation, récap…).
-3. Vérifier comment l'activation des catégories est gérée (probablement un flag `kiss_marry_sensitive_enabled` dans `nav_config` ou table dédiée — cf. mémoire `features/games/kiss-marry`).
-4. Chercher d'autres références dans : `Navbar.tsx`, `LandingPage.tsx`, `GamesPage.tsx`, intros, messages Gazette/annonces auto liés à Kiss/Marry.
+### Contexte actuel
+- Côté admin, chaque jeu a déjà un toggle **Suspendre** (`platform_settings` clé `suspend_<gameId>`) → affiche "Jeu suspendu" mais l'onglet reste visible.
+- Il manque un toggle **Cacher** : l'onglet disparaît totalement de la barre des jeux pour les utilisateurs.
 
 ### Approche
-- **Si désactivé côté admin** : aucune mention textuelle, aucun emoji, aucune étape, aucun récap ne doit évoquer ces deux catégories. L'utilisateur ne doit pas savoir qu'elles existent.
-- **Si activé** : tout réapparaît normalement.
+Ajouter un second flag indépendant `hide_<gameId>` dans `platform_settings` (même mécanique que `suspend_`), avec son propre bouton dans l'admin.
 
-Concrètement :
-1. **`TabIntro.tsx`** : transformer `INTRO_KISS_MARRY` en composant fonction qui lit le flag `nav_config` (ou prop) et affiche/masque la ligne `🌙 Coup d'un soir et 🔥 Plan Q — optionnels`.
-2. **`KissMarryPage.tsx`** : envelopper toutes les sections (form, récap, confirmation) liées à Coup d'un soir / Plan Q dans des conditions `{sensitiveEnabled && …}`. Supprimer les mentions résiduelles dans les textes d'intro, légendes, étapes restantes.
-3. **Annonces Gazette** : si des messages auto mentionnent ces catégories, les rendre conditionnels au flag.
-4. **Pages publiques** (`LandingPage`, `GamesPage`) : vérifier qu'aucune mention promotionnelle n'évoque ces catégories quand désactivées.
+### Modifications
 
-### Fichiers touchés (estimés)
-- `src/components/TabIntro.tsx`
-- `src/pages/KissMarryPage.tsx`
-- Éventuellement `src/pages/GamesPage.tsx`, `src/pages/LandingPage.tsx`, ou messages auto dans `supabase/functions/*` si annonces concernées.
+1. **`src/components/AdminGameSessions.tsx`** (ou la section qui gère les toggles Suspendre)
+   - Ajouter un second bouton **Cacher / Afficher** par jeu (5 jeux : daimocratie, you-decide, gouvernement, fantasy-firm, kiss-marry).
+   - Lecture/écriture de `platform_settings` clé `hide_<gameId>` (valeur `'true'`/`'false'`).
+   - UI : icône Eye/EyeOff + libellé clair, distinct visuellement du bouton Suspendre.
+
+2. **`src/pages/GamesPage.tsx`**
+   - Étendre le `useEffect` qui fetch les settings pour aussi récupérer les clés `hide_*`.
+   - Filtrer `GAME_TABS` : si `hidden[tab.id]` → ne pas afficher l'onglet du tout.
+   - Si l'onglet actif devient caché → basculer sur le premier onglet visible.
+   - Si **tous** les jeux sont cachés → afficher un message "Aucun jeu disponible pour le moment".
+
+### Sémantique
+- **Suspendre** : onglet visible mais grisé + message "Jeu suspendu" (utilisateur sait qu'il existe).
+- **Cacher** : onglet invisible (utilisateur ne sait pas qu'il existe). Indépendants.
 
 ### Hors-scope
-- Logique backend de vote (inchangée).
-- Le toggle admin lui-même (déjà existant).
-- Aucune migration SQL.
+- Pas de migration SQL (utilise `platform_settings` existant).
+- Pas de changement de logique de jeu.
+- Pas de modification de la navbar principale (jeux gérés via la sous-nav `GamesPage`).
 
-Une fois validé, je passe en mode default pour explorer en détail puis appliquer les modifs.
+### Fichiers touchés (2)
+- `src/components/AdminGameSessions.tsx`
+- `src/pages/GamesPage.tsx`
