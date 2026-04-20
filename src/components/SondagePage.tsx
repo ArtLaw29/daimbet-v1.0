@@ -13,6 +13,8 @@ import type { Json } from '@/integrations/supabase/types';
 import CoinRain from '@/components/CoinRain';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { fetchHiddenNames, filterNames } from '@/lib/visibility';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
 
 const COMBO_MOTIFS = [
   'Trafic d\'influence', 'Délit d\'initié', 'Fraude fiscale', 'Blanchiment',
@@ -421,24 +423,15 @@ export default function SondagePage() {
         </p>
       </div>
 
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center gap-2 flex-wrap">
         <Button size="sm" variant="outline" onClick={() => setView('archives')}>
           <Archive className="w-3 h-3 mr-1" /> Archives
         </Button>
-        <Button size="sm" className="gold-gradient" onClick={() => setShowPropose(!showPropose)}>
-          + Proposer un sondage
-        </Button>
+        <ProposeNewDialog kind="sondage" onSubmitted={fetchSessions} buttonLabel="Proposer un sondage" />
       </div>
 
-      {showPropose && (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <p className="text-sm font-semibold">Proposer un sondage</p>
-          <Input placeholder="Question du sondage" value={proposeTitle} onChange={e => setProposeTitle(e.target.value)} />
-          <Textarea placeholder="Options (une par ligne, optionnel)" value={proposeOptions} onChange={e => setProposeOptions(e.target.value)} rows={3} />
-          <Input type="datetime-local" value={proposeEndDate} onChange={e => setProposeEndDate(e.target.value)} />
-          <Button className="gold-gradient" disabled={!proposeTitle.trim()} onClick={proposeSession}>Publier 🚀</Button>
-        </div>
-      )}
+      <PendingProposalsSection kind="sondage" />
+
 
       {sessions.length === 0 && !showPropose && (
         <div className="text-center py-12 text-muted-foreground">
