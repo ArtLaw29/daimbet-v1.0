@@ -351,6 +351,7 @@ export default function SondagePage() {
                   submitting={submitting}
                   myPart={myPart}
                   onSubmit={submitVote}
+                  promoNames={visiblePromoNames}
                 />
               ) : (
                 <SimpleVoteForm
@@ -366,6 +367,7 @@ export default function SondagePage() {
                   onAddOption={addOption}
                   newOptionText={newOptionText} setNewOptionText={setNewOptionText}
                   addingFromPromo={addingFromPromo} setAddingFromPromo={setAddingFromPromo}
+                  promoNames={visiblePromoNames}
                 />
               )}
             </>
