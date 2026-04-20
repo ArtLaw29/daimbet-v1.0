@@ -29,12 +29,7 @@ const deleteGameSessionsByTypes = async (
     return;
   }
 
-  const { error: reportsError } = await adminClient
-    .from("content_reports")
-    .delete()
-    .in("content_id", sessionIds);
-  if (reportsError) throw reportsError;
-  deleted.push(`content_reports (${gameTypes.join(", ")})`);
+  // (content_reports table removed — no longer needed)
 
   const { error: participationsError } = await adminClient
     .from("game_participations")
@@ -136,10 +131,7 @@ Deno.serve(async (req) => {
       const { data: proposals } = await adminClient.from("daimocratie_proposals").select("id");
       const proposalIds = (proposals ?? []).map((proposal: { id: string }) => proposal.id);
 
-      if (proposalIds.length > 0) {
-        await adminClient.from("content_reports").delete().in("content_id", proposalIds);
-        deleted.push("content_reports (daimocratie proposals)");
-      }
+      // (content_reports table removed — no cleanup needed)
 
       await adminClient.from("daimocratie_votes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       deleted.push("daimocratie_votes");
