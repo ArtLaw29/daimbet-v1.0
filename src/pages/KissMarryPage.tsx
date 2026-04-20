@@ -9,6 +9,8 @@ import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { fetchHiddenNames, filterNames } from '@/lib/visibility';
 import { IntroKissMarry } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
 
 const CATEGORIES_REQUIRED = ['kiss', 'marry'] as const;
 const CATEGORIES_OPTIONAL = ['coup_soir', 'plan_q'] as const;

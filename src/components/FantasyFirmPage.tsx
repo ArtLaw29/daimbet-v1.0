@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TabIntro from '@/components/TabIntro';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
 
 const ROLES = [
   { id: 'associe', label: 'Associé', icon: '⭐' },
