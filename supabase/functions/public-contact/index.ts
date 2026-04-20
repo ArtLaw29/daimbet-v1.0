@@ -110,6 +110,12 @@ Deno.serve(async (req) => {
     const ADMIN_EMAIL = 'jordan.gomes@essec.edu';
 
     if (RESEND_API_KEY && LOVABLE_API_KEY) {
+      const esc = (s: string) =>
+        String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
       const html = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0f0f0f;color:#f5f5f5;padding:24px;border-radius:12px;">
           <div style="text-align:center;margin-bottom:24px;">
@@ -117,11 +123,11 @@ Deno.serve(async (req) => {
             <p style="color:#999;margin:4px 0;">Nouveau message via le portail public</p>
           </div>
           <div style="background:#1a1a1a;padding:20px;border-radius:8px;border-left:4px solid #d4af37;">
-            <p style="margin:0 0 8px;"><strong style="color:#d4af37;">Sujet :</strong> ${subjectLabel}</p>
-            <p style="margin:0 0 8px;"><strong style="color:#d4af37;">Nom :</strong> ${nom}</p>
-            <p style="margin:0 0 16px;"><strong style="color:#d4af37;">Email de réponse :</strong> <a href="mailto:${email}" style="color:#d4af37;">${email}</a></p>
+            <p style="margin:0 0 8px;"><strong style="color:#d4af37;">Sujet :</strong> ${esc(subjectLabel)}</p>
+            <p style="margin:0 0 8px;"><strong style="color:#d4af37;">Nom :</strong> ${esc(nom)}</p>
+            <p style="margin:0 0 16px;"><strong style="color:#d4af37;">Email de réponse :</strong> <a href="mailto:${esc(email)}" style="color:#d4af37;">${esc(email)}</a></p>
             <hr style="border:none;border-top:1px solid #333;margin:16px 0;"/>
-            <p style="margin:0;white-space:pre-wrap;line-height:1.6;">${message.replace(/</g, '&lt;')}</p>
+            <p style="margin:0;white-space:pre-wrap;line-height:1.6;">${esc(message)}</p>
           </div>
           <p style="margin-top:24px;color:#666;font-size:12px;text-align:center;">
             Réponds directement à <a href="mailto:${email}" style="color:#d4af37;">${email}</a>.<br/>
