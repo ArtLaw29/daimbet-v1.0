@@ -67,6 +67,8 @@ export default function AdminHarassmentFlags() {
     const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const { data: kmResults } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
     (kmResults || []).forEach((r: any) => {
+      // Threshold: ignore prénoms cités < 2 fois pour éviter les faux positifs
+      if ((r.vote_count || 0) < 2) return;
       for (let i = 0; i < (r.vote_count || 0); i++) {
         all.push({ prenom: r.voted_prenom, source: `Kiss/Marry (${r.category}) — ${monthYear}` });
       }
@@ -95,7 +97,24 @@ export default function AdminHarassmentFlags() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    // Realtime: refresh on new participations or kiss/marry votes (debounced 5s)
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const debounced = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => load(), 5000);
+    };
+    const ch = supabase
+      .channel('harassment-flags')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_participations' }, debounced)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'kiss_marry_votes' }, debounced)
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(ch);
+    };
+  }, []);
 
   const flags: FlagRow[] = useMemo(() => {
     if (citations.length === 0) return [];

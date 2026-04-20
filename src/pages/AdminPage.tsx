@@ -29,6 +29,7 @@ import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
 import AdminModeration from '@/components/AdminModeration';
 import AdminModerationLog from '@/components/AdminModerationLog';
+import { logModerationAction } from '@/lib/moderationLog';
 import AdminPublicContacts from '@/components/AdminPublicContacts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -427,6 +428,7 @@ export default function AdminPage() {
       is_system_message: true,
     });
     toast.success('Mises clôturées 🔒');
+    logModerationAction({ action_type: 'modification', target_type: 'pari', target_id: betId, description: `Mises clôturées sur "${bet?.title}"` });
     fetchAll();
   };
 
@@ -440,6 +442,12 @@ export default function AdminPage() {
       is_system_message: true,
     });
     toast.success(suspend ? 'Pari suspendu ⏸️' : 'Pari réactivé ▶️');
+    logModerationAction({
+      action_type: suspend ? 'suspension' : 'validation',
+      target_type: 'pari',
+      target_id: betId,
+      description: suspend ? `Pari suspendu : "${bet?.title}"` : `Pari réactivé : "${bet?.title}"`,
+    });
     fetchAll();
   };
 
@@ -459,6 +467,12 @@ export default function AdminPage() {
     const bet = bets.find(b => b.id === betId);
     const winnerLabels = bet?.bet_options.filter(o => winnerIds.includes(o.id)).map(o => o.label).join(', ');
     toast.success(`Pari résolu ! 🏆 Gagnant(s) : ${winnerLabels}`);
+    logModerationAction({
+      action_type: 'validation',
+      target_type: 'pari',
+      target_id: betId,
+      description: `Pari résolu : "${bet?.title}" — Gagnant(s) : ${winnerLabels}`,
+    });
     setSelectedWinners(prev => { const n = { ...prev }; delete n[betId]; return n; });
     fetchAll();
   };
@@ -473,6 +487,12 @@ export default function AdminPage() {
     if (error) { toast.error('Erreur tirage au sort'); return; }
     if (data?.error) { toast.error(data.error); return; }
     toast.success(`🎲 Tirage au sort terminé ! Gagnant(s) : ${data.winners}`);
+    logModerationAction({
+      action_type: 'validation',
+      target_type: 'pari',
+      target_id: betId,
+      description: `Tirage au sort exécuté sur "${bet.title}" — Gagnant(s) : ${data.winners}`,
+    });
     fetchAll();
   };
 
@@ -499,6 +519,13 @@ export default function AdminPage() {
       is_system_message: true,
     });
     toast.success(`Pari annulé, ${betWagers.length} mises remboursées 💰`);
+    logModerationAction({
+      action_type: 'suppression',
+      target_type: 'pari',
+      target_id: betId,
+      description: `Pari annulé : "${bet?.title}" (${betWagers.length} mises remboursées)`,
+      motif,
+    });
     setDeleteMotif('');
     fetchAll();
   };
@@ -536,6 +563,12 @@ export default function AdminPage() {
     toast.success(suspend ? 'Utilisateur suspendu ⛔' : 'Utilisateur réactivé ✅');
     const profile = profiles.find(p => p.user_id === userId);
     if (profile) setSelectedUser({ ...profile, is_suspended: suspend });
+    logModerationAction({
+      action_type: suspend ? 'suspension' : 'validation',
+      target_type: 'utilisateur',
+      target_id: userId,
+      description: suspend ? `Utilisateur suspendu : ${profile?.display_name}` : `Utilisateur réactivé : ${profile?.display_name}`,
+    });
     fetchAll();
   };
 
@@ -1360,6 +1393,12 @@ export default function AdminPage() {
                                   onClick={async () => {
                                     await supabase.from('tierce_suggestions').update({ status: 'rejete' as any }).eq('id', s.id);
                                     toast.success('Suggestion rejetée');
+                                    logModerationAction({
+                                      action_type: 'rejet',
+                                      target_type: 'pari',
+                                      target_id: s.bet_id,
+                                      description: `Suggestion Tiercé rejetée : "${s.prenom_suggested}"`,
+                                    });
                                     fetchAll();
                                   }}>
                                   ❌ Rejeter
@@ -2225,6 +2264,12 @@ export default function AdminPage() {
                         const { data, error } = await supabase.functions.invoke('activate-proposal', { body: { proposal_id: prop.id } });
                         if (error || (data as any)?.error) { toast.error((data as any)?.error || 'Erreur'); return; }
                         toast.success('Proposition validée et publiée ✅');
+                        logModerationAction({
+                          action_type: 'validation',
+                          target_type: 'proposition',
+                          target_id: prop.id,
+                          description: `Proposition validée : "${prop.title}" (${prop.proposal_kind})`,
+                        });
                         fetchAll();
                       }}>
                         <CheckCircle className="w-4 h-4 mr-1" /> Valider maintenant
@@ -2234,6 +2279,12 @@ export default function AdminPage() {
                       <Button size="sm" variant="destructive" onClick={async () => {
                         await supabase.from('daimocratie_proposals').update({ status: 'rejete' as any }).eq('id', prop.id);
                         toast.success('Proposition rejetée ❌');
+                        logModerationAction({
+                          action_type: 'rejet',
+                          target_type: 'proposition',
+                          target_id: prop.id,
+                          description: `Proposition rejetée : "${prop.title}" (${prop.proposal_kind})`,
+                        });
                         fetchAll();
                       }}>
                         <Trash2 className="w-4 h-4 mr-1" /> Rejeter
@@ -2525,6 +2576,12 @@ export default function AdminPage() {
                       toast.error(data?.error || error?.message || 'Erreur');
                     } else {
                       toast.success(`Compte de ${selectedUser.display_name} supprimé`);
+                      logModerationAction({
+                        action_type: 'suppression',
+                        target_type: 'utilisateur',
+                        target_id: selectedUser.user_id,
+                        description: `Compte utilisateur supprimé : ${selectedUser.display_name}`,
+                      });
                       setSelectedUser(null);
                       fetchAll();
                     }
@@ -2587,6 +2644,11 @@ export default function AdminPage() {
                     });
                     if (error) throw error;
                     toast.success(`🔴 Onglet "${tabResetTarget}" réinitialisé avec succès.`);
+                    logModerationAction({
+                      action_type: 'reinitialisation',
+                      target_type: 'autre',
+                      description: `Réinitialisation de l'onglet : ${tabResetTarget}`,
+                    });
                     setTabResetTarget(null);
                     setTabResetConfirm('');
                     fetchAll();
@@ -2757,6 +2819,11 @@ export default function AdminPage() {
                       setNuclearDone(true);
                       setNuclearExecuting(false);
                       toast.success('Réinitialisation totale effectuée');
+                      logModerationAction({
+                        action_type: 'reinitialisation',
+                        target_type: 'autre',
+                        description: 'Réinitialisation TOTALE de la plateforme (nuclear reset)',
+                      });
                     }}>
                     {nuclearExecuting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Réinitialisation en cours...</> : 'Confirmer la réinitialisation totale ☢️'}
                   </Button>

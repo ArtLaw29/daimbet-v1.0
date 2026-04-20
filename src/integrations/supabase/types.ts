@@ -883,6 +883,15 @@ export type Database = {
           voted_prenom: string
         }[]
       }
+      get_km_top3: {
+        Args: { p_month_year: string }
+        Returns: {
+          category: Database["public"]["Enums"]["km_category"]
+          rank: number
+          vote_count: number
+          voted_prenom: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
