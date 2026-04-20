@@ -2088,6 +2088,9 @@ export default function AdminPage() {
               })()}
             </div>
 
+            {/* KM Full Results (admin-only) */}
+            <AdminKmFullResults />
+
             {/* Retraction config */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-display flex items-center gap-2"><RefreshCw className="w-4 h-4 text-primary" /> Option de rétractation</h3>
