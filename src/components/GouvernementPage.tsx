@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
 
 const FIXED_MINISTRIES = [
   { id: 'interieur', label: 'Intérieur', regalian: true },
@@ -257,6 +259,11 @@ export default function GouvernementPage() {
           Un même DAIM ne peut occuper qu'un seul poste.
         </p>
       </div>
+
+      <div className="flex justify-center">
+        <ProposeNewDialog kind="gouvernement" buttonLabel="Proposer une variante" />
+      </div>
+      <PendingProposalsSection kind="gouvernement" />
 
       {/* Existing government comment */}
       {existingGouv?.comment && (

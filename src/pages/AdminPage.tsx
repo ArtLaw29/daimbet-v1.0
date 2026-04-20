@@ -2139,39 +2139,64 @@ export default function AdminPage() {
         {/* ═══════════════════════════════════════════════ */}
         {activeSection === 'pipeline' && (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Les propositions sont automatiquement actives. Vous pouvez supprimer une proposition/pari a posteriori.</p>
+            <p className="text-sm text-muted-foreground">
+              Toutes les propositions de la communauté (paris, sondages, tournois, simulations, Kiss/Marry).
+              Validation auto à 10 👍 et &lt; 3 👎, ou manuelle ci-dessous.
+            </p>
             {adminProposals.length === 0 && (
               <p className="text-muted-foreground text-center py-8">Aucune proposition.</p>
             )}
-            {adminProposals.map(prop => (
-              <div key={prop.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">{prop.title}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Par {proposalProfiles[prop.user_id] || 'Inconnu'} · {new Date(prop.created_at).toLocaleDateString('fr-FR')}
-                    </p>
-                    {prop.type && <p className="text-xs text-muted-foreground mt-0.5">{prop.type}</p>}
+            {adminProposals.map(prop => {
+              const kind = ((prop as any).proposal_kind as string) || 'bet';
+              const kindEmoji: Record<string, string> = { bet: '🎯', sondage: '📊', tournoi: '⚔️', gouvernement: '🏛️', fantasy: '⚖️', kiss_marry: '💋' };
+              return (
+                <div key={prop.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-secondary">{kindEmoji[kind] || '📋'} {kind}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          👍 {prop.votes_positive} · 👎 {prop.votes_negative}
+                        </span>
+                      </div>
+                      <h3 className="font-semibold">{prop.title}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Par {proposalProfiles[prop.user_id] || 'Inconnu'} · {new Date(prop.created_at).toLocaleDateString('fr-FR')}
+                      </p>
+                      {prop.type && <p className="text-xs text-muted-foreground mt-0.5">{prop.type}</p>}
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${
+                      prop.status === 'valide' ? 'bg-primary/20 text-primary' :
+                      prop.status === 'rejete' ? 'bg-destructive/20 text-destructive' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {prop.status === 'valide' ? '✅ Actif' : prop.status === 'rejete' ? '❌ Supprimé' : '⏳ En attente'}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    prop.status === 'valide' ? 'bg-primary/20 text-primary' :
-                    prop.status === 'rejete' ? 'bg-destructive/20 text-destructive' :
-                    'bg-muted text-muted-foreground'
-                  }`}>
-                    {prop.status === 'valide' ? '✅ Actif' : prop.status === 'rejete' ? '❌ Supprimé' : '⏳ En attente'}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap pt-1">
+                    {prop.status === 'en_attente' && (
+                      <Button size="sm" className="gold-gradient" onClick={async () => {
+                        const { data, error } = await supabase.functions.invoke('activate-proposal', { body: { proposal_id: prop.id } });
+                        if (error || (data as any)?.error) { toast.error((data as any)?.error || 'Erreur'); return; }
+                        toast.success('Proposition validée et publiée ✅');
+                        fetchAll();
+                      }}>
+                        <CheckCircle className="w-4 h-4 mr-1" /> Valider maintenant
+                      </Button>
+                    )}
+                    {prop.status !== 'rejete' && (
+                      <Button size="sm" variant="destructive" onClick={async () => {
+                        await supabase.from('daimocratie_proposals').update({ status: 'rejete' as any }).eq('id', prop.id);
+                        toast.success('Proposition rejetée ❌');
+                        fetchAll();
+                      }}>
+                        <Trash2 className="w-4 h-4 mr-1" /> Rejeter
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                {prop.status !== 'rejete' && (
-                  <Button size="sm" variant="destructive" onClick={async () => {
-                    await supabase.from('daimocratie_proposals').update({ status: 'rejete' as any }).eq('id', prop.id);
-                    toast.success('Proposition supprimée ❌');
-                    fetchAll();
-                  }}>
-                    <Trash2 className="w-4 h-4 mr-1" /> Supprimer
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

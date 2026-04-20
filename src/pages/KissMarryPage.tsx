@@ -9,6 +9,8 @@ import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { fetchHiddenNames, filterNames } from '@/lib/visibility';
 import { IntroKissMarry } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
 
 const CATEGORIES_REQUIRED = ['kiss', 'marry'] as const;
 const CATEGORIES_OPTIONAL = ['coup_soir', 'plan_q'] as const;
@@ -323,6 +325,11 @@ export default function KissMarryPage() {
         <h1 className="text-3xl font-display gold-text">💋 Kiss / Marry</h1>
       </div>
       <IntroKissMarry />
+
+      <div className="flex justify-center mt-2 mb-2">
+        <ProposeNewDialog kind="kiss_marry" buttonLabel="Proposer une catégorie" />
+      </div>
+      <PendingProposalsSection kind="kiss_marry" />
 
       <p className="text-xs text-primary/80 mb-4 text-center font-medium">
         ⚠️ Choisis un prénom différent pour chaque catégorie !

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import TabIntro from '@/components/TabIntro';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
 
 const ROLES = [
   { id: 'associe', label: 'Associé', icon: '⭐' },
@@ -403,6 +405,11 @@ export default function FantasyFirmPage() {
         <p className="font-medium text-foreground mb-2">⚖️ Fantasy Firm</p>
         <p>Mode Free Pick — Compose librement ton cabinet d'avocats à partir des élèves de la promo. Minimum 2 membres.</p>
       </TabIntro>
+
+      <div className="flex justify-center">
+        <ProposeNewDialog kind="fantasy" buttonLabel="Proposer une variante" />
+      </div>
+      <PendingProposalsSection kind="fantasy" />
 
       <div className="max-w-lg mx-auto space-y-3">
         {members.map((member, i) => (

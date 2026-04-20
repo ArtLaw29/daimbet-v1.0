@@ -11,6 +11,8 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import type { Json } from '@/integrations/supabase/types';
 import CoinRain from '@/components/CoinRain';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
 
 interface TournoiSession {
   id: string;
@@ -448,14 +450,15 @@ export default function TournoiPage() {
         </p>
       </div>
 
-      <div className="flex justify-center gap-2 mb-4">
-        <Button size="sm" variant="outline" onClick={() => setView('propose')}>
-          <Plus className="w-3 h-3 mr-1" /> Proposer un tournoi
-        </Button>
+      <div className="flex justify-center gap-2 mb-4 flex-wrap">
+        <ProposeNewDialog kind="tournoi" onSubmitted={fetchSessions} buttonLabel="Proposer un tournoi" />
         <Button size="sm" variant="outline" onClick={() => setView('archives')}>
           <Archive className="w-3 h-3 mr-1" /> Archives
         </Button>
       </div>
+
+      <PendingProposalsSection kind="tournoi" />
+
 
       {sessions.length === 0 ? (
         <div className="text-center py-12 space-y-3">

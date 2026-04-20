@@ -49,27 +49,18 @@ export default function ProposalsPage() {
     e.preventDefault();
     if (!user || !title.trim()) return;
 
-    const { data: inserted, error } = await supabase.from('daimocratie_proposals').insert({
+    const { error } = await supabase.from('daimocratie_proposals').insert({
       title: title.trim(),
       type: description.trim() || null,
       user_id: user.id,
-    }).select().single();
+    });
 
-    if (error || !inserted) {
+    if (error) {
       toast.error('Erreur lors de la soumission');
       return;
     }
 
-    // Auto-activate: immediately create the bet
-    const { data: activateResult, error: activateErr } = await supabase.functions.invoke('activate-proposal', {
-      body: { proposal_id: inserted.id },
-    });
-
-    if (activateErr || activateResult?.error) {
-      toast.warning('Proposition créée mais activation en attente.');
-    } else {
-      toast.success('Proposition soumise et pari créé ! 🎉');
-    }
+    toast.success('Proposition soumise ! En attente de 10 👍 (et < 3 👎) ou de validation admin 🗳️');
 
     setTitle('');
     setDescription('');
@@ -83,7 +74,7 @@ export default function ProposalsPage() {
       <div className="text-center mb-8">
         <MessageSquarePlus className="w-12 h-12 mx-auto text-primary mb-2" />
         <h1 className="text-4xl font-display gold-text">Pipeline</h1>
-        <p className="text-muted-foreground mt-1">Propose un pari — il sera immédiatement actif !</p>
+        <p className="text-muted-foreground mt-1">Propose un pari — validé à 10 👍 (avec moins de 3 👎) ou par l'admin.</p>
       </div>
 
       <form onSubmit={submitProposal} className="rounded-xl border border-border bg-card p-5 mb-8 card-glow">
