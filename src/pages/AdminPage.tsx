@@ -734,6 +734,7 @@ export default function AdminPage() {
             {activeSection === 'dashboard' && 'Vue d\'ensemble de la plateforme.'}
             {activeSection === 'paris' && 'Créer, gérer et résoudre les paris.'}
             {activeSection === 'jeux' && 'Gérer les sondages, tournois et jeux de la promo.'}
+            {activeSection === 'gouvernements' && 'Modérer les ministères personnalisés créés par les utilisateurs.'}
             {activeSection === 'gazette' && 'Modérer les messages de la Gazette.'}
             {activeSection === 'users' && 'Gérer les comptes, soldes et accès des joueurs.'}
             {activeSection === 'tickets' && 'Répondre aux tickets de support.'}
