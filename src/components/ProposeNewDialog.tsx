@@ -96,7 +96,7 @@ export default function ProposeNewDialog({ kind, onSubmitted, buttonLabel, butto
           {showOptions && (
             <div>
               <label className="text-xs font-medium mb-1 block">
-                Options (une par ligne) {kind === 'bet' ? '— laisse vide pour OUI/NON' : ''}
+                Options (une par ligne)
               </label>
               <Textarea
                 placeholder={'Option 1\nOption 2\nOption 3'}
