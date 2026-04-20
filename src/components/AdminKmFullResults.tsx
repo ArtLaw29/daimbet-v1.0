@@ -119,6 +119,54 @@ export default function AdminKmFullResults() {
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      {/* ── Reveal config panel ── */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+        <h3 className="text-sm font-display flex items-center gap-2">
+          <CalendarClock className="w-4 h-4 text-primary" />
+          Dates de révélation Kiss/Marry
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          À chaque date, le Top 3 est dévoilé à tous les utilisateurs. 24h après, les votes sont remis à zéro et la nouvelle période commence.
+        </p>
+
+        <div className="space-y-2">
+          {revealDates.length === 0 && (
+            <p className="text-xs italic text-muted-foreground">Aucune date configurée.</p>
+          )}
+          {revealDates.map((iso, idx) => {
+            const isPast = new Date(iso).getTime() < Date.now();
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <Input
+                  type="datetime-local"
+                  value={toLocalInputValue(iso)}
+                  onChange={e => updateRevealDate(idx, e.target.value)}
+                  className="h-9 text-xs flex-1"
+                />
+                {isPast && <span className="text-[10px] text-muted-foreground">(passée)</span>}
+                <Button size="icon" variant="ghost" onClick={() => removeRevealDate(idx)} className="h-8 w-8 text-destructive">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={addRevealDate}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Ajouter une date
+          </Button>
+          <Button size="sm" onClick={saveConfig} disabled={savingConfig} className="gold-gradient">
+            {savingConfig ? 'Enregistrement…' : 'Enregistrer'}
+          </Button>
+          <Button size="sm" variant="destructive" onClick={triggerNow} disabled={triggering}>
+            <Zap className="w-3.5 h-3.5 mr-1" />
+            {triggering ? 'Déclenchement…' : 'Déclencher la révélation maintenant'}
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Detailed results panel ── */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-display flex items-center gap-2">
           🔒 Résultats complets Kiss/Marry (admin uniquement)
@@ -135,11 +183,11 @@ export default function AdminKmFullResults() {
         <div className="space-y-4">
           <div className="flex items-end gap-2">
             <div className="flex-1 space-y-1">
-              <Label className="text-xs">Mois (format YYYY-MM)</Label>
+              <Label className="text-xs">Période (ID = date de révélation YYYY-MM-DD)</Label>
               <Input
-                value={monthYear}
-                onChange={e => setMonthYear(e.target.value)}
-                placeholder="2026-04"
+                value={periodId}
+                onChange={e => setPeriodId(e.target.value)}
+                placeholder="2026-05-20"
                 className="h-9"
               />
             </div>
@@ -149,7 +197,7 @@ export default function AdminKmFullResults() {
           </div>
 
           {Object.keys(results).length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">Aucun vote pour ce mois.</p>
+            <p className="text-xs text-muted-foreground italic">Aucun vote pour cette période.</p>
           ) : (
             <div className="space-y-3">
               {Object.entries(results).map(([cat, entries]) => {
@@ -181,3 +229,4 @@ export default function AdminKmFullResults() {
     </div>
   );
 }
+
