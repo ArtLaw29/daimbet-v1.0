@@ -11,6 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import type { Json } from '@/integrations/supabase/types';
 import CoinRain from '@/components/CoinRain';
+import ContactFooter from '@/components/ContactFooter';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 
@@ -493,6 +494,7 @@ export default function TournoiPage() {
           );
         })
       )}
+      <ContactFooter />
     </div>
   );
 }

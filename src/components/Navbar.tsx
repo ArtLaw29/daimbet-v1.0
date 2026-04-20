@@ -31,6 +31,7 @@ export default function Navbar() {
   const [rank, setRank] = useState<number | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
   const [liveBalance, setLiveBalance] = useState(profile?.balance ?? 0);
+  const [hasUnreadTicket, setHasUnreadTicket] = useState(false);
 
   // Calculate rank
   useEffect(() => {
@@ -82,6 +83,34 @@ export default function Navbar() {
     };
   }, [user, profile]);
 
+  // Track unread admin replies → red badge on Profil tab
+  useEffect(() => {
+    if (!user) { setHasUnreadTicket(false); return; }
+
+    const computeUnread = async () => {
+      const { data } = await supabase
+        .from('tickets')
+        .select('admin_replied_at, user_last_seen_at')
+        .eq('user_id', user.id);
+      const unread = (data || []).some((t: any) => {
+        if (!t.admin_replied_at) return false;
+        if (!t.user_last_seen_at) return true;
+        return new Date(t.admin_replied_at) > new Date(t.user_last_seen_at);
+      });
+      setHasUnreadTicket(unread);
+    };
+
+    computeUnread();
+
+    const channel = supabase
+      .channel(`tickets-badge-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `user_id=eq.${user.id}` }, () => computeUnread())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ticket_messages' }, () => computeUnread())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, location.pathname]);
+
   // Filter tabs based on admin config
   const visibleNavTabs = ALL_TABS.filter((tab) => {
     if (!tab.configKey) return true; // non-maskable tabs always show
@@ -103,20 +132,26 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1" aria-label="Navigation principale">
-            {visibleNavTabs.map((tab) => (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  location.pathname === tab.to
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                }`}
-              >
-                <span>{tab.emoji}</span>
-                {tab.label}
-              </Link>
-            ))}
+            {visibleNavTabs.map((tab) => {
+              const showDot = tab.to === '/profil' && hasUnreadTicket;
+              return (
+                <Link
+                  key={tab.to}
+                  to={tab.to}
+                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    location.pathname === tab.to
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  }`}
+                >
+                  <span>{tab.emoji}</span>
+                  {tab.label}
+                  {showDot && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-destructive rounded-full ring-2 ring-background" aria-label="Nouveau message admin" />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* User info */}
@@ -150,12 +185,13 @@ export default function Navbar() {
         <div className="flex justify-around py-1.5">
           {visibleNavTabs.map((tab) => {
             const isActive = location.pathname === tab.to;
+            const showDot = tab.to === '/profil' && hasUnreadTicket;
             return (
               <Link
                 key={tab.to}
                 to={tab.to}
                 aria-label={tab.label}
-                className={`flex flex-col items-center gap-0.5 px-1 py-1 min-w-0 ${
+                className={`relative flex flex-col items-center gap-0.5 px-1 py-1 min-w-0 ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
@@ -163,6 +199,9 @@ export default function Navbar() {
                 <span className="text-[10px] leading-tight truncate max-w-[48px]">
                   {tab.shortLabel}
                 </span>
+                {showDot && (
+                  <span className="absolute top-0.5 right-2 w-2.5 h-2.5 bg-destructive rounded-full ring-2 ring-background" aria-label="Nouveau message admin" />
+                )}
               </Link>
             );
           })}

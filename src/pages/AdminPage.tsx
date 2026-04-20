@@ -20,6 +20,7 @@ import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import type { Tables } from '@/integrations/supabase/types';
 import { STARTING_BALANCE, DEFAULT_ODDS, PROMO_NAMES } from '@/lib/pari-mutuel';
 import TicketThread from '@/components/TicketThread';
+import AdminCreateTicketDialog from '@/components/AdminCreateTicketDialog';
 import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
 import AdminSondages from '@/components/AdminSondages';
@@ -1665,6 +1666,14 @@ export default function AdminPage() {
                     <span className="font-display text-primary font-bold">{p.balance}</span>
                     <img src={daimcoinLogo} alt="" className="w-5 h-5 rounded-full" />
                   </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AdminCreateTicketDialog
+                      targetUserId={p.user_id}
+                      targetUserName={p.display_name || 'Utilisateur'}
+                      iconOnly
+                      onCreated={fetchAll}
+                    />
+                  </div>
                   <Eye className="w-4 h-4 text-muted-foreground" />
                 </motion.div>
               );
@@ -1677,17 +1686,40 @@ export default function AdminPage() {
         {/* ═══════════════════════════════════════════════ */}
         {activeSection === 'tickets' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-muted-foreground">Double-clic pour supprimer</span>
               </div>
-              <select value={ticketSortBy} onChange={e => setTicketSortBy(e.target.value as any)}
-                className="rounded-md border border-input bg-background px-2 py-1 text-xs">
-                <option value="date">📅 Par date</option>
-                <option value="status">🔄 Par statut</option>
-                <option value="name">🔤 Par nom</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <select value={ticketSortBy} onChange={e => setTicketSortBy(e.target.value as any)}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-xs">
+                  <option value="date">📅 Par date</option>
+                  <option value="status">🔄 Par statut</option>
+                  <option value="name">🔤 Par nom</option>
+                </select>
+              </div>
             </div>
+
+            {/* New: pick a user to start a conversation with */}
+            {!activeAdminTicketId && (
+              <div className="rounded-xl border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground mb-2">📩 Démarrer une conversation avec un utilisateur :</p>
+                <div className="flex flex-wrap gap-2">
+                  {[...profiles]
+                    .sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''))
+                    .map(p => (
+                      <AdminCreateTicketDialog
+                        key={p.user_id}
+                        targetUserId={p.user_id}
+                        targetUserName={p.display_name || 'Utilisateur'}
+                        buttonLabel={`${p.emoji || '🦌'} ${p.display_name || 'Anonyme'}`}
+                        buttonVariant="outline"
+                        onCreated={fetchAll}
+                      />
+                    ))}
+                </div>
+              </div>
+            )}
 
             {activeAdminTicketId ? (
               <div className="rounded-xl border border-border bg-card p-4">

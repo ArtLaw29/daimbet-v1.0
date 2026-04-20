@@ -11,6 +11,7 @@ import { IntroKissMarry } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
+import ContactFooter from '@/components/ContactFooter';
 
 const CATEGORIES_REQUIRED = ['kiss', 'marry'] as const;
 const CATEGORIES_OPTIONAL = ['coup_soir', 'plan_q'] as const;
@@ -428,6 +429,7 @@ export default function KissMarryPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ContactFooter />
     </div>
   );
 }

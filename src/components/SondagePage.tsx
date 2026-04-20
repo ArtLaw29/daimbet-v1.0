@@ -11,6 +11,7 @@ import { Slider } from '@/components/ui/slider';
 import { Progress } from '@/components/ui/progress';
 import type { Json } from '@/integrations/supabase/types';
 import CoinRain from '@/components/CoinRain';
+import ContactFooter from '@/components/ContactFooter';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { fetchHiddenNames, filterNames } from '@/lib/visibility';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
@@ -462,6 +463,7 @@ export default function SondagePage() {
           </motion.button>
         );
       })}
+      <ContactFooter />
     </div>
   );
 }

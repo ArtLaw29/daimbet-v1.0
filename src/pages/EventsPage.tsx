@@ -11,6 +11,7 @@ import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCa
 import BetBottomSheet from '@/components/BetBottomSheet';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
+import ContactFooter from '@/components/ContactFooter';
 
 type SortMode = 'urgence' | 'categorie' | 'popularite';
 
@@ -309,6 +310,8 @@ export default function EventsPage() {
           existingWagerOptionId={userWagers[sheetBet.id]?.option_id}
         />
       )}
+
+      <ContactFooter />
     </div>
   );
 }

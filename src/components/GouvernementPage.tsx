@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
+import ContactFooter from '@/components/ContactFooter';
 
 const FIXED_MINISTRIES = [
   { id: 'interieur', label: 'Intérieur', regalian: true },
@@ -405,6 +406,7 @@ export default function GouvernementPage() {
           })}
         </div>
       )}
+      <ContactFooter />
     </div>
   );
 }
