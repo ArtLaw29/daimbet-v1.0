@@ -556,7 +556,6 @@ export type Database = {
           balance: number
           created_at: string
           display_name: string
-          email: string | null
           emoji: string | null
           has_accepted_charter: boolean
           id: string
@@ -573,7 +572,6 @@ export type Database = {
           balance?: number
           created_at?: string
           display_name?: string
-          email?: string | null
           emoji?: string | null
           has_accepted_charter?: boolean
           id?: string
@@ -590,7 +588,6 @@ export type Database = {
           balance?: number
           created_at?: string
           display_name?: string
-          email?: string | null
           emoji?: string | null
           has_accepted_charter?: boolean
           id?: string
