@@ -28,6 +28,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const WelcomePage = lazy(() => import("./pages/WelcomePage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
+import RulesScreen from "./components/RulesScreen";
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -47,7 +48,7 @@ function GuardedRoute({ tabKey, children }: { tabKey: string; children: React.Re
 }
 
 function AppRoutes() {
-  const { user, loading, hasAcceptedCharter, isAdmin, refreshProfile } = useAuth();
+  const { user, loading, hasAcceptedCharter, isAdmin, rulesAccepted, refreshProfile } = useAuth();
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceChecked, setMaintenanceChecked] = useState(false);
   // Auto-accept charter silently for new users
@@ -113,7 +114,21 @@ function AppRoutes() {
 
 
 
-
+  // ─── RULES GUARD (logged in but rules not yet accepted, e.g. legacy accounts) ───
+  if (user && !isAdmin && !rulesAccepted) {
+    return (
+      <RulesScreen
+        acceptLabel="J'accepte les règles"
+        onAccept={async () => {
+          await supabase
+            .from('profiles')
+            .update({ rules_accepted: true, rules_accepted_at: new Date().toISOString() } as any)
+            .eq('user_id', user.id);
+          await refreshProfile();
+        }}
+      />
+    );
+  }
 
   // ─── LOGGED IN ───
   return (
