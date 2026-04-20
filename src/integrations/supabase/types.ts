@@ -978,6 +978,13 @@ export type Database = {
         Returns: Json
       }
       recalculate_odds: { Args: { p_bet_id: string }; Returns: undefined }
+      recount_proposal_votes: {
+        Args: { p_proposal_id: string }
+        Returns: {
+          negatives: number
+          positives: number
+        }[]
+      }
       resolve_bet: {
         Args: { p_bet_id: string; p_winning_option_ids: string[] }
         Returns: Json
