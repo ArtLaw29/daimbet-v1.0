@@ -326,6 +326,11 @@ export default function KissMarryPage() {
       </div>
       <IntroKissMarry />
 
+      <div className="flex justify-center mt-2 mb-2">
+        <ProposeNewDialog kind="kiss_marry" buttonLabel="Proposer une catégorie" />
+      </div>
+      <PendingProposalsSection kind="kiss_marry" />
+
       <p className="text-xs text-primary/80 mb-4 text-center font-medium">
         ⚠️ Choisis un prénom différent pour chaque catégorie !
       </p>
