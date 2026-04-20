@@ -13,6 +13,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Eye } from 'lucide-react';
 import ProposalForm from '@/components/ProposalForm';
 import TicketThread from '@/components/TicketThread';
 import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
