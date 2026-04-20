@@ -36,25 +36,64 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const errorCode = hashParams.get('error_code') || hashParams.get('error');
+    const queryParams = new URLSearchParams(window.location.search);
+    const errorCode =
+      hashParams.get('error_code') ||
+      hashParams.get('error') ||
+      queryParams.get('error_code') ||
+      queryParams.get('error');
     if (errorCode) {
       setLinkInvalid(true);
       return;
     }
-    if (hashParams.get('type') === 'recovery') {
+
+    const type = hashParams.get('type') || queryParams.get('type');
+    const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+
+    if (type === 'recovery') {
       setIsRecovery(true);
+      // Force-establish the recovery session so updateUser({ password }) works
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }).catch(() => setLinkInvalid(true));
+      }
+    }
+
+    // Handle PKCE flow: ?code=... in the query string
+    const code = queryParams.get('code');
+    if (code && !type) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) setLinkInvalid(true);
+        else setIsRecovery(true);
+      });
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setIsRecovery(true);
     });
 
-    // If after a few seconds we're still not in recovery and no hash params, the link is likely invalid
-    const fallback = setTimeout(() => {
-      if (!isRecovery && !window.location.hash) setLinkInvalid(true);
-    }, 1500);
+    // If we're already authenticated (e.g. AuthContext redirected us here from "/"),
+    // assume recovery mode after a short delay.
+    const recoveryFromSession = setTimeout(async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session && !isRecovery) setIsRecovery(true);
+    }, 800);
 
-    return () => { subscription.unsubscribe(); clearTimeout(fallback); };
+    // If after a few seconds nothing recovery-related happened, link is invalid.
+    const fallback = setTimeout(() => {
+      if (!isRecovery && !window.location.hash && !window.location.search) {
+        setLinkInvalid(true);
+      }
+    }, 4000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(fallback);
+      clearTimeout(recoveryFromSession);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

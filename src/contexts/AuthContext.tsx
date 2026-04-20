@@ -114,6 +114,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         if (_event === 'INITIAL_SESSION') return;
+        // Force redirect to reset password screen on recovery event,
+        // even if Supabase landed the user on "/" (e.g. Site URL fallback).
+        if (_event === 'PASSWORD_RECOVERY') {
+          if (window.location.pathname !== '/reset-password') {
+            window.location.replace('/reset-password' + window.location.hash);
+            return;
+          }
+        }
         loadUserData(session);
       }
     );
