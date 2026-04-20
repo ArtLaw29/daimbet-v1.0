@@ -30,12 +30,14 @@ export default function GamesPage() {
   const [activeTab, setActiveTab] = useState('daimocratie');
   const [subtitles, setSubtitles] = useState<Record<string, string>>({});
   const [suspended, setSuspended] = useState<Record<string, boolean>>({});
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchSettings = async () => {
       const subtitleKeys = GAME_TABS.map(t => t.subtitleKey);
       const suspendKeys = GAME_TABS.map(t => `suspend_${t.id}`);
-      const allKeys = [...subtitleKeys, ...suspendKeys];
+      const hideKeys = GAME_TABS.map(t => `hide_${t.id}`);
+      const allKeys = [...subtitleKeys, ...suspendKeys, ...hideKeys];
       const { data } = await supabase
         .from('platform_settings')
         .select('key, value')
@@ -43,19 +45,32 @@ export default function GamesPage() {
       if (data) {
         const subs: Record<string, string> = {};
         const susp: Record<string, boolean> = {};
+        const hid: Record<string, boolean> = {};
         data.forEach(r => {
           if (r.key.startsWith('suspend_')) {
             susp[r.key.replace('suspend_', '')] = r.value === 'true';
+          } else if (r.key.startsWith('hide_')) {
+            hid[r.key.replace('hide_', '')] = r.value === 'true';
           } else {
             subs[r.key] = r.value;
           }
         });
         setSubtitles(subs);
         setSuspended(susp);
+        setHidden(hid);
       }
     };
     fetchSettings();
   }, []);
+
+  const visibleTabs = GAME_TABS.filter(t => !hidden[t.id]);
+
+  // If active tab becomes hidden, switch to first visible
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.find(t => t.id === activeTab)) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab]);
 
   const getSubtitle = (tab: GameTab) => subtitles[tab.subtitleKey] || tab.defaultSubtitle;
 
@@ -67,48 +82,56 @@ export default function GamesPage() {
       </div>
 
       {/* Sub-tabs — horizontal scroll on mobile */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:justify-center">
-        {GAME_TABS.map(tab => {
-          const isActive = activeTab === tab.id;
-          const isSuspended = suspended[tab.id];
-          const subtitle = getSubtitle(tab);
-          const isDisabled = !tab.available || isSuspended;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => !isDisabled && setActiveTab(tab.id)}
-              disabled={isDisabled}
-              className={`flex-shrink-0 flex items-center gap-2.5 px-4 py-3 rounded-xl border transition-all text-left min-w-[160px] ${
-                isSuspended
-                  ? 'border-destructive/30 bg-destructive/5 opacity-60 cursor-not-allowed'
-                  : isActive
-                    ? 'border-primary bg-primary/10 shadow-md'
-                    : tab.available
-                      ? 'border-border bg-card hover:border-primary/30 hover:bg-secondary/50'
-                      : 'border-border/50 bg-muted/30 opacity-50 cursor-not-allowed'
-              }`}
-            >
-              <span className="text-2xl">{tab.emoji}</span>
-              <div className="min-w-0">
-                <p className={`text-sm font-semibold truncate ${isSuspended ? 'text-destructive' : isActive ? 'text-primary' : ''}`}>
-                  {tab.label}
-                </p>
-                {isSuspended ? (
-                  <p className="text-[10px] text-destructive flex items-center gap-1">
-                    <ShieldAlert className="w-2.5 h-2.5" /> Suspendu
-                  </p>
-                ) : subtitle ? (
-                  <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
-                ) : !tab.available ? (
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" /> Bientôt
-                  </p>
-                ) : null}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {visibleTabs.length === 0 ? (
+        <div className="text-center py-20 space-y-3">
+          <p className="text-5xl">🎮</p>
+          <h2 className="text-xl font-display">Aucun jeu disponible</h2>
+          <p className="text-muted-foreground text-sm">Reviens plus tard ! 🦌</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:justify-center">
+            {visibleTabs.map(tab => {
+              const isActive = activeTab === tab.id;
+              const isSuspended = suspended[tab.id];
+              const subtitle = getSubtitle(tab);
+              const isDisabled = !tab.available || isSuspended;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => !isDisabled && setActiveTab(tab.id)}
+                  disabled={isDisabled}
+                  className={`flex-shrink-0 flex items-center gap-2.5 px-4 py-3 rounded-xl border transition-all text-left min-w-[160px] ${
+                    isSuspended
+                      ? 'border-destructive/30 bg-destructive/5 opacity-60 cursor-not-allowed'
+                      : isActive
+                        ? 'border-primary bg-primary/10 shadow-md'
+                        : tab.available
+                          ? 'border-border bg-card hover:border-primary/30 hover:bg-secondary/50'
+                          : 'border-border/50 bg-muted/30 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <span className="text-2xl">{tab.emoji}</span>
+                  <div className="min-w-0">
+                    <p className={`text-sm font-semibold truncate ${isSuspended ? 'text-destructive' : isActive ? 'text-primary' : ''}`}>
+                      {tab.label}
+                    </p>
+                    {isSuspended ? (
+                      <p className="text-[10px] text-destructive flex items-center gap-1">
+                        <ShieldAlert className="w-2.5 h-2.5" /> Suspendu
+                      </p>
+                    ) : subtitle ? (
+                      <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+                    ) : !tab.available ? (
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Lock className="w-2.5 h-2.5" /> Bientôt
+                      </p>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
       {/* Active game content */}
       <motion.div
@@ -129,6 +152,8 @@ export default function GamesPage() {
           </>
         )}
       </motion.div>
+        </>
+      )}
     </div>
   );
 }
