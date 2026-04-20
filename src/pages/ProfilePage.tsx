@@ -93,6 +93,38 @@ export default function ProfilePage() {
     if (user) fetchAll();
   }, [user]);
 
+  // Check if Kiss/Marry game is available (not suspended/hidden by admin)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['suspend_kiss-marry', 'hide_kiss-marry']);
+      const suspended = data?.find(r => r.key === 'suspend_kiss-marry')?.value === 'true';
+      const hidden = data?.find(r => r.key === 'hide_kiss-marry')?.value === 'true';
+      setKmAvailable(!suspended && !hidden);
+    })();
+  }, []);
+
+  const updateVisibilityPref = async (
+    field: 'visible_in_sondages' | 'visible_in_kiss_marry',
+    value: boolean
+  ) => {
+    if (!user) return;
+    setSavingPref(field);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: value } as any)
+      .eq('user_id', user.id);
+    setSavingPref(null);
+    if (error) {
+      toast.error('Erreur lors de la mise à jour');
+      return;
+    }
+    toast.success(value ? 'Tu apparais à nouveau dans ce jeu 👀' : "Tu n'apparais plus dans ce jeu 🙈");
+    await refreshProfile();
+  };
+
   const fetchAll = async () => {
     if (!user) return;
     const [wagersRes, betsRes, optionsRes, histRes, configRes, ticketsRes] = await Promise.all([
