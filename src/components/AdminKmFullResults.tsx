@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, CalendarClock, Trash2, Plus, Zap } from 'lucide-react';
+import { toast } from 'sonner';
 
 const CATEGORY_CONFIG: Record<string, { label: string; emoji: string }> = {
   kiss: { label: 'Kiss', emoji: '💋' },
@@ -12,17 +13,49 @@ const CATEGORY_CONFIG: Record<string, { label: string; emoji: string }> = {
   plan_q: { label: 'Plan Q', emoji: '🔥' },
 };
 
+// Convert ISO timestamp -> "YYYY-MM-DDTHH:mm" for datetime-local input (local time)
+function toLocalInputValue(iso: string): string {
+  const d = new Date(iso);
+  const tzOffset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+}
+
 export default function AdminKmFullResults() {
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const [monthYear, setMonthYear] = useState(currentMonth);
+  const [periodId, setPeriodId] = useState<string>('');
   const [results, setResults] = useState<Record<string, { name: string; count: number }[]>>({});
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Reveal config state
+  const [configId, setConfigId] = useState<string | null>(null);
+  const [revealDates, setRevealDates] = useState<string[]>([]);
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [triggering, setTriggering] = useState(false);
+
+  const fetchConfig = async () => {
+    const { data } = await (supabase as any)
+      .from('km_reveal_config')
+      .select('id, reveal_dates')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data) {
+      setConfigId(data.id);
+      const sorted = [...(data.reveal_dates || [])].sort();
+      setRevealDates(sorted);
+      // Default selected period = next future date (ISO)
+      const now = Date.now();
+      const next = sorted.map((d: string) => new Date(d)).find((d: Date) => d.getTime() > now);
+      const fallback = sorted.length > 0 ? new Date(sorted[sorted.length - 1]) : new Date();
+      const target = next || fallback;
+      setPeriodId(target.toISOString().slice(0, 10));
+    }
+  };
+
   const fetchResults = async () => {
+    if (!periodId) return;
     setLoading(true);
-    const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
+    const { data } = await supabase.rpc('get_km_results', { p_month_year: periodId });
     const grouped: Record<string, { name: string; count: number }[]> = {};
     for (const row of (data as any[]) || []) {
       if (!grouped[row.category]) grouped[row.category] = [];
@@ -33,8 +66,56 @@ export default function AdminKmFullResults() {
   };
 
   useEffect(() => {
-    if (open) fetchResults();
-  }, [open, monthYear]);
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
+    if (open && periodId) fetchResults();
+  }, [open, periodId]);
+
+  const updateRevealDate = (idx: number, localValue: string) => {
+    const iso = new Date(localValue).toISOString();
+    setRevealDates((prev) => prev.map((d, i) => (i === idx ? iso : d)));
+  };
+
+  const removeRevealDate = (idx: number) => {
+    setRevealDates((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const addRevealDate = () => {
+    const future = new Date();
+    future.setDate(future.getDate() + 30);
+    setRevealDates((prev) => [...prev, future.toISOString()]);
+  };
+
+  const saveConfig = async () => {
+    if (!configId) return;
+    setSavingConfig(true);
+    const { error } = await (supabase as any)
+      .from('km_reveal_config')
+      .update({ reveal_dates: revealDates, updated_at: new Date().toISOString() })
+      .eq('id', configId);
+    setSavingConfig(false);
+    if (error) {
+      toast.error("Erreur d'enregistrement");
+    } else {
+      toast.success('Dates de révélation mises à jour');
+      fetchConfig();
+    }
+  };
+
+  const triggerNow = async () => {
+    if (!confirm("Déclencher la révélation immédiatement ? Les votes en cours seront figés et révélés dès maintenant.")) return;
+    setTriggering(true);
+    const { data, error } = await supabase.functions.invoke('km-admin-reveal', { body: {} });
+    setTriggering(false);
+    if (error || data?.error) {
+      toast.error(data?.error || 'Erreur de déclenchement');
+    } else {
+      toast.success('Révélation déclenchée !');
+      fetchConfig();
+    }
+  };
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
