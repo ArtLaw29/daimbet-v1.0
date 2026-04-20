@@ -475,7 +475,7 @@ export default function SondagePage() {
 
 // ═══════════════ SUB-COMPONENTS ═══════════════
 
-function SimpleVoteForm({ options, selectedVote, setSelectedVote, pronostic, setPronostic, betAmount, setBetAmount, maxBet, submitting, myPart, onSubmit, format, onAddOption, newOptionText, setNewOptionText, addingFromPromo, setAddingFromPromo }: {
+function SimpleVoteForm({ options, selectedVote, setSelectedVote, pronostic, setPronostic, betAmount, setBetAmount, maxBet, submitting, myPart, onSubmit, format, onAddOption, newOptionText, setNewOptionText, addingFromPromo, setAddingFromPromo, promoNames }: {
   options: string[]; selectedVote: string; setSelectedVote: (v: string) => void;
   pronostic: string; setPronostic: (v: string) => void;
   betAmount: number; setBetAmount: (v: number) => void;
@@ -484,6 +484,7 @@ function SimpleVoteForm({ options, selectedVote, setSelectedVote, pronostic, set
   onAddOption: (opt: string) => void;
   newOptionText: string; setNewOptionText: (v: string) => void;
   addingFromPromo: string; setAddingFromPromo: (v: string) => void;
+  promoNames: string[];
 }) {
   return (
     <div className="space-y-5">
@@ -525,7 +526,7 @@ function SimpleVoteForm({ options, selectedVote, setSelectedVote, pronostic, set
             <select className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={addingFromPromo} onChange={e => { setAddingFromPromo(e.target.value); if (e.target.value) onAddOption(e.target.value); }}>
               <option value="">Élève de la promo...</option>
-              {PROMO_NAMES.filter(n => !options.includes(n)).map(n => (
+              {promoNames.filter(n => !options.includes(n)).map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
@@ -562,7 +563,7 @@ function SimpleVoteForm({ options, selectedVote, setSelectedVote, pronostic, set
   );
 }
 
-function ComboVoteForm({ comboPrenom, setComboPrenom, comboMotif, setComboMotif, comboVoteOther, setComboVoteOther, pronosticFirst, setPronosticFirst, pronosticSecond, setPronosticSecond, betAmount, setBetAmount, maxBet, otherCombos, options, submitting, myPart, onSubmit }: {
+function ComboVoteForm({ comboPrenom, setComboPrenom, comboMotif, setComboMotif, comboVoteOther, setComboVoteOther, pronosticFirst, setPronosticFirst, pronosticSecond, setPronosticSecond, betAmount, setBetAmount, maxBet, otherCombos, options, submitting, myPart, onSubmit, promoNames }: {
   comboPrenom: string; setComboPrenom: (v: string) => void;
   comboMotif: string; setComboMotif: (v: string) => void;
   comboVoteOther: string; setComboVoteOther: (v: string) => void;
@@ -572,6 +573,7 @@ function ComboVoteForm({ comboPrenom, setComboPrenom, comboMotif, setComboMotif,
   maxBet: number; otherCombos: string[]; options: string[];
   submitting: boolean; myPart: Participation | undefined;
   onSubmit: () => void;
+  promoNames: string[];
 }) {
   const myCombo = comboPrenom && comboMotif ? `${comboPrenom} — ${comboMotif}` : '';
   const allCombos = [...new Set([...options, ...otherCombos, myCombo].filter(Boolean))];
@@ -585,7 +587,7 @@ function ComboVoteForm({ comboPrenom, setComboPrenom, comboMotif, setComboMotif,
           <select className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={comboPrenom} onChange={e => setComboPrenom(e.target.value)}>
             <option value="">Élève...</option>
-            {PROMO_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+            {promoNames.map(n => <option key={n} value={n}>{n}</option>)}
           </select>
           <select className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={comboMotif} onChange={e => setComboMotif(e.target.value)}>
