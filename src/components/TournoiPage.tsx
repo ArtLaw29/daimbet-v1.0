@@ -493,6 +493,7 @@ export default function TournoiPage() {
           );
         })
       )}
+      <ContactFooter />
     </div>
   );
 }

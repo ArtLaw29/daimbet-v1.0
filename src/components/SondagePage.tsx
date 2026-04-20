@@ -462,6 +462,7 @@ export default function SondagePage() {
           </motion.button>
         );
       })}
+      <ContactFooter />
     </div>
   );
 }
