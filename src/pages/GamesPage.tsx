@@ -152,6 +152,8 @@ export default function GamesPage() {
           </>
         )}
       </motion.div>
+        </>
+      )}
     </div>
   );
 }
