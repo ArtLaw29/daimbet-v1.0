@@ -23,6 +23,7 @@ import TicketThread from '@/components/TicketThread';
 import AdminCreateTicketDialog from '@/components/AdminCreateTicketDialog';
 import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
+import AdminKmFullResults from '@/components/AdminKmFullResults';
 import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
 import AdminModeration from '@/components/AdminModeration';
@@ -2087,6 +2088,9 @@ export default function AdminPage() {
                 );
               })()}
             </div>
+
+            {/* KM Full Results (admin-only) */}
+            <AdminKmFullResults />
 
             {/* Retraction config */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
