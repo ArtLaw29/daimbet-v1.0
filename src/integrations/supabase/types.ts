@@ -224,6 +224,8 @@ export type Database = {
           id: string
           is_hidden: boolean
           options_json: Json | null
+          payload: Json | null
+          proposal_kind: string
           report_count: number
           status: Database["public"]["Enums"]["proposal_status"]
           title: string
@@ -238,6 +240,8 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           options_json?: Json | null
+          payload?: Json | null
+          proposal_kind?: string
           report_count?: number
           status?: Database["public"]["Enums"]["proposal_status"]
           title: string
@@ -252,6 +256,8 @@ export type Database = {
           id?: string
           is_hidden?: boolean
           options_json?: Json | null
+          payload?: Json | null
+          proposal_kind?: string
           report_count?: number
           status?: Database["public"]["Enums"]["proposal_status"]
           title?: string
