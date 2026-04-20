@@ -12,6 +12,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   hasAcceptedCharter: boolean;
+  rulesAccepted: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isAdmin: false,
   hasAcceptedCharter: false,
+  rulesAccepted: false,
   refreshProfile: async () => {},
   signOut: async () => {},
 });
