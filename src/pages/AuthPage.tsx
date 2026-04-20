@@ -9,6 +9,7 @@ import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
 import { PROMO_NAMES, isValidSchoolEmail } from '@/lib/pari-mutuel';
 import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react';
+import RulesScreen from '@/components/RulesScreen';
 
 const EMOJI_POOL = [
   '🦌', '🐻', '🦊', '🐺', '🦁', '🐯', '🐮', '🐷', '🐸', '🐵',
@@ -48,6 +49,7 @@ export default function AuthPage() {
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const [signupDone, setSignupDone] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
+  const [showRules, setShowRules] = useState(false);
 
   const [takenNames, setTakenNames] = useState<Set<string>>(new Set());
   const [checkingName, setCheckingName] = useState(false);
@@ -151,6 +153,11 @@ export default function AuthPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSignup()) return;
+    // Show rules screen instead of immediately creating account
+    setShowRules(true);
+  };
+
+  const performSignup = async () => {
     setLoading(true);
 
     const { data: existingProfile } = await supabase
@@ -164,6 +171,7 @@ export default function AuthPage() {
       setNameAvailable(false);
       setTakenNames(prev => new Set([...prev, selectedName]));
       setLoading(false);
+      setShowRules(false);
       return;
     }
 
@@ -173,7 +181,7 @@ export default function AuthPage() {
       email,
       password,
       options: {
-        data: { display_name: selectedName, emoji },
+        data: { display_name: selectedName, emoji, rules_accepted: true },
         emailRedirectTo: `${window.location.origin}/welcome`,
       },
     });
@@ -181,15 +189,29 @@ export default function AuthPage() {
     if (error) {
       toast.error(error.message);
       setLoading(false);
+      setShowRules(false);
       return;
     }
 
     setSignupEmail(email);
     setSignupDone(true);
+    setShowRules(false);
     setLoading(false);
   };
 
   const isFormValid = canSignup();
+
+  // ─── RULES STEP (during signup) ───
+  if (showRules) {
+    return (
+      <RulesScreen
+        acceptLabel="J'accepte et je crée mon compte"
+        onAccept={performSignup}
+        onBack={() => setShowRules(false)}
+        loading={loading}
+      />
+    );
+  }
 
   // ─── POST-SIGNUP: Email sent confirmation ───
   if (signupDone) {
