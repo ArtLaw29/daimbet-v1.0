@@ -321,6 +321,8 @@ export default function KissMarryPage() {
             <span>Révélation dans <span className="text-primary font-semibold">{countdown.text}</span></span>
           </div>
         )}
+
+        <div className="text-center p-6 rounded-2xl bg-primary/10 border border-primary/20 mb-6">
           <Lock className="w-8 h-8 mx-auto text-primary mb-2" />
           <p className="text-sm font-semibold">🔒 Tes votes sont enregistrés et définitifs.</p>
           <p className="text-xs text-muted-foreground mt-1">
