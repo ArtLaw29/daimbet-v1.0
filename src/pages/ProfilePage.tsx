@@ -13,6 +13,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Eye } from 'lucide-react';
 import ProposalForm from '@/components/ProposalForm';
 import TicketThread from '@/components/TicketThread';
 import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
@@ -80,12 +82,48 @@ export default function ProfilePage() {
 
   // Contact (removed — replaced by tickets)
 
+  // Visibility prefs
+  const [kmAvailable, setKmAvailable] = useState(true);
+  const [savingPref, setSavingPref] = useState<string | null>(null);
+
   // Password reset
   const [resettingPw, setResettingPw] = useState(false);
 
   useEffect(() => {
     if (user) fetchAll();
   }, [user]);
+
+  // Check if Kiss/Marry game is available (not suspended/hidden by admin)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', ['suspend_kiss-marry', 'hide_kiss-marry']);
+      const suspended = data?.find(r => r.key === 'suspend_kiss-marry')?.value === 'true';
+      const hidden = data?.find(r => r.key === 'hide_kiss-marry')?.value === 'true';
+      setKmAvailable(!suspended && !hidden);
+    })();
+  }, []);
+
+  const updateVisibilityPref = async (
+    field: 'visible_in_sondages' | 'visible_in_kiss_marry',
+    value: boolean
+  ) => {
+    if (!user) return;
+    setSavingPref(field);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: value } as any)
+      .eq('user_id', user.id);
+    setSavingPref(null);
+    if (error) {
+      toast.error('Erreur lors de la mise à jour');
+      return;
+    }
+    toast.success(value ? 'Tu apparais à nouveau dans ce jeu 👀' : "Tu n'apparais plus dans ce jeu 🙈");
+    await refreshProfile();
+  };
 
   const fetchAll = async () => {
     if (!user) return;
@@ -250,6 +288,50 @@ export default function ProfilePage() {
           <div className="text-xs text-muted-foreground">
             <Coins className="w-3.5 h-3.5 inline mr-1" />
             {injections.length} injection{injections.length > 1 ? 's' : ''} reçue{injections.length > 1 ? 's' : ''} (+{injections.reduce((s, i) => s + i.delta_dc, 0)} DC)
+          </div>
+        )}
+      </div>
+
+      {/* ─── VISIBILITY PREFS ─── */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <div>
+          <h3 className="font-display text-sm flex items-center gap-2">
+            <Eye className="w-4 h-4 text-primary" /> Mes préférences de visibilité
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Choisis si ton prénom peut apparaître dans les listes des autres jeux.
+            Tu peux toujours voter et miser, tu ne pourras juste plus être nommé(e).
+            Ton choix reste silencieux.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/40 border border-border/50">
+          <div className="flex-1 min-w-0 mr-3">
+            <p className="text-sm font-medium">🗳️ Apparaître dans les sondages</p>
+            <p className="text-[11px] text-muted-foreground">
+              Si désactivé, personne ne peut te proposer comme option de sondage.
+            </p>
+          </div>
+          <Switch
+            checked={(profile as any).visible_in_sondages ?? true}
+            disabled={savingPref === 'visible_in_sondages'}
+            onCheckedChange={(checked) => updateVisibilityPref('visible_in_sondages', checked)}
+          />
+        </div>
+
+        {kmAvailable && (
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/40 border border-border/50">
+            <div className="flex-1 min-w-0 mr-3">
+              <p className="text-sm font-medium">💋 Apparaître dans le Kiss/Marry</p>
+              <p className="text-[11px] text-muted-foreground">
+                Si désactivé, ton prénom est retiré des listes Kiss/Marry.
+              </p>
+            </div>
+            <Switch
+              checked={(profile as any).visible_in_kiss_marry ?? true}
+              disabled={savingPref === 'visible_in_kiss_marry'}
+              onCheckedChange={(checked) => updateVisibilityPref('visible_in_kiss_marry', checked)}
+            />
           </div>
         )}
       </div>

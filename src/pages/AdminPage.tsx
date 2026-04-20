@@ -1647,9 +1647,15 @@ export default function AdminPage() {
                   onClick={() => { setSelectedUser(p); setBalanceDelta(''); setBalanceMotif(''); }}>
                   <span className="text-sm text-muted-foreground w-8">#{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold truncate">{p.emoji || '🦌'} {p.display_name || 'Anonyme'}</span>
                       {p.is_suspended && <span className="text-[10px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">Suspendu</span>}
+                      {(p as any).visible_in_sondages === false && (
+                        <span className="text-[10px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded" title="L'utilisateur a choisi de ne pas apparaître dans les sondages">🙈 Sondages</span>
+                      )}
+                      {(p as any).visible_in_kiss_marry === false && (
+                        <span className="text-[10px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded" title="L'utilisateur a choisi de ne pas apparaître dans Kiss/Marry">🙈 Kiss/Marry</span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       📧 {userEmails[p.user_id] || '—'} · {userWagers.length} mises · Inscrit le {new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
