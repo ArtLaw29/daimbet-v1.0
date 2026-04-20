@@ -49,27 +49,18 @@ export default function ProposalsPage() {
     e.preventDefault();
     if (!user || !title.trim()) return;
 
-    const { data: inserted, error } = await supabase.from('daimocratie_proposals').insert({
+    const { error } = await supabase.from('daimocratie_proposals').insert({
       title: title.trim(),
       type: description.trim() || null,
       user_id: user.id,
-    }).select().single();
+    });
 
-    if (error || !inserted) {
+    if (error) {
       toast.error('Erreur lors de la soumission');
       return;
     }
 
-    // Auto-activate: immediately create the bet
-    const { data: activateResult, error: activateErr } = await supabase.functions.invoke('activate-proposal', {
-      body: { proposal_id: inserted.id },
-    });
-
-    if (activateErr || activateResult?.error) {
-      toast.warning('Proposition créée mais activation en attente.');
-    } else {
-      toast.success('Proposition soumise et pari créé ! 🎉');
-    }
+    toast.success('Proposition soumise ! En attente de 10 👍 (et < 3 👎) ou de validation admin 🗳️');
 
     setTitle('');
     setDescription('');
