@@ -9,6 +9,8 @@ import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
 import BetBottomSheet from '@/components/BetBottomSheet';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
 
 type SortMode = 'urgence' | 'categorie' | 'popularite';
 
