@@ -665,25 +665,31 @@ function ResultsReveal({ results, revealStep, revealDone, startReveal, winnerOpt
     return <Button onClick={startReveal} className="gold-gradient w-full">🎉 Révéler les résultats</Button>;
   }
 
-  const reversed = [...results].reverse();
-  const maxCount = results[0]?.count || 1;
+  // Shuffle results randomly (stable per session via simple seed) — hide ranking from users
+  const shuffled = (() => {
+    const arr = [...results];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  })();
+  const totalVotes = results.reduce((s, r) => s + (r.count || 0), 0) || 1;
 
   return (
     <div className="space-y-2">
       <p className="text-sm font-semibold">Résultats :</p>
-      {reversed.map((r: any, i: number) => {
-        const pct = Math.round((r.count / maxCount) * 100);
+      {shuffled.map((r: any, i: number) => {
+        const pct = Math.round((r.count / totalVotes) * 100);
         const isWinner = r.option === winnerOption;
-        const isSecond = r.option === winnerOption2;
         if (i > revealStep) return null;
         return (
           <motion.div key={r.option} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-            className={`rounded-lg border p-3 ${isWinner && revealDone ? 'border-primary bg-primary/10 animate-pulse' : isSecond && revealDone ? 'border-accent bg-accent/10' : 'border-border bg-secondary/30'}`}>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="font-semibold">{isWinner && revealDone ? '🏆 ' : isSecond && revealDone ? '🥈 ' : ''}{r.option}</span>
-              <span className="text-muted-foreground">{r.count} vote{r.count > 1 ? 's' : ''}</span>
+            className={`rounded-lg border p-3 ${isWinner && revealDone ? 'border-primary/60 bg-primary/5 shadow-[0_0_0_1px_hsl(var(--primary)/0.3)]' : 'border-border bg-secondary/30'}`}>
+            <div className="flex justify-between text-sm">
+              <span className="font-semibold">{r.option}</span>
+              <span className={isWinner && revealDone ? 'text-primary font-bold' : 'text-muted-foreground'}>{pct}%</span>
             </div>
-            <Progress value={pct} className="h-2" />
           </motion.div>
         );
       })}
