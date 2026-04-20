@@ -37,18 +37,9 @@ export default function ProposalCard({ proposal, userVote, onVote }: ProposalCar
             <p className="text-xs text-muted-foreground mt-1">Proposé par {proposal.proposer_name} 🗳️</p>
           )}
         </div>
-        <div className="flex items-center gap-1 ml-2">
-          <button
-            onClick={handleReport}
-            title="Signaler"
-            className="text-muted-foreground hover:text-destructive transition-colors p-1"
-          >
-            <Flag className="w-3.5 h-3.5" />
-          </button>
-          <span className="inline-flex items-center text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full whitespace-nowrap">
-            En attente 🗳️
-          </span>
-        </div>
+        <span className="inline-flex items-center text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full whitespace-nowrap ml-2">
+          En attente 🗳️
+        </span>
       </div>
 
       <div className="mt-3 mb-2">
