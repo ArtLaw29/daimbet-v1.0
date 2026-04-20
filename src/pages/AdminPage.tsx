@@ -1393,6 +1393,12 @@ export default function AdminPage() {
                                   onClick={async () => {
                                     await supabase.from('tierce_suggestions').update({ status: 'rejete' as any }).eq('id', s.id);
                                     toast.success('Suggestion rejetée');
+                                    logModerationAction({
+                                      action_type: 'rejet',
+                                      target_type: 'pari',
+                                      target_id: s.bet_id,
+                                      description: `Suggestion Tiercé rejetée : "${s.prenom_suggested}"`,
+                                    });
                                     fetchAll();
                                   }}>
                                   ❌ Rejeter
@@ -2638,6 +2644,11 @@ export default function AdminPage() {
                     });
                     if (error) throw error;
                     toast.success(`🔴 Onglet "${tabResetTarget}" réinitialisé avec succès.`);
+                    logModerationAction({
+                      action_type: 'reinitialisation',
+                      target_type: 'autre',
+                      description: `Réinitialisation de l'onglet : ${tabResetTarget}`,
+                    });
                     setTabResetTarget(null);
                     setTabResetConfirm('');
                     fetchAll();
@@ -2808,6 +2819,11 @@ export default function AdminPage() {
                       setNuclearDone(true);
                       setNuclearExecuting(false);
                       toast.success('Réinitialisation totale effectuée');
+                      logModerationAction({
+                        action_type: 'reinitialisation',
+                        target_type: 'autre',
+                        description: 'Réinitialisation TOTALE de la plateforme (nuclear reset)',
+                      });
                     }}>
                     {nuclearExecuting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Réinitialisation en cours...</> : 'Confirmer la réinitialisation totale ☢️'}
                   </Button>
