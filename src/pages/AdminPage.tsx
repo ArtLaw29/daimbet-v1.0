@@ -24,6 +24,7 @@ import AdminCreateTicketDialog from '@/components/AdminCreateTicketDialog';
 import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
 import AdminKmFullResults from '@/components/AdminKmFullResults';
+import AdminGouvernements from '@/components/AdminGouvernements';
 import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
 import AdminModeration from '@/components/AdminModeration';
@@ -61,6 +62,7 @@ const ADMIN_SECTIONS = [
   { id: 'dashboard', label: 'Tableau de bord', emoji: '📊' },
   { id: 'paris', label: 'Paris', emoji: '🎯' },
   { id: 'jeux', label: 'Jeux', emoji: '🎮' },
+  { id: 'gouvernements', label: 'Gouvernements', emoji: '🏛️' },
   { id: 'gazette', label: 'Gazette', emoji: '📰' },
   { id: 'users', label: 'Utilisateurs', emoji: '👥' },
   { id: 'tickets', label: 'Tickets', emoji: '🎫' },

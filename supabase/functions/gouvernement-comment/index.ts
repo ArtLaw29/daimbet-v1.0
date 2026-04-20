@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { ministers, customMinistries, premierMinisterName, premierMinisterRank, premierMinisterBalance, totalPlayers, popularityStats, regaliansFilled, regaliansTotal, totalFilled, maleCount, femaleCount, isADLC } = await req.json();
+    const { ministers, customMinistries, premierMinisterName, premierMinisterRank, premierMinisterBalance, totalPlayers, regaliansFilled, regaliansTotal, totalFilled, maleCount, femaleCount, isADLC } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -25,17 +25,12 @@ Données du gouvernement :
 ${Object.entries(ministers).map(([poste, nom]) => `  • ${poste} : ${nom}`).join('\n')}
 ${customMinistries && customMinistries.length > 0 ? customMinistries.map((m: any) => `  • ${m.name} (ministère perso) : ${m.person}`).join('\n') : ''}
 
-Stats de popularité des ministres (nombre de nominations dans d'autres gouvernements) :
-${popularityStats || 'Aucune donnée encore.'}
-
 ${isADLC ? 'IMPORTANT: Au moins 4 membres de la team ADLC (Samory, Léa, Paul, Ghali, Charles P., Christophe) sont dans ce gouvernement. Prends un ton joyeux et ajoute "Bienvenue à la team ADLC !" dans ton commentaire.' : ''}
 
 Consignes :
 - Sois sarcastique, drôle, et moqueur mais bienveillant
-- Commente la parité (ou son absence)
-- Si des postes régaliens manquent, moque-toi gentiment
-- Fais une vanne sur le classement DaimCoin du Premier Ministre
-- Commente les choix de ministres les plus surprenants
+- Base-toi UNIQUEMENT sur trois axes : (1) la parité hommes/femmes, (2) les ministères régaliens manquants, (3) le solde DC et le rang du Premier Ministre dans le classement
+- Ne mentionne JAMAIS combien de fois un ministre a été nommé dans d'autres gouvernements
 - Reste concis (max 200 mots)
 - Signe : "— Jordaim Belfort, Président de la République"`;
 
