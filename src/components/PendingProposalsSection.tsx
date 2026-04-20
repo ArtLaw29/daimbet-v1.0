@@ -36,7 +36,6 @@ export default function PendingProposalsSection({ kind, title }: Props) {
       .select('id, title, user_id, votes_positive, votes_negative, created_at, payload')
       .eq('proposal_kind', kind)
       .eq('status', 'en_attente')
-      .eq('is_hidden', false)
       .order('created_at', { ascending: false });
 
     const items = (data || []) as PendingProposal[];
