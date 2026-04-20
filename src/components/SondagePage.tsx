@@ -433,7 +433,7 @@ export default function SondagePage() {
       <PendingProposalsSection kind="sondage" />
 
 
-      {sessions.length === 0 && !showPropose && (
+      {sessions.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-5xl mb-3">🗳️</p>
           <p>Aucun sondage actif pour le moment.</p>
