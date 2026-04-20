@@ -82,6 +82,10 @@ export default function ProfilePage() {
 
   // Contact (removed — replaced by tickets)
 
+  // Visibility prefs
+  const [kmAvailable, setKmAvailable] = useState(true);
+  const [savingPref, setSavingPref] = useState<string | null>(null);
+
   // Password reset
   const [resettingPw, setResettingPw] = useState(false);
 
