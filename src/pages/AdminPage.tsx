@@ -165,6 +165,7 @@ export default function AdminPage() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   // Emergency suspension
   const [suspensionStatus, setSuspensionStatus] = useState<Record<string, boolean>>({});
+  const [hideStatus, setHideStatus] = useState<Record<string, boolean>>({});
   const [nuclearOpen, setNuclearOpen] = useState(false);
   const [nuclearStep, setNuclearStep] = useState(1);
   const [nuclearCheck1, setNuclearCheck1] = useState(false);
@@ -217,7 +218,7 @@ export default function AdminPage() {
       supabase.from('nav_config').select('tab_key, is_visible'),
       supabase.from('retraction_config').select('*').limit(1).single(),
       supabase.from('tierce_suggestions').select('*').eq('status', 'en_attente').order('created_at', { ascending: false }),
-      supabase.from('platform_settings').select('key, value').or('key.like.game_subtitle_%,key.like.km_show_%,key.like.suspend_%'),
+      supabase.from('platform_settings').select('key, value').or('key.like.game_subtitle_%,key.like.km_show_%,key.like.suspend_%,key.like.hide_%'),
     ]);
     setBets((betsRes.data as BetWithOptions[]) || []);
     setProfiles(prRes.data || []);
@@ -237,9 +238,12 @@ export default function AdminPage() {
     if (gameSubRes.data) {
       const gs: Record<string, string> = {};
       const susp: Record<string, boolean> = {};
+      const hid: Record<string, boolean> = {};
       gameSubRes.data.forEach((r: any) => {
         if (r.key.startsWith('suspend_')) {
           susp[r.key] = r.value === 'true';
+        } else if (r.key.startsWith('hide_')) {
+          hid[r.key] = r.value === 'true';
         } else {
           gs[r.key] = r.value;
         }
@@ -248,6 +252,7 @@ export default function AdminPage() {
       });
       setGameSubtitles(gs);
       setSuspensionStatus(susp);
+      setHideStatus(hid);
     }
     if (retractionRes.data) {
       setRetractionStart(retractionRes.data.start_hour);
@@ -1840,14 +1845,19 @@ export default function AdminPage() {
                   { key: 'suspend_fantasy-firm', label: '⚖️ Fantasy Firm' },
                 ].map(item => {
                   const isSuspended = !!suspensionStatus[item.key];
+                  const gameId = item.key.replace('suspend_', '');
+                  const hideKey = `hide_${gameId}`;
+                  const isHidden = !!hideStatus[hideKey];
+                  const isParis = gameId === 'paris';
                   return (
-                    <div key={item.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-card border border-border/50">
+                    <div key={item.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-card border border-border/50 flex-wrap gap-2">
                       <div className="flex items-center gap-2">
                         <span className={`w-2.5 h-2.5 rounded-full ${isSuspended ? 'bg-destructive' : 'bg-primary'}`} />
                         <span className="text-sm">{item.label}</span>
                         {isSuspended && <span className="text-[10px] text-destructive font-medium">SUSPENDU</span>}
+                        {isHidden && <span className="text-[10px] text-muted-foreground font-medium">CACHÉ</span>}
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <Button size="sm" variant={isSuspended ? 'outline' : 'destructive'} className="text-xs h-7"
                           onClick={async () => {
                             const newVal = isSuspended ? 'false' : 'true';
@@ -1862,6 +1872,22 @@ export default function AdminPage() {
                           }}>
                           {isSuspended ? <><Play className="w-3 h-3 mr-1" /> Activer</> : <><Pause className="w-3 h-3 mr-1" /> Suspendre</>}
                         </Button>
+                        {!isParis && (
+                          <Button size="sm" variant="outline" className="text-xs h-7"
+                            onClick={async () => {
+                              const newVal = isHidden ? 'false' : 'true';
+                              const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', hideKey).maybeSingle();
+                              if (existing) {
+                                await supabase.from('platform_settings').update({ value: newVal, updated_at: new Date().toISOString() }).eq('key', hideKey);
+                              } else {
+                                await supabase.from('platform_settings').insert({ key: hideKey, value: newVal });
+                              }
+                              setHideStatus(prev => ({ ...prev, [hideKey]: !isHidden }));
+                              toast.success(`${item.label} ${isHidden ? 'visible 👁️' : 'caché 🙈'}`);
+                            }}>
+                            {isHidden ? <><Eye className="w-3 h-3 mr-1" /> Afficher</> : <><EyeOff className="w-3 h-3 mr-1" /> Cacher</>}
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
                           onClick={() => { setTabResetTarget(item.key.replace('suspend_', '')); setTabResetConfirm(''); }}>
                           🔴 Réinitialiser
