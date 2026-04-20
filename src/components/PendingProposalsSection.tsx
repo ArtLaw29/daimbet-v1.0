@@ -32,10 +32,10 @@ export default function PendingProposalsSection({ kind, title }: Props) {
   const [loading, setLoading] = useState(true);
 
   const fetchProposals = useCallback(async () => {
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from('daimocratie_proposals')
       .select('id, title, user_id, votes_positive, votes_negative, created_at, payload')
-      .eq('proposal_kind' as any, kind as any)
+      .eq('proposal_kind', kind)
       .eq('status', 'en_attente')
       .eq('is_hidden', false)
       .order('created_at', { ascending: false });
