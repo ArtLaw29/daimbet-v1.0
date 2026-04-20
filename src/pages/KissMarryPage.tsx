@@ -45,10 +45,24 @@ export default function KissMarryPage() {
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set(['coup_soir', 'plan_q']));
   const [optedOutNames, setOptedOutNames] = useState<Set<string>>(new Set());
+  const [revealConfig, setRevealConfig] = useState<{ reveal_dates: string[] } | null>(null);
 
   // Fetch users who opted out of Kiss/Marry visibility
   useEffect(() => {
     fetchHiddenNames('visible_in_kiss_marry').then(setOptedOutNames);
+  }, []);
+
+  // Fetch reveal config (admin-managed dates)
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('km_reveal_config')
+        .select('reveal_dates')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setRevealConfig(data || { reveal_dates: [] });
+    })();
   }, []);
 
   // Fetch visibility settings for optional categories
@@ -71,13 +85,26 @@ export default function KissMarryPage() {
   const visibleCategories = ALL_CATEGORIES.filter(c => !hiddenCategories.has(c));
 
   const now = new Date();
-  // Current voting month
-  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  // Reveal logic: on the 1st of each month at 10h, reveal LAST month's results
-  const isRevealDay = now.getDate() === 1 && now.getHours() >= 10;
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const revealMonthYear = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+  // Derive current voting period + reveal window from reveal config
+  const sortedDates = (revealConfig?.reveal_dates || [])
+    .map((d) => new Date(d))
+    .sort((a, b) => a.getTime() - b.getTime());
+  const nextRevealDate = sortedDates.find((d) => d.getTime() > now.getTime()) || null;
+  // Period identifier = ISO date of next reveal (or 'post-cycle' if none)
+  const monthYear = nextRevealDate
+    ? nextRevealDate.toISOString().slice(0, 10)
+    : 'post-cycle';
+
+  // Reveal window: a date in the past, less than 24h ago
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const recentlyRevealed = [...sortedDates].reverse().find(
+    (d) => d.getTime() <= now.getTime() && now.getTime() - d.getTime() < oneDayMs
+  );
+  const isRevealDay = !!recentlyRevealed;
+  const revealMonthYear = recentlyRevealed ? recentlyRevealed.toISOString().slice(0, 10) : '';
+
+  const countdown = useCountdown(nextRevealDate);
 
   // Filter out user's own name + opted-out users
   const availableNames = filterNames(
