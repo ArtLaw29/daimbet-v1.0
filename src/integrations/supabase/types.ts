@@ -544,6 +544,8 @@ export type Database = {
           rules_accepted_at: string | null
           updated_at: string
           user_id: string
+          visible_in_kiss_marry: boolean
+          visible_in_sondages: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -559,6 +561,8 @@ export type Database = {
           rules_accepted_at?: string | null
           updated_at?: string
           user_id: string
+          visible_in_kiss_marry?: boolean
+          visible_in_sondages?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -574,6 +578,8 @@ export type Database = {
           rules_accepted_at?: string | null
           updated_at?: string
           user_id?: string
+          visible_in_kiss_marry?: boolean
+          visible_in_sondages?: boolean
         }
         Relationships: []
       }
