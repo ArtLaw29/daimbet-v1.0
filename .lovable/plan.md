@@ -1,55 +1,55 @@
 
-Je propose 3 fixes ciblés correspondant aux bugs prioritaires identifiés dans l'audit précédent.
+## Plan — Kiss/Marry avec dates de révélation fixes
 
-## Plan — Correction des 3 bugs prioritaires
+### Schéma BDD (migration)
+1. **Nouvelle table `km_reveal_config`** (1 ligne unique) :
+   - `reveal_dates` (timestamptz[]) → `['2026-05-20 10:00+02', '2026-06-19 10:00+02']`
+   - `last_reset_at` (timestamptz, nullable) → marqueur du dernier reset effectué
+   - RLS : SELECT public authentifié, UPDATE/INSERT admin uniquement.
+2. Seed initial avec les 2 dates.
 
-### Bug 1 : RLS permissive sur `kiss_marry_votes`
-**Problème** : la policy INSERT a `WITH CHECK true` → un utilisateur peut bourrer les urnes (insertion arbitraire de votes via SQL direct).
-**Fix (migration SQL)** :
-- Remplacer la policy par une `WITH CHECK` qui force le passage par l'edge function `km-vote` :
-  - Soit `WITH CHECK (false)` côté client + l'edge function `km-vote` (en service role) reste seul autorisé à insérer.
-  - C'est la solution propre car `km-vote` valide déjà l'unicité par `voter_hash`/mois.
-- Vérifier ensuite que `km-vote/index.ts` utilise bien `SUPABASE_SERVICE_ROLE_KEY` (à confirmer en lisant le fichier).
+### Logique de "période de vote courante"
+Plutôt qu'utiliser `month_year` calendaire dans `kiss_marry_votes`, on continue d'utiliser la colonne `month_year` mais on y stocke un **identifiant de période** = ISO date de la prochaine révélation (ex `"2026-05-20"`). Avantages :
+- Pas de migration destructive sur `kiss_marry_votes`.
+- Quand on passe à la période suivante (J+1 après reveal), l'identifiant change → les anciens votes sont historisés sans être affichés.
+- Reset = simple `DELETE FROM kiss_marry_votes WHERE month_year = <période passée>` côté edge function admin.
 
-### Bug 2 : Table `content_reports` orpheline + trigger actif
-**Problème** : la table et le trigger `handle_content_report` sont toujours présents en BDD alors que toute l'UI a été supprimée. Surface d'attaque résiduelle.
-**Fix (migration SQL)** :
-```sql
-DROP TRIGGER IF EXISTS on_content_report ON public.content_reports;
-DROP FUNCTION IF EXISTS public.handle_content_report();
-DROP TABLE IF EXISTS public.content_reports;
-ALTER TABLE public.daimocratie_proposals DROP COLUMN IF EXISTS report_count, DROP COLUMN IF EXISTS is_hidden;
-ALTER TABLE public.game_sessions DROP COLUMN IF EXISTS report_count, DROP COLUMN IF EXISTS is_hidden;
-```
-- Vérifier d'abord en code (`code--search_files`) qu'aucun composant ne lit encore `report_count`/`is_hidden` avant le DROP COLUMN. Si c'est le cas → adapter le code (afficher tout sans filtre `is_hidden`).
+### Edge functions
+1. **`km-vote`** (existant) : remplacer le calcul `month_year` par un appel à un helper qui lit `km_reveal_config` et renvoie l'ID de la prochaine date de révélation future.
+2. **`km-reveal-tick`** (nouveau, scheduled cron toutes les heures) :
+   - Lit `km_reveal_config`.
+   - Pour chaque date passée mais pas encore traitée (`last_reset_at < date < now() - 24h`) :
+     - Supprime les votes de la période expirée (1 jour après la révélation).
+     - Met à jour `last_reset_at`.
+   - Idempotent.
+3. **`km-admin-reveal`** (nouveau, admin only) : déclenche immédiatement une révélation pour la période courante (insère une date "now" dans `reveal_dates` ou marque la période comme révélée + reset après 24h via tick). Plus simple : ajoute une date passée + immédiate.
 
-### Bug 3 : IDs de session hardcodés dans `AdminGouvernements` / `AdminHarassmentFlags`
-**Problème** : `00000000-0000-0000-0000-000000000001/2` ne survivent pas à un nuclear reset → écrans vides en silence.
-**Fix (TypeScript)** :
-- Dans les deux composants, remplacer le filtre `eq('session_id', HARDCODED_ID)` par un lookup dynamique :
-  ```ts
-  const { data: govSession } = await supabase
-    .from('game_sessions')
-    .select('id')
-    .eq('game_type', 'gouvernement')
-    .order('created_at', { ascending: false })
-    .limit(1).maybeSingle();
-  ```
-- Si la session n'existe pas, afficher un placeholder explicite "Aucune session Gouvernement active" plutôt qu'un écran vide.
-- Idem pour Fantasy Firm (`game_type='fantasy_firm'`).
-- **Vérification préalable** : confirmer les valeurs exactes du type enum `game_type` (lire `types.ts`) avant de coder.
+### Frontend
+1. **`KissMarryPage`** :
+   - Remplacer `monthYear`/`revealMonthYear` par lecture de `km_reveal_config`.
+   - Calcul : `nextRevealDate` = première date future. `currentPeriodId` = ISO de cette date.
+   - Mode reveal : `isRevealDay = now >= nextRevealDate && now < nextRevealDate + 24h` → afficher top 3 de la période qui vient de se clore.
+   - Compte à rebours discret en haut : "🗓️ Révélation dans 12 jours" (utilise `useCountdown` existant, adapté pour jours).
+   - Bandeau pendant la fenêtre de 24h reveal : auto-affiche le top 3.
+2. **`AdminKmFullResults`** (existant, à étendre) :
+   - Section "Configuration des dates de révélation" : liste éditable des `reveal_dates` (date pickers).
+   - Bouton "Déclencher la révélation maintenant" (appelle `km-admin-reveal`).
 
-### Détails techniques par étape
-1. **Lecture** : `supabase/functions/km-vote/index.ts`, `src/components/AdminModeration.tsx` (résiduel `report_count`?), `src/integrations/supabase/types.ts` (enum `game_type`).
-2. **Migration 1** : durcir RLS `kiss_marry_votes`.
-3. **Migration 2** : drop `content_reports` + trigger + colonnes orphelines.
-4. **Code** : refactor `AdminGouvernements.tsx` et `AdminHarassmentFlags.tsx` pour lookup dynamique des sessions simulation.
-5. **Mémoire** : ajouter une note `mem://tech/constraints/db-constraints` sur le pattern "session simulation = lookup dynamique, jamais hardcodé".
+### Mémoire
+- Mettre à jour `mem://features/games/kiss-marry` : périodes désormais bornées par dates fixes admin-configurables, plus de cycle calendaire mensuel.
 
-### Impact
-- 🔒 Aucune perte de fonctionnalité utilisateur ou admin.
-- ✅ Surface d'attaque réduite (1 RLS, 1 table, 1 trigger).
-- ✅ Robustesse au nuclear reset.
+### Fichiers touchés
+- **Migration SQL** : créer `km_reveal_config` + RLS + seed.
+- **`supabase/functions/km-vote/index.ts`** : calcul période depuis config.
+- **`supabase/functions/km-reveal-tick/index.ts`** (nouveau).
+- **`supabase/functions/km-admin-reveal/index.ts`** (nouveau).
+- **`supabase/config.toml`** : déclarer les 2 nouvelles fonctions (verify_jwt = false pour tick, true pour admin-reveal qui validera le rôle dans le code).
+- **`src/pages/KissMarryPage.tsx`** : refactor logique période + countdown.
+- **`src/components/AdminKmFullResults.tsx`** : ajout panneau config dates + bouton reveal manuel.
+- **`src/hooks/useCountdown.ts`** : étendre pour afficher en jours quand >24h.
+- **Cron** (`supabase--insert`) : pg_cron schedule de `km-reveal-tick` toutes les heures.
 
-### Risque
-- **Migration 2** : si du code référence encore `is_hidden`/`report_count`, il faut le retirer dans le même commit. Je vérifierai avant le DROP COLUMN.
+### Risques / hypothèses
+- Le format `month_year` reste un `text` libre → on peut y mettre une ISO date sans casser le schéma.
+- Les anciens votes existants (s'il y en a) resteront avec leur `month_year` calendaire et seront simplement invisibles → OK car ce sont des données de test.
+- Fuseau horaire : on stocke en UTC, on affiche en local Europe/Paris.
