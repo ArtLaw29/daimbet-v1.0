@@ -9,6 +9,7 @@ import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
 import { PROMO_NAMES, isValidSchoolEmail } from '@/lib/pari-mutuel';
 import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react';
+import RulesScreen from '@/components/RulesScreen';
 
 const EMOJI_POOL = [
   '🦌', '🐻', '🦊', '🐺', '🦁', '🐯', '🐮', '🐷', '🐸', '🐵',
