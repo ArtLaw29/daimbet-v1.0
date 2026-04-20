@@ -1,8 +1,5 @@
-import { ThumbsUp, ThumbsDown, Flag } from 'lucide-react';
+import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
-import { reportContent } from '@/lib/moderation';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface ProposalCardProps {
   proposal: {
@@ -20,18 +17,8 @@ interface ProposalCardProps {
 const ACTIVATION_THRESHOLD = 15;
 
 export default function ProposalCard({ proposal, userVote, onVote }: ProposalCardProps) {
-  const { user } = useAuth();
   const progressPct = Math.min(100, (proposal.votes_positive / ACTIVATION_THRESHOLD) * 100);
 
-  const handleReport = async () => {
-    if (!user) return;
-    const result = await reportContent('proposal', proposal.id, user.id);
-    if (result.success) {
-      toast.success('Signalement envoyé 🚩');
-    } else {
-      toast.error(result.error || 'Erreur');
-    }
-  };
 
   return (
     <div className="rounded-xl border border-border bg-muted/30 p-4">
@@ -50,18 +37,9 @@ export default function ProposalCard({ proposal, userVote, onVote }: ProposalCar
             <p className="text-xs text-muted-foreground mt-1">Proposé par {proposal.proposer_name} 🗳️</p>
           )}
         </div>
-        <div className="flex items-center gap-1 ml-2">
-          <button
-            onClick={handleReport}
-            title="Signaler"
-            className="text-muted-foreground hover:text-destructive transition-colors p-1"
-          >
-            <Flag className="w-3.5 h-3.5" />
-          </button>
-          <span className="inline-flex items-center text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full whitespace-nowrap">
-            En attente 🗳️
-          </span>
-        </div>
+        <span className="inline-flex items-center text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full whitespace-nowrap ml-2">
+          En attente 🗳️
+        </span>
       </div>
 
       <div className="mt-3 mb-2">

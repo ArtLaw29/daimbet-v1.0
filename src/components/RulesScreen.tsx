@@ -51,7 +51,7 @@ export default function RulesScreen({ acceptLabel, onAccept, onBack, loading }: 
             </p>
 
             <p className="text-sm leading-relaxed text-foreground">
-              🚩 Si un contenu te met mal à l'aise, contacte <strong>Jordaim Belfort</strong>.
+              Si un contenu te met mal à l'aise, contacte l'admin via <strong>ton profil → Mes tickets</strong>.
             </p>
 
             <p className="text-sm leading-relaxed text-foreground">
