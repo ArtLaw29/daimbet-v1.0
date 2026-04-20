@@ -29,6 +29,7 @@ import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
 import AdminModeration from '@/components/AdminModeration';
 import AdminModerationLog from '@/components/AdminModerationLog';
+import { logModerationAction } from '@/lib/moderationLog';
 import AdminPublicContacts from '@/components/AdminPublicContacts';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -427,6 +428,7 @@ export default function AdminPage() {
       is_system_message: true,
     });
     toast.success('Mises clôturées 🔒');
+    logModerationAction({ action_type: 'modification', target_type: 'pari', target_id: betId, description: `Mises clôturées sur "${bet?.title}"` });
     fetchAll();
   };
 
@@ -440,6 +442,12 @@ export default function AdminPage() {
       is_system_message: true,
     });
     toast.success(suspend ? 'Pari suspendu ⏸️' : 'Pari réactivé ▶️');
+    logModerationAction({
+      action_type: suspend ? 'suspension' : 'validation',
+      target_type: 'pari',
+      target_id: betId,
+      description: suspend ? `Pari suspendu : "${bet?.title}"` : `Pari réactivé : "${bet?.title}"`,
+    });
     fetchAll();
   };
 
@@ -459,6 +467,12 @@ export default function AdminPage() {
     const bet = bets.find(b => b.id === betId);
     const winnerLabels = bet?.bet_options.filter(o => winnerIds.includes(o.id)).map(o => o.label).join(', ');
     toast.success(`Pari résolu ! 🏆 Gagnant(s) : ${winnerLabels}`);
+    logModerationAction({
+      action_type: 'validation',
+      target_type: 'pari',
+      target_id: betId,
+      description: `Pari résolu : "${bet?.title}" — Gagnant(s) : ${winnerLabels}`,
+    });
     setSelectedWinners(prev => { const n = { ...prev }; delete n[betId]; return n; });
     fetchAll();
   };
@@ -473,6 +487,12 @@ export default function AdminPage() {
     if (error) { toast.error('Erreur tirage au sort'); return; }
     if (data?.error) { toast.error(data.error); return; }
     toast.success(`🎲 Tirage au sort terminé ! Gagnant(s) : ${data.winners}`);
+    logModerationAction({
+      action_type: 'validation',
+      target_type: 'pari',
+      target_id: betId,
+      description: `Tirage au sort exécuté sur "${bet.title}" — Gagnant(s) : ${data.winners}`,
+    });
     fetchAll();
   };
 
@@ -499,6 +519,13 @@ export default function AdminPage() {
       is_system_message: true,
     });
     toast.success(`Pari annulé, ${betWagers.length} mises remboursées 💰`);
+    logModerationAction({
+      action_type: 'suppression',
+      target_type: 'pari',
+      target_id: betId,
+      description: `Pari annulé : "${bet?.title}" (${betWagers.length} mises remboursées)`,
+      motif,
+    });
     setDeleteMotif('');
     fetchAll();
   };
