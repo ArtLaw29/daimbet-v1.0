@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThumbsUp, ThumbsDown, Flag } from 'lucide-react';
+import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { reportContent } from '@/lib/moderation';
 import { POSITIVE_THRESHOLD, NEGATIVE_BLOCK, voteOnProposal, KIND_LABELS, type ProposalKind } from '@/lib/proposals';
 
 interface PendingProposal {
@@ -91,12 +90,7 @@ export default function PendingProposalsSection({ kind, title }: Props) {
     fetchProposals();
   };
 
-  const handleReport = async (proposalId: string) => {
-    if (!user) return;
-    const result = await reportContent('proposal', proposalId, user.id);
-    if (result.success) toast.success('Signalement envoyé 🚩');
-    else toast.error(result.error || 'Erreur');
-  };
+
 
   if (loading) return null;
   if (proposals.length === 0) return null;
@@ -134,13 +128,6 @@ export default function PendingProposalsSection({ kind, title }: Props) {
                     Proposé par {proposerNames[p.user_id] || 'Inconnu'} 🦌
                   </p>
                 </div>
-                <button
-                  onClick={() => handleReport(p.id)}
-                  title="Signaler"
-                  className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                >
-                  <Flag className="w-3.5 h-3.5" />
-                </button>
               </div>
 
               <div className="mt-3 mb-2">

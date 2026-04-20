@@ -1,8 +1,5 @@
-import { ThumbsUp, ThumbsDown, Flag } from 'lucide-react';
+import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { toast } from 'sonner';
-import { reportContent } from '@/lib/moderation';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface ProposalCardProps {
   proposal: {
@@ -20,18 +17,8 @@ interface ProposalCardProps {
 const ACTIVATION_THRESHOLD = 15;
 
 export default function ProposalCard({ proposal, userVote, onVote }: ProposalCardProps) {
-  const { user } = useAuth();
   const progressPct = Math.min(100, (proposal.votes_positive / ACTIVATION_THRESHOLD) * 100);
 
-  const handleReport = async () => {
-    if (!user) return;
-    const result = await reportContent('proposal', proposal.id, user.id);
-    if (result.success) {
-      toast.success('Signalement envoyé 🚩');
-    } else {
-      toast.error(result.error || 'Erreur');
-    }
-  };
 
   return (
     <div className="rounded-xl border border-border bg-muted/30 p-4">
