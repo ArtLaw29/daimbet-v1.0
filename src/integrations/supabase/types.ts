@@ -433,6 +433,27 @@ export type Database = {
         }
         Relationships: []
       }
+      km_reveal_config: {
+        Row: {
+          id: string
+          last_reset_at: string | null
+          reveal_dates: string[]
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_reset_at?: string | null
+          reveal_dates?: string[]
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_reset_at?: string | null
+          reveal_dates?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       liquidity_injections: {
         Row: {
           amount_dc: number

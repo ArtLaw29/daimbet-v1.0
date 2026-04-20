@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 interface CountdownResult {
   text: string;
   isUrgent: boolean;
+  diffMs: number;
 }
 
 export function useCountdown(targetDate: Date | null): CountdownResult | null {
@@ -21,10 +22,22 @@ export function useCountdown(targetDate: Date | null): CountdownResult | null {
 
   const diffMin = Math.floor(diffMs / 60000);
   const diffH = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffH / 24);
   const remainMin = diffMin % 60;
+  const remainH = diffH % 24;
 
-  const text = diffH > 0 ? `${diffH}h ${remainMin}min` : `${diffMin} min`;
+  let text: string;
+  if (diffDays >= 1) {
+    text = diffDays === 1
+      ? `1 jour ${remainH}h`
+      : `${diffDays} jours`;
+  } else if (diffH > 0) {
+    text = `${diffH}h ${remainMin}min`;
+  } else {
+    text = `${diffMin} min`;
+  }
+
   const isUrgent = diffMin < 30;
 
-  return { text, isUrgent };
+  return { text, isUrgent, diffMs };
 }

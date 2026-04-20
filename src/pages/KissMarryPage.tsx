@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Eye } from 'lucide-react';
+import { Lock, Eye, CalendarClock } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import { fetchHiddenNames, filterNames } from '@/lib/visibility';
 import { IntroKissMarry } from '@/components/TabIntro';
@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import ContactFooter from '@/components/ContactFooter';
+import { useCountdown } from '@/hooks/useCountdown';
 
 const CATEGORIES_REQUIRED = ['kiss', 'marry'] as const;
 const CATEGORIES_OPTIONAL = ['coup_soir', 'plan_q'] as const;
@@ -44,10 +45,24 @@ export default function KissMarryPage() {
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set(['coup_soir', 'plan_q']));
   const [optedOutNames, setOptedOutNames] = useState<Set<string>>(new Set());
+  const [revealConfig, setRevealConfig] = useState<{ reveal_dates: string[] } | null>(null);
 
   // Fetch users who opted out of Kiss/Marry visibility
   useEffect(() => {
     fetchHiddenNames('visible_in_kiss_marry').then(setOptedOutNames);
+  }, []);
+
+  // Fetch reveal config (admin-managed dates)
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('km_reveal_config')
+        .select('reveal_dates')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setRevealConfig(data || { reveal_dates: [] });
+    })();
   }, []);
 
   // Fetch visibility settings for optional categories
@@ -70,13 +85,26 @@ export default function KissMarryPage() {
   const visibleCategories = ALL_CATEGORIES.filter(c => !hiddenCategories.has(c));
 
   const now = new Date();
-  // Current voting month
-  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  // Reveal logic: on the 1st of each month at 10h, reveal LAST month's results
-  const isRevealDay = now.getDate() === 1 && now.getHours() >= 10;
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const revealMonthYear = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+  // Derive current voting period + reveal window from reveal config
+  const sortedDates = (revealConfig?.reveal_dates || [])
+    .map((d) => new Date(d))
+    .sort((a, b) => a.getTime() - b.getTime());
+  const nextRevealDate = sortedDates.find((d) => d.getTime() > now.getTime()) || null;
+  // Period identifier = ISO date of next reveal (or 'post-cycle' if none)
+  const monthYear = nextRevealDate
+    ? nextRevealDate.toISOString().slice(0, 10)
+    : 'post-cycle';
+
+  // Reveal window: a date in the past, less than 24h ago
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const recentlyRevealed = [...sortedDates].reverse().find(
+    (d) => d.getTime() <= now.getTime() && now.getTime() - d.getTime() < oneDayMs
+  );
+  const isRevealDay = !!recentlyRevealed;
+  const revealMonthYear = recentlyRevealed ? recentlyRevealed.toISOString().slice(0, 10) : '';
+
+  const countdown = useCountdown(nextRevealDate);
 
   // Filter out user's own name + opted-out users
   const availableNames = filterNames(
@@ -142,9 +170,10 @@ export default function KissMarryPage() {
   }, [monthYear]);
 
   useEffect(() => {
+    if (!revealConfig) return; // wait until period ID is resolved
     if (user) checkIfVoted();
     generateIndices();
-  }, [user, checkIfVoted, generateIndices]);
+  }, [user, checkIfVoted, generateIndices, revealConfig]);
 
   const handleSubmit = async () => {
     if (!user || submitting) return;
@@ -286,11 +315,18 @@ export default function KissMarryPage() {
         </div>
         <IntroKissMarry />
 
+        {countdown && nextRevealDate && (
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-4">
+            <CalendarClock className="w-3.5 h-3.5 text-primary/70" />
+            <span>Révélation dans <span className="text-primary font-semibold">{countdown.text}</span></span>
+          </div>
+        )}
+
         <div className="text-center p-6 rounded-2xl bg-primary/10 border border-primary/20 mb-6">
           <Lock className="w-8 h-8 mx-auto text-primary mb-2" />
           <p className="text-sm font-semibold">🔒 Tes votes sont enregistrés et définitifs.</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Le Top 3 de chaque catégorie sera dévoilé à la fin du cycle mensuel 🦌
+            Le Top 3 de chaque catégorie sera dévoilé à la prochaine date de révélation 🦌
           </p>
         </div>
 
@@ -323,6 +359,13 @@ export default function KissMarryPage() {
         <h1 className="text-3xl font-display gold-text">💋 Kiss / Marry</h1>
       </div>
       <IntroKissMarry />
+
+      {countdown && nextRevealDate && (
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-4 mt-2">
+          <CalendarClock className="w-3.5 h-3.5 text-primary/70" />
+          <span>Révélation dans <span className="text-primary font-semibold">{countdown.text}</span></span>
+        </div>
+      )}
 
       <div className="flex justify-center mt-2 mb-2">
         <ProposeNewDialog kind="kiss_marry" buttonLabel="Proposer une catégorie" />
