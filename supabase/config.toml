@@ -15,6 +15,12 @@ verify_jwt = false
 [functions.km-vote]
 verify_jwt = false
 
+[functions.km-reveal-tick]
+verify_jwt = false
+
+[functions.km-admin-reveal]
+verify_jwt = false
+
 [functions.activate-proposal]
 verify_jwt = false
 
