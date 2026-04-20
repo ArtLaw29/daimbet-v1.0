@@ -850,10 +850,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      tierce_suggestions_public: {
+        Row: {
+          bet_id: string | null
+          created_at: string | null
+          id: string | null
+          prenom_suggested: string | null
+          status: Database["public"]["Enums"]["suggestion_status"] | null
+        }
+        Insert: {
+          bet_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          prenom_suggested?: string | null
+          status?: Database["public"]["Enums"]["suggestion_status"] | null
+        }
+        Update: {
+          bet_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          prenom_suggested?: string | null
+          status?: Database["public"]["Enums"]["suggestion_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tierce_suggestions_bet_id_fkey"
+            columns: ["bet_id"]
+            isOneToOne: false
+            referencedRelation: "bets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
+      get_gouvernements_public: {
+        Args: { p_session_id: string }
+        Returns: {
+          created_at: string
+          data: Json
+          id: string
+          user_id: string
+        }[]
+      }
       get_km_results: {
         Args: { p_month_year: string }
         Returns: {
@@ -869,6 +909,37 @@ export type Database = {
           rank: number
           vote_count: number
           voted_prenom: string
+        }[]
+      }
+      get_session_data_for_harassment: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          data: Json
+          session_id: string
+        }[]
+      }
+      get_session_participation_counts: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          participant_count: number
+          session_id: string
+        }[]
+      }
+      get_sondage_combos_public: {
+        Args: { p_session_id: string }
+        Returns: {
+          combo: string
+          user_id: string
+        }[]
+      }
+      get_tierce_suggestions_public: {
+        Args: { p_bet_id: string }
+        Returns: {
+          bet_id: string
+          created_at: string
+          id: string
+          prenom_suggested: string
+          status: Database["public"]["Enums"]["suggestion_status"]
         }[]
       }
       has_role: {
