@@ -665,15 +665,18 @@ function ResultsReveal({ results, revealStep, revealDone, startReveal, winnerOpt
     return <Button onClick={startReveal} className="gold-gradient w-full">🎉 Révéler les résultats</Button>;
   }
 
-  // Shuffle results randomly (stable per session via simple seed) — hide ranking from users
-  const shuffled = (() => {
+  // Stable shuffle: deterministic order based on option labels (hash) so it doesn't change on re-render
+  const shuffled = useMemo(() => {
     const arr = [...results];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
+    // Sort by simple deterministic hash of option label so order is stable across renders
+    const hash = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+      return h;
+    };
+    arr.sort((a, b) => hash(String(a.option)) - hash(String(b.option)));
     return arr;
-  })();
+  }, [results.map((r: any) => r.option).join('|')]);
   const totalVotes = results.reduce((s, r) => s + (r.count || 0), 0) || 1;
 
   return (

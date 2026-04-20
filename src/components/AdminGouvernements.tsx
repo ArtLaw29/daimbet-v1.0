@@ -75,6 +75,7 @@ export default function AdminGouvernements() {
                     </span>
                     <span className="text-[11px] text-muted-foreground">
                       Gouvernement #{g.data.gov_number || '?'}
+                      {g.data.gov_name ? ` — ${g.data.gov_name}` : ''}
                     </span>
                   </div>
                   <span className="text-[10px] text-muted-foreground">

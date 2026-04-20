@@ -106,7 +106,7 @@ export default function KissMarryPage() {
   }, [monthYear]);
 
   const generateIndices = useCallback(async () => {
-    const { data } = await supabase.rpc('get_km_results', { p_month_year: monthYear });
+    const { data } = await (supabase.rpc as any)('get_km_top3', { p_month_year: monthYear });
     if (!data || data.length === 0) return;
 
     const catData: Record<string, { name: string; count: number }[]> = {};
@@ -192,15 +192,12 @@ export default function KissMarryPage() {
     if (!isRevealDay || revealStarted) return;
     setRevealStarted(true);
     (async () => {
-      const { data } = await supabase.rpc('get_km_results', { p_month_year: revealMonthYear });
+      const { data } = await (supabase.rpc as any)('get_km_top3', { p_month_year: revealMonthYear });
       if (!data || data.length === 0) return;
       const catData: Record<string, { name: string; count: number }[]> = {};
       for (const row of data as any[]) {
         if (!catData[row.category]) catData[row.category] = [];
         catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
-      }
-      for (const cat of Object.keys(catData)) {
-        catData[cat] = catData[cat].slice(0, 3);
       }
       setRevealData(catData);
       setRevealStep(-3);
