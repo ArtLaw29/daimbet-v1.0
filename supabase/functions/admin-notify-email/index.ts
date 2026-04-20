@@ -50,11 +50,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    const esc = (s: string) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
     const notifRows = unread.map((n: any) => `
       <tr>
         <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;">
-          <strong>[${n.type}]</strong> ${n.title}
-          ${n.detail ? `<div style="color:#666;font-size:12px;margin-top:2px;">${n.detail}</div>` : ""}
+          <strong>[${esc(n.type)}]</strong> ${esc(n.title)}
+          ${n.detail ? `<div style="color:#666;font-size:12px;margin-top:2px;">${esc(n.detail)}</div>` : ""}
           <div style="color:#999;font-size:11px;margin-top:2px;">${new Date(n.created_at).toLocaleString("fr-FR")}</div>
         </td>
       </tr>`).join("");
