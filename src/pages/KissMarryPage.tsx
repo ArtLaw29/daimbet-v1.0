@@ -326,7 +326,7 @@ export default function KissMarryPage() {
           <Lock className="w-8 h-8 mx-auto text-primary mb-2" />
           <p className="text-sm font-semibold">🔒 Tes votes sont enregistrés et définitifs.</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Le Top 3 de chaque catégorie sera dévoilé à la fin du cycle mensuel 🦌
+            Le Top 3 de chaque catégorie sera dévoilé à la prochaine date de révélation 🦌
           </p>
         </div>
 
