@@ -223,6 +223,15 @@ export default function EventsPage() {
       </div>
       {INTRO_PARIS}
 
+      {/* Propose a new bet */}
+      <div className="flex justify-center mb-4">
+        <ProposeNewDialog kind="bet" buttonLabel="Propose un pari" buttonVariant="default" onSubmitted={fetchAll} />
+      </div>
+
+      {/* Pending bet proposals (community vote) */}
+      <PendingProposalsSection kind="bet" />
+
+
 
       {/* Sort selector */}
       <div className="flex items-center gap-2 mb-6 overflow-x-auto">
