@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Trash2, Plus, Eye, EyeOff, RotateCcw, Shield } from 'lucide-react';
+import AdminHarassmentFlags from './AdminHarassmentFlags';
 
 interface Report {
   id: string;
@@ -126,6 +127,9 @@ export default function AdminModeration() {
 
   return (
     <div className="space-y-8">
+      {/* Harassment detection */}
+      <AdminHarassmentFlags />
+
       {/* Banned Words */}
       <div>
         <h3 className="text-lg font-display mb-3 flex items-center gap-2">
