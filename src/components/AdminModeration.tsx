@@ -3,81 +3,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, Eye, EyeOff, RotateCcw, Shield } from 'lucide-react';
+import { Trash2, Plus, Shield } from 'lucide-react';
 import AdminHarassmentFlags from './AdminHarassmentFlags';
-
-interface Report {
-  id: string;
-  content_type: string;
-  content_id: string;
-  reporter_id: string;
-  reason: string | null;
-  created_at: string;
-}
-
-interface ReportedContent {
-  content_type: string;
-  content_id: string;
-  report_count: number;
-  is_hidden: boolean;
-  title: string;
-  author: string;
-  reports: Report[];
-}
+import { logModerationAction } from '@/lib/moderationLog';
 
 export default function AdminModeration() {
   const [bannedWords, setBannedWords] = useState<{ id: string; word: string }[]>([]);
   const [newWord, setNewWord] = useState('');
-  const [reportedContent, setReportedContent] = useState<ReportedContent[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchAll = async () => {
     setLoading(true);
-    const [wordsRes, reportsRes, proposalsRes, sessionsRes, profilesRes] = await Promise.all([
-      supabase.from('banned_words').select('id, word').order('word'),
-      supabase.from('content_reports').select('*').order('created_at', { ascending: false }),
-      supabase.from('daimocratie_proposals').select('id, title, user_id, is_hidden, report_count').gt('report_count', 0),
-      supabase.from('game_sessions').select('id, title, created_by, is_hidden, report_count').gt('report_count', 0),
-      supabase.from('profiles').select('user_id, display_name'),
-    ]);
-
-    setBannedWords(wordsRes.data || []);
-
-    const prMap: Record<string, string> = {};
-    (profilesRes.data || []).forEach(p => { prMap[p.user_id] = p.display_name; });
-    setProfiles(prMap);
-
-    const reports = reportsRes.data || [];
-    const grouped: Record<string, ReportedContent> = {};
-
-    // Group reports by content
-    (proposalsRes.data || []).filter(p => p.report_count > 0).forEach(p => {
-      grouped[`proposal_${p.id}`] = {
-        content_type: 'proposal',
-        content_id: p.id,
-        report_count: p.report_count,
-        is_hidden: p.is_hidden,
-        title: p.title,
-        author: prMap[p.user_id] || 'Inconnu',
-        reports: reports.filter(r => r.content_type === 'proposal' && r.content_id === p.id),
-      };
-    });
-
-    (sessionsRes.data || []).filter(s => s.report_count > 0).forEach(s => {
-      const type = reports.find(r => r.content_id === s.id)?.content_type || 'session';
-      grouped[`session_${s.id}`] = {
-        content_type: type,
-        content_id: s.id,
-        report_count: s.report_count,
-        is_hidden: s.is_hidden,
-        title: s.title,
-        author: prMap[s.created_by || ''] || 'Inconnu',
-        reports: reports.filter(r => r.content_id === s.id),
-      };
-    });
-
-    setReportedContent(Object.values(grouped).sort((a, b) => b.report_count - a.report_count));
+    const { data } = await supabase.from('banned_words').select('id, word').order('word');
+    setBannedWords(data || []);
     setLoading(false);
   };
 

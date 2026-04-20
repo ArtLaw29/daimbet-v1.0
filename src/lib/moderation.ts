@@ -29,25 +29,3 @@ export async function checkDailyRateLimit(userId: string): Promise<boolean> {
 
   return (proposalCount || 0) >= 5;
 }
-
-/**
- * Report a piece of content.
- */
-export async function reportContent(
-  contentType: string,
-  contentId: string,
-  reporterId: string,
-  reason?: string,
-): Promise<{ success: boolean; error?: string }> {
-  const { error } = await supabase.from('content_reports').insert({
-    content_type: contentType,
-    content_id: contentId,
-    reporter_id: reporterId,
-    reason: reason || null,
-  });
-  if (error) {
-    if (error.code === '23505') return { success: false, error: 'Tu as déjà signalé ce contenu.' };
-    return { success: false, error: 'Erreur lors du signalement.' };
-  }
-  return { success: true };
-}
