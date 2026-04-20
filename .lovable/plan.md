@@ -1,55 +1,67 @@
 
-## Plan — Kiss/Marry avec dates de révélation fixes
+## Plan — Correction des 4 findings de sécurité
 
-### Schéma BDD (migration)
-1. **Nouvelle table `km_reveal_config`** (1 ligne unique) :
-   - `reveal_dates` (timestamptz[]) → `['2026-05-20 10:00+02', '2026-06-19 10:00+02']`
-   - `last_reset_at` (timestamptz, nullable) → marqueur du dernier reset effectué
-   - RLS : SELECT public authentifié, UPDATE/INSERT admin uniquement.
-2. Seed initial avec les 2 dates.
+### 1. 🔴 `profiles.email` exposé (ERROR)
+**Constat** : la policy SELECT est `USING true` → tout user authentifié voit l'email de tous. Vérifié : aucun code client ne lit `profiles.email` (l'admin passe par l'edge function `get-user-emails`).
 
-### Logique de "période de vote courante"
-Plutôt qu'utiliser `month_year` calendaire dans `kiss_marry_votes`, on continue d'utiliser la colonne `month_year` mais on y stocke un **identifiant de période** = ISO date de la prochaine révélation (ex `"2026-05-20"`). Avantages :
-- Pas de migration destructive sur `kiss_marry_votes`.
-- Quand on passe à la période suivante (J+1 après reveal), l'identifiant change → les anciens votes sont historisés sans être affichés.
-- Reset = simple `DELETE FROM kiss_marry_votes WHERE month_year = <période passée>` côté edge function admin.
+**Fix (migration)** :
+```sql
+ALTER TABLE public.profiles DROP COLUMN email;
+```
+- Aucune adaptation code nécessaire (déjà confirmé).
+- Trigger `handle_new_user` à mettre à jour : retirer la ligne `email` de l'INSERT.
 
-### Edge functions
-1. **`km-vote`** (existant) : remplacer le calcul `month_year` par un appel à un helper qui lit `km_reveal_config` et renvoie l'ID de la prochaine date de révélation future.
-2. **`km-reveal-tick`** (nouveau, scheduled cron toutes les heures) :
-   - Lit `km_reveal_config`.
-   - Pour chaque date passée mais pas encore traitée (`last_reset_at < date < now() - 24h`) :
-     - Supprime les votes de la période expirée (1 jour après la révélation).
-     - Met à jour `last_reset_at`.
-   - Idempotent.
-3. **`km-admin-reveal`** (nouveau, admin only) : déclenche immédiatement une révélation pour la période courante (insère une date "now" dans `reveal_dates` ou marque la période comme révélée + reset après 24h via tick). Plus simple : ajoute une date passée + immédiate.
+### 2. 🔴 Realtime sans RLS sur `ticket_messages` (ERROR)
+**Constat** : un user authentifié peut s'abonner à n'importe quel canal Realtime et recevoir les messages des tickets d'autres users.
 
-### Frontend
-1. **`KissMarryPage`** :
-   - Remplacer `monthYear`/`revealMonthYear` par lecture de `km_reveal_config`.
-   - Calcul : `nextRevealDate` = première date future. `currentPeriodId` = ISO de cette date.
-   - Mode reveal : `isRevealDay = now >= nextRevealDate && now < nextRevealDate + 24h` → afficher top 3 de la période qui vient de se clore.
-   - Compte à rebours discret en haut : "🗓️ Révélation dans 12 jours" (utilise `useCountdown` existant, adapté pour jours).
-   - Bandeau pendant la fenêtre de 24h reveal : auto-affiche le top 3.
-2. **`AdminKmFullResults`** (existant, à étendre) :
-   - Section "Configuration des dates de révélation" : liste éditable des `reveal_dates` (date pickers).
-   - Bouton "Déclencher la révélation maintenant" (appelle `km-admin-reveal`).
+**Fix (migration)** :
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_messages;
+-- RLS SELECT déjà restrictive (jointure tickets.user_id = auth.uid()) ✅
+-- → Realtime appliquera la policy SELECT existante automatiquement.
+```
+Vérifier aussi que les autres tables exposées via Realtime (gazette, etc.) ont des RLS SELECT cohérentes — la `gazette` est publique donc OK.
 
-### Mémoire
-- Mettre à jour `mem://features/games/kiss-marry` : périodes désormais bornées par dates fixes admin-configurables, plus de cycle calendaire mensuel.
+### 3. 🟡 HTML injection dans `admin-notify-email` (WARN)
+**Constat** : `n.detail` (issu de `public-contact`) est injecté brut dans l'email HTML.
+
+**Fix (`supabase/functions/admin-notify-email/index.ts`)** :
+- Ajouter un helper `esc()` qui échappe `& < > "`.
+- Wrapper `n.title` et `n.detail` avec `esc()`.
+- Idem défensivement dans `public-contact/index.ts` pour le mail direct (qui fait déjà `replace(/</g, '&lt;')` partiellement, à généraliser).
+
+### 4. 🟡 Cron functions non authentifiées (WARN)
+**Constat** : `ticket-lifecycle`, `check-auto-close`, `km-reveal-tick` sont publiques → un attaquant peut les déclencher pour purger des données.
+
+**Fix** :
+- Ajouter un secret `CRON_SECRET` (via `add_secret` tool).
+- Dans chaque fonction : vérifier `req.headers.get('x-cron-secret') === Deno.env.get('CRON_SECRET')` au début.
+- Mettre à jour les jobs `pg_cron` existants pour injecter le header `x-cron-secret`.
+- Vérifier d'abord les jobs cron actuels avec une lecture `cron.job` pour les mettre à jour proprement (utiliser `supabase--insert` puisque ça contient des secrets/URL).
 
 ### Fichiers touchés
-- **Migration SQL** : créer `km_reveal_config` + RLS + seed.
-- **`supabase/functions/km-vote/index.ts`** : calcul période depuis config.
-- **`supabase/functions/km-reveal-tick/index.ts`** (nouveau).
-- **`supabase/functions/km-admin-reveal/index.ts`** (nouveau).
-- **`supabase/config.toml`** : déclarer les 2 nouvelles fonctions (verify_jwt = false pour tick, true pour admin-reveal qui validera le rôle dans le code).
-- **`src/pages/KissMarryPage.tsx`** : refactor logique période + countdown.
-- **`src/components/AdminKmFullResults.tsx`** : ajout panneau config dates + bouton reveal manuel.
-- **`src/hooks/useCountdown.ts`** : étendre pour afficher en jours quand >24h.
-- **Cron** (`supabase--insert`) : pg_cron schedule de `km-reveal-tick` toutes les heures.
+- **Migration SQL** :
+  - `DROP COLUMN profiles.email`
+  - `CREATE OR REPLACE` du trigger `handle_new_user` sans email
+  - `ALTER PUBLICATION supabase_realtime ADD TABLE ticket_messages`
+- **Edge functions** :
+  - `admin-notify-email/index.ts` — escape HTML
+  - `public-contact/index.ts` — escape HTML uniformisé
+  - `ticket-lifecycle/index.ts` — vérif `CRON_SECRET`
+  - `check-auto-close/index.ts` — vérif `CRON_SECRET`
+  - `km-reveal-tick/index.ts` — vérif `CRON_SECRET`
+- **Secret** : `add_secret` pour `CRON_SECRET`
+- **pg_cron** (`supabase--insert`) : refresh des jobs avec le header
+- **Mémoire** : note sur le pattern cron avec secret
 
-### Risques / hypothèses
-- Le format `month_year` reste un `text` libre → on peut y mettre une ISO date sans casser le schéma.
-- Les anciens votes existants (s'il y en a) resteront avec leur `month_year` calendaire et seront simplement invisibles → OK car ce sont des données de test.
-- Fuseau horaire : on stocke en UTC, on affiche en local Europe/Paris.
+### Étapes d'exécution
+1. Demander l'ajout du secret `CRON_SECRET`.
+2. Migration SQL (drop column email + trigger + realtime publication).
+3. Patch des 5 edge functions.
+4. Refresh des jobs pg_cron avec le nouveau header.
+5. Marquer les 4 findings comme résolus (`security--manage_security_finding`).
+
+### Risques
+- **Drop email** : aucun (vérifié, code n'utilise que `auth.users.email` côté admin).
+- **Cron secret** : si l'utilisateur ne crée pas le secret tout de suite, les jobs échouent → on attend l'ajout du secret avant de patcher les fonctions.
+- **Realtime** : `ticket_messages` doit déjà avoir REPLICA IDENTITY (à vérifier en migration).
