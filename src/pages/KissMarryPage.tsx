@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Eye } from 'lucide-react';
 import { PROMO_NAMES } from '@/lib/pari-mutuel';
+import { fetchHiddenNames, filterNames } from '@/lib/visibility';
 import { IntroKissMarry } from '@/components/TabIntro';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -39,6 +40,12 @@ export default function KissMarryPage() {
   const [revealData, setRevealData] = useState<Record<string, { name: string; count: number }[]>>({});
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({});
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set(['coup_soir', 'plan_q']));
+  const [optedOutNames, setOptedOutNames] = useState<Set<string>>(new Set());
+
+  // Fetch users who opted out of Kiss/Marry visibility
+  useEffect(() => {
+    fetchHiddenNames('visible_in_kiss_marry').then(setOptedOutNames);
+  }, []);
 
   // Fetch visibility settings for optional categories
   useEffect(() => {
@@ -68,9 +75,10 @@ export default function KissMarryPage() {
   const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const revealMonthYear = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
 
-  // Filter out user's own name
-  const availableNames = PROMO_NAMES.filter(n =>
-    n.toLowerCase() !== (profile?.display_name || '').toLowerCase()
+  // Filter out user's own name + opted-out users
+  const availableNames = filterNames(
+    PROMO_NAMES.filter(n => n.toLowerCase() !== (profile?.display_name || '').toLowerCase()),
+    optedOutNames
   );
 
   const checkIfVoted = useCallback(async () => {
