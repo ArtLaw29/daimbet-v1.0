@@ -40,6 +40,8 @@
     --gold-dim: 42 60% 35%;
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
+    --warning: 32 95% 55%;
+    --warning-foreground: 220 20% 7%;
 
     --sidebar-background: 220 18% 9%;
     --sidebar-foreground: 40 20% 85%;
