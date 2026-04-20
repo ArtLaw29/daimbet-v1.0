@@ -141,7 +141,7 @@ export default function AdminHarassmentFlags() {
     <div className="space-y-3">
       <div className="rounded-xl border border-border bg-card p-4">
         <h3 className="text-sm font-display flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-orange-500" /> Détection d'acharnement
+          <AlertTriangle className="w-4 h-4 text-warning" /> Détection d'acharnement
         </h3>
         <p className="text-xs text-muted-foreground mt-1">
           Alerte automatique : prénoms cités au moins 2× la moyenne des autres dans les sondages/tournois actifs, Kiss/Marry du mois en cours et simulations (Fantasy Firm, Gouvernement). Aucune action n'est prise automatiquement.
@@ -163,13 +163,13 @@ export default function AdminHarassmentFlags() {
           {flags.map((f) => (
             <div
               key={f.prenom}
-              className="rounded-xl border border-orange-500/40 bg-orange-500/5 p-4 space-y-2"
+              className="rounded-xl border border-warning/40 bg-warning/5 p-4 space-y-2"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-orange-500 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
                   <span className="font-semibold text-sm">{f.prenom}</span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-700 dark:text-orange-300 font-medium">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-warning/20 text-warning font-medium">
                     ×{f.ratio} la moyenne
                   </span>
                 </div>
