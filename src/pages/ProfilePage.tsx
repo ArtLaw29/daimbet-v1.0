@@ -247,7 +247,9 @@ export default function ProfilePage() {
   const resetPassword = async () => {
     if (!user?.email) return;
     setResettingPw(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
     if (error) toast.error('Erreur');
     else toast.success('Un email de réinitialisation a été envoyé ! 📧');
     setResettingPw(false);
