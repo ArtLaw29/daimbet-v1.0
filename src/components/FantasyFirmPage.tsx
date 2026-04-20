@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import TabIntro from '@/components/TabIntro';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
+import ContactFooter from '@/components/ContactFooter';
 
 const ROLES = [
   { id: 'associe', label: 'Associé', icon: '⭐' },
