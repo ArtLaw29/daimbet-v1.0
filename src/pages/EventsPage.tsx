@@ -9,6 +9,8 @@ import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
 import { INTRO_PARIS } from '@/components/TabIntro';
 import BetCard, { type BetWithOptions, type UserWager } from '@/components/BetCard';
 import BetBottomSheet from '@/components/BetBottomSheet';
+import ProposeNewDialog from '@/components/ProposeNewDialog';
+import PendingProposalsSection from '@/components/PendingProposalsSection';
 
 type SortMode = 'urgence' | 'categorie' | 'popularite';
 
@@ -220,6 +222,15 @@ export default function EventsPage() {
         <h1 className="text-3xl font-display gold-text">🎯 Les Paris du Moment</h1>
       </div>
       {INTRO_PARIS}
+
+      {/* Propose a new bet */}
+      <div className="flex justify-center mb-4">
+        <ProposeNewDialog kind="bet" buttonLabel="Propose un pari" buttonVariant="default" onSubmitted={fetchAll} />
+      </div>
+
+      {/* Pending bet proposals (community vote) */}
+      <PendingProposalsSection kind="bet" />
+
 
 
       {/* Sort selector */}

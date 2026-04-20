@@ -27,7 +27,8 @@ export default function ProposeNewDialog({ kind, onSubmitted, buttonLabel, butto
   const [submitting, setSubmitting] = useState(false);
 
   const label = KIND_LABELS[kind];
-  const showOptions = kind === 'sondage' || kind === 'tournoi' || kind === 'bet';
+  const showOptions = kind === 'sondage' || kind === 'tournoi';
+  const isBet = kind === 'bet';
 
   const submit = async () => {
     if (!user || !title.trim()) {
@@ -95,7 +96,7 @@ export default function ProposeNewDialog({ kind, onSubmitted, buttonLabel, butto
           {showOptions && (
             <div>
               <label className="text-xs font-medium mb-1 block">
-                Options (une par ligne) {kind === 'bet' ? '— laisse vide pour OUI/NON' : ''}
+                Options (une par ligne)
               </label>
               <Textarea
                 placeholder={'Option 1\nOption 2\nOption 3'}
