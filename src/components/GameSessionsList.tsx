@@ -55,16 +55,15 @@ export default function GameSessionsList({ gameType, emoji, label }: Props) {
 
     if (items.length > 0) {
       const sessionIds = items.map(s => s.id);
-      
-      // Get participation counts
-      const { data: allParts } = await supabase
-        .from('game_participations')
-        .select('session_id')
-        .in('session_id', sessionIds);
-      
+
+      // Get participation counts via RPC (game_participations is now restricted)
+      const { data: countsData } = await (supabase as any).rpc('get_session_participation_counts', {
+        p_session_ids: sessionIds,
+      });
+
       const counts: Record<string, number> = {};
-      (allParts || []).forEach(p => {
-        counts[p.session_id] = (counts[p.session_id] || 0) + 1;
+      (countsData || []).forEach((p: any) => {
+        counts[p.session_id] = Number(p.participant_count) || 0;
       });
       setParticipationCounts(counts);
 

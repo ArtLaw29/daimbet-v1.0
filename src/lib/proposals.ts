@@ -40,19 +40,13 @@ export async function voteOnProposal(proposalId: string, userId: string, voteTyp
     await supabase.from('daimocratie_votes').insert({ proposal_id: proposalId, user_id: userId, vote: voteType });
   }
 
-  // Recount
-  const { data: votes } = await supabase
-    .from('daimocratie_votes')
-    .select('vote')
-    .eq('proposal_id', proposalId);
-
-  const positives = votes?.filter((v) => v.vote === 'positif').length ?? 0;
-  const negatives = votes?.filter((v) => v.vote === 'negatif').length ?? 0;
-
-  await supabase
-    .from('daimocratie_proposals')
-    .update({ votes_positive: positives, votes_negative: negatives })
-    .eq('id', proposalId);
+  // Recount via SECURITY DEFINER RPC (votes table is now restricted to owner)
+  const { data: counts } = await (supabase as any).rpc('recount_proposal_votes', {
+    p_proposal_id: proposalId,
+  });
+  const row = Array.isArray(counts) ? counts[0] : counts;
+  const positives = Number(row?.positives ?? 0);
+  const negatives = Number(row?.negatives ?? 0);
 
   // Auto-activate if threshold met
   if (meetsThreshold(positives, negatives)) {

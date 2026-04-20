@@ -67,8 +67,7 @@ export default function GouvernementPage() {
   useEffect(() => {
     const fetch = async () => {
       const [gouvRes, profilesRes] = await Promise.all([
-        supabase.from('game_participations').select('*')
-          .eq('session_id', '00000000-0000-0000-0000-000000000001'),
+        (supabase as any).rpc('get_gouvernements_public', { p_session_id: '00000000-0000-0000-0000-000000000001' }),
         supabase.from('profiles').select('user_id, display_name, emoji, balance'),
       ]);
 
@@ -215,10 +214,9 @@ export default function GouvernementPage() {
       setExistingGouv(gouvData);
     }
 
-    // Refresh allGouvs
-    const { data: refreshed } = await supabase.from('game_participations').select('*')
-      .eq('session_id', '00000000-0000-0000-0000-000000000001');
-    setAllGouvs((refreshed || []).map(p => ({ user_id: p.user_id, data: p.data as unknown as GouvData })));
+    // Refresh allGouvs (via SECURITY DEFINER RPC)
+    const { data: refreshed } = await (supabase as any).rpc('get_gouvernements_public', { p_session_id: '00000000-0000-0000-0000-000000000001' });
+    setAllGouvs((refreshed || []).map((p: any) => ({ user_id: p.user_id, data: p.data as unknown as GouvData })));
 
     setLoadingComment(false);
     setSubmitting(false);
