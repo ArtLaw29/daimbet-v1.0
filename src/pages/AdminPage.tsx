@@ -24,6 +24,7 @@ import AdminCreateTicketDialog from '@/components/AdminCreateTicketDialog';
 import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
 import AdminKmFullResults from '@/components/AdminKmFullResults';
+import AdminGouvernements from '@/components/AdminGouvernements';
 import AdminSondages from '@/components/AdminSondages';
 import AdminTournois from '@/components/AdminTournois';
 import AdminModeration from '@/components/AdminModeration';
@@ -61,6 +62,7 @@ const ADMIN_SECTIONS = [
   { id: 'dashboard', label: 'Tableau de bord', emoji: '📊' },
   { id: 'paris', label: 'Paris', emoji: '🎯' },
   { id: 'jeux', label: 'Jeux', emoji: '🎮' },
+  { id: 'gouvernements', label: 'Gouvernements', emoji: '🏛️' },
   { id: 'gazette', label: 'Gazette', emoji: '📰' },
   { id: 'users', label: 'Utilisateurs', emoji: '👥' },
   { id: 'tickets', label: 'Tickets', emoji: '🎫' },
@@ -732,6 +734,7 @@ export default function AdminPage() {
             {activeSection === 'dashboard' && 'Vue d\'ensemble de la plateforme.'}
             {activeSection === 'paris' && 'Créer, gérer et résoudre les paris.'}
             {activeSection === 'jeux' && 'Gérer les sondages, tournois et jeux de la promo.'}
+            {activeSection === 'gouvernements' && 'Modérer les ministères personnalisés créés par les utilisateurs.'}
             {activeSection === 'gazette' && 'Modérer les messages de la Gazette.'}
             {activeSection === 'users' && 'Gérer les comptes, soldes et accès des joueurs.'}
             {activeSection === 'tickets' && 'Répondre aux tickets de support.'}
@@ -1516,6 +1519,11 @@ export default function AdminPage() {
             <TabsContent value="tournois"><AdminTournois /></TabsContent>
           </Tabs>
         )}
+
+        {/* ═══════════════════════════════════════════════ */}
+        {/* ═══════════════ GOUVERNEMENTS ═══════════════ */}
+        {/* ═══════════════════════════════════════════════ */}
+        {activeSection === 'gouvernements' && <AdminGouvernements />}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════════ GAZETTE ═══════════════ */}

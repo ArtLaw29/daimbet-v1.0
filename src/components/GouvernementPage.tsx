@@ -120,21 +120,7 @@ export default function GouvernementPage() {
 
   const isValid = filledCount >= 10 && regalianFilledCount >= 4;
 
-  // Popularity stats
-  const popularityMap = useMemo(() => {
-    const map: Record<string, { count: number; posts: string[] }> = {};
-    allGouvs.forEach(g => {
-      if (g.user_id === user?.id) return;
-      Object.entries(g.data.ministers || {}).forEach(([post, name]) => {
-        if (!name) return;
-        if (!map[name]) map[name] = { count: 0, posts: [] };
-        map[name].count++;
-        const label = FIXED_MINISTRIES.find(m => m.id === post)?.label || post;
-        map[name].posts.push(label);
-      });
-    });
-    return map;
-  }, [allGouvs, user]);
+  // (Popularity stats removed — never displayed publicly nor sent to AI)
 
   // Get user rank
   const userRank = useMemo(() => {
@@ -167,12 +153,7 @@ export default function GouvernementPage() {
     const maleCount = allSelectedNames.filter(n => !FEMALE_NAMES.includes(n)).length;
     const femaleCount = allSelectedNames.filter(n => FEMALE_NAMES.includes(n)).length;
 
-    // Build popularity stats text
-    const popText = allSelectedNames.map(name => {
-      const pop = popularityMap[name];
-      if (!pop) return `${name}: jamais nommé(e) ailleurs`;
-      return `${name}: nommé(e) ${pop.count} fois (postes: ${pop.posts.slice(0, 3).join(', ')})`;
-    }).join('\n');
+    // (popularity text removed)
 
     const gouvData: GouvData = {
       ministers,
@@ -199,7 +180,6 @@ export default function GouvernementPage() {
           premierMinisterRank: userRank,
           premierMinisterBalance: profile.balance,
           totalPlayers: Object.keys(profiles).length,
-          popularityStats: popText,
           regaliansFilled: regalianFilledCount,
           regaliansTotal: 5,
           totalFilled: filledCount,
