@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
-  LogOut, MessageSquarePlus, Coins, History, XCircle, Shield, Clock,
+  LogOut, Coins, History, XCircle, Shield, Clock,
   Send, ChevronDown, ChevronUp, TrendingUp, TrendingDown, KeyRound,
   Ticket, Plus,
 } from 'lucide-react';
@@ -15,7 +15,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Eye } from 'lucide-react';
-import ProposalForm from '@/components/ProposalForm';
 import TicketThread from '@/components/TicketThread';
 import { calculateEstimatedNetGain } from '@/lib/pari-mutuel';
 import type { Tables } from '@/integrations/supabase/types';
@@ -51,7 +50,6 @@ const CONTACT_SUBJECTS = [
 
 export default function ProfilePage() {
   const { user, profile, signOut, refreshProfile } = useAuth();
-  const [showProposalForm, setShowProposalForm] = useState(false);
   const [showCharter, setShowCharter] = useState(false);
 
   // Active wagers
@@ -525,10 +523,6 @@ export default function ProfilePage() {
 
       {/* ─── ACTIONS ─── */}
       <div className="space-y-3">
-        <Button onClick={() => setShowProposalForm(true)} className="w-full gold-gradient font-semibold">
-          <MessageSquarePlus className="w-4 h-4 mr-2" /> Soumettre une proposition 🗳️
-        </Button>
-
         <div className="grid grid-cols-2 gap-3">
           <Button variant="outline" size="sm" onClick={() => setShowCharter(true)}>
             <Shield className="w-4 h-4 mr-1" /> Charte
@@ -544,16 +538,6 @@ export default function ProfilePage() {
       </div>
 
       {/* ─── MODALS ─── */}
-      {/* Proposal form */}
-      <Dialog open={showProposalForm} onOpenChange={setShowProposalForm}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-display gold-text">🗳️ Nouvelle Proposition</DialogTitle>
-          </DialogHeader>
-          <ProposalForm onClose={() => setShowProposalForm(false)} onSubmitted={() => setShowProposalForm(false)} />
-        </DialogContent>
-      </Dialog>
-
       {/* Charter */}
       <Dialog open={showCharter} onOpenChange={setShowCharter}>
         <DialogContent className="max-w-lg">
