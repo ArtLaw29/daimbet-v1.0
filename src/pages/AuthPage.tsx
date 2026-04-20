@@ -201,6 +201,18 @@ export default function AuthPage() {
 
   const isFormValid = canSignup();
 
+  // ─── RULES STEP (during signup) ───
+  if (showRules) {
+    return (
+      <RulesScreen
+        acceptLabel="J'accepte et je crée mon compte"
+        onAccept={performSignup}
+        onBack={() => setShowRules(false)}
+        loading={loading}
+      />
+    );
+  }
+
   // ─── POST-SIGNUP: Email sent confirmation ───
   if (signupDone) {
     return (
