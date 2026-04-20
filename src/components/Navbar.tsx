@@ -31,6 +31,7 @@ export default function Navbar() {
   const [rank, setRank] = useState<number | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
   const [liveBalance, setLiveBalance] = useState(profile?.balance ?? 0);
+  const [hasUnreadTicket, setHasUnreadTicket] = useState(false);
 
   // Calculate rank
   useEffect(() => {
