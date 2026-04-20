@@ -1,35 +1,39 @@
 
-## Plan : bouton "Cacher" pour chaque jeu (indépendant de "Suspendre")
+## Plan : Écran "Règles" obligatoire à l'inscription
 
-### Contexte actuel
-- Côté admin, chaque jeu a déjà un toggle **Suspendre** (`platform_settings` clé `suspend_<gameId>`) → affiche "Jeu suspendu" mais l'onglet reste visible.
-- Il manque un toggle **Cacher** : l'onglet disparaît totalement de la barre des jeux pour les utilisateurs.
+### 1. Migration BDD
+Ajouter à `profiles` :
+- `rules_accepted` (boolean, default false)
+- `rules_accepted_at` (timestamptz, nullable)
 
-### Approche
-Ajouter un second flag indépendant `hide_<gameId>` dans `platform_settings` (même mécanique que `suspend_`), avec son propre bouton dans l'admin.
+Mettre à jour le trigger `handle_new_user` pour insérer `rules_accepted = true` et `rules_accepted_at = now()` (puisque les règles sont acceptées **avant** que `signUp` ne soit appelé).
 
-### Modifications
+### 2. `src/pages/AuthPage.tsx`
+- Ajouter un state `step: 'form' | 'rules'`.
+- Quand l'utilisateur soumet le form d'inscription valide → ne pas appeler `signUp` directement, basculer sur `step = 'rules'`.
+- Nouvel écran plein-page "Règles de DaimBet" avec le contenu fourni + bouton **"J'accepte et je crée mon compte"**.
+- Le clic sur ce bouton appelle `supabase.auth.signUp(...)` (logique actuelle déplacée).
+- Bouton "Retour" pour revenir au formulaire.
 
-1. **`src/components/AdminGameSessions.tsx`** (ou la section qui gère les toggles Suspendre)
-   - Ajouter un second bouton **Cacher / Afficher** par jeu (5 jeux : daimocratie, you-decide, gouvernement, fantasy-firm, kiss-marry).
-   - Lecture/écriture de `platform_settings` clé `hide_<gameId>` (valeur `'true'`/`'false'`).
-   - UI : icône Eye/EyeOff + libellé clair, distinct visuellement du bouton Suspendre.
+### 3. Nouveau composant `src/components/RulesScreen.tsx`
+Composant réutilisable affichant les règles avec un bouton d'action paramétrable (label + onAccept). Utilisé à la fois :
+- pendant l'inscription (label : "J'accepte et je crée mon compte")
+- au login si `rules_accepted = false` (label : "J'accepte les règles")
 
-2. **`src/pages/GamesPage.tsx`**
-   - Étendre le `useEffect` qui fetch les settings pour aussi récupérer les clés `hide_*`.
-   - Filtrer `GAME_TABS` : si `hidden[tab.id]` → ne pas afficher l'onglet du tout.
-   - Si l'onglet actif devient caché → basculer sur le premier onglet visible.
-   - Si **tous** les jeux sont cachés → afficher un message "Aucun jeu disponible pour le moment".
+### 4. `src/contexts/AuthContext.tsx`
+- Ajouter `rulesAccepted: boolean` au context (lu depuis `profile.rules_accepted`).
 
-### Sémantique
-- **Suspendre** : onglet visible mais grisé + message "Jeu suspendu" (utilisateur sait qu'il existe).
-- **Cacher** : onglet invisible (utilisateur ne sait pas qu'il existe). Indépendants.
+### 5. `src/App.tsx` (garde-fou login)
+Dans la branche "LOGGED IN", si `rulesAccepted === false` et `!isAdmin` → afficher `<RulesScreen onAccept={...}>` plein écran à la place de toutes les routes. Le `onAccept` met à jour `profiles.rules_accepted = true, rules_accepted_at = now()` puis `refreshProfile()`.
+
+### Fichiers (4 + 1 migration)
+- ➕ Migration SQL (colonnes + trigger update)
+- ➕ `src/components/RulesScreen.tsx`
+- ✏️ `src/pages/AuthPage.tsx` (étape règles avant signUp)
+- ✏️ `src/contexts/AuthContext.tsx` (expose rulesAccepted)
+- ✏️ `src/App.tsx` (garde-fou)
 
 ### Hors-scope
-- Pas de migration SQL (utilise `platform_settings` existant).
-- Pas de changement de logique de jeu.
-- Pas de modification de la navbar principale (jeux gérés via la sous-nav `GamesPage`).
-
-### Fichiers touchés (2)
-- `src/components/AdminGameSessions.tsx`
-- `src/pages/GamesPage.tsx`
+- Pas de modif du flux admin.
+- Pas de modif des autres écrans/jeux.
+- Conserve le système charter existant (silencieux, indépendant) — les nouvelles règles sont une couche distincte plus stricte.
