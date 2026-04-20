@@ -49,14 +49,6 @@ const purgeAllGameData = async (supabase: any, errors: string[]) => {
     console.log("Deleted all game_sessions");
   }
 
-  // Delete related content reports
-  const { error: repErr } = await supabase
-    .from("content_reports")
-    .delete()
-    .neq("id", ZERO_UUID);
-  if (!pushError(errors, "content_reports (purge)", repErr)) {
-    console.log("Deleted all content_reports");
-  }
 };
 
 Deno.serve(async (req) => {
@@ -223,7 +215,6 @@ Deno.serve(async (req) => {
         "bet_options",
         "bets",
         "kiss_marry_votes",
-        "content_reports",
         "solde_history",
         "liquidity_injections",
         "admin_notifications",

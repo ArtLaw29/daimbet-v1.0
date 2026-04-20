@@ -27,11 +27,27 @@ export default function AdminGouvernements() {
 
   useEffect(() => {
     (async () => {
+      // Lookup the active gouvernement session dynamically (survives nuclear resets)
+      const { data: govSession } = await supabase
+        .from('game_sessions')
+        .select('id')
+        .eq('game_type', 'gouvernement')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!govSession) {
+        setGouvs([]);
+        setProfiles({});
+        setLoading(false);
+        return;
+      }
+
       const [{ data: parts }, { data: profs }] = await Promise.all([
         supabase
           .from('game_participations')
           .select('id, user_id, created_at, data')
-          .eq('session_id', '00000000-0000-0000-0000-000000000001')
+          .eq('session_id', govSession.id)
           .order('created_at', { ascending: false }),
         supabase.from('profiles').select('user_id, display_name, emoji'),
       ]);
