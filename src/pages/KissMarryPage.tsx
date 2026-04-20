@@ -360,6 +360,13 @@ export default function KissMarryPage() {
       </div>
       <IntroKissMarry />
 
+      {countdown && nextRevealDate && (
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mb-4 mt-2">
+          <CalendarClock className="w-3.5 h-3.5 text-primary/70" />
+          <span>Révélation dans <span className="text-primary font-semibold">{countdown.text}</span></span>
+        </div>
+      )}
+
       <div className="flex justify-center mt-2 mb-2">
         <ProposeNewDialog kind="kiss_marry" buttonLabel="Proposer une catégorie" />
       </div>
