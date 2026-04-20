@@ -88,11 +88,11 @@ export default function TournoiPage() {
     if (items.length > 0) {
       const ids = items.map(s => s.id);
       const [countsRes, myRes] = await Promise.all([
-        supabase.from('game_participations').select('session_id').in('session_id', ids),
+        (supabase as any).rpc('get_session_participation_counts', { p_session_ids: ids }),
         user ? supabase.from('game_participations').select('*').in('session_id', ids).eq('user_id', user.id) : null,
       ]);
       const counts: Record<string, number> = {};
-      (countsRes.data || []).forEach(p => { counts[p.session_id] = (counts[p.session_id] || 0) + 1; });
+      ((countsRes as any).data || []).forEach((p: any) => { counts[p.session_id] = Number(p.participant_count) || 0; });
       setParticipationCounts(counts);
       if (myRes?.data) {
         const map: Record<string, Participation> = {};

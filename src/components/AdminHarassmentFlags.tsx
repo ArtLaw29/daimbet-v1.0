@@ -48,10 +48,7 @@ export default function AdminHarassmentFlags() {
     // 2. Participations from active sondages/tournois (votes mentioning a name)
     if (sessions && sessions.length > 0) {
       const ids = sessions.map((s: any) => s.id);
-      const { data: parts } = await supabase
-        .from('game_participations')
-        .select('session_id, data')
-        .in('session_id', ids);
+      const { data: parts } = await (supabase as any).rpc('get_session_data_for_harassment', { p_session_ids: ids });
       (parts || []).forEach((p: any) => {
         const label = sessionTitleById[p.session_id] || 'Session';
         const d = p.data || {};
@@ -85,10 +82,7 @@ export default function AdminHarassmentFlags() {
     });
 
     if (simIds.length > 0) {
-      const { data: simParts } = await supabase
-        .from('game_participations')
-        .select('session_id, data')
-        .in('session_id', simIds);
+      const { data: simParts } = await (supabase as any).rpc('get_session_data_for_harassment', { p_session_ids: simIds });
       (simParts || []).forEach((p: any) => {
         const label = labelById[p.session_id] || 'Simulation';
         const d = p.data || {};

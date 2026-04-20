@@ -107,21 +107,30 @@ export default function SondagePage() {
 
     const allIds = [...active, ...archived].map(s => s.id);
     if (allIds.length > 0) {
-      const [countsRes, myRes, allPartsRes] = await Promise.all([
-        supabase.from('game_participations').select('session_id').in('session_id', allIds),
+      const [countsRes, myRes, combosRes] = await Promise.all([
+        (supabase as any).rpc('get_session_participation_counts', { p_session_ids: allIds }),
         user ? supabase.from('game_participations').select('*').in('session_id', allIds).eq('user_id', user.id) : Promise.resolve({ data: [] }),
-        supabase.from('game_participations').select('*').in('session_id', allIds),
+        // Combos publics (sans pronostic ni mise) — un appel par session combo
+        Promise.all(
+          [...active, ...archived]
+            .filter(s => (s.config as any)?.format === 'combinaison')
+            .map(s => (supabase as any).rpc('get_sondage_combos_public', { p_session_id: s.id })
+              .then((r: any) => ({ id: s.id, rows: r.data || [] })))
+        ),
       ]);
       const counts: Record<string, number> = {};
-      (countsRes.data || []).forEach((p: any) => { counts[p.session_id] = (counts[p.session_id] || 0) + 1; });
+      ((countsRes as any).data || []).forEach((p: any) => { counts[p.session_id] = Number(p.participant_count) || 0; });
       setParticipationCounts(counts);
       const uMap: Record<string, Participation> = {};
       ((myRes as any).data || []).forEach((p: any) => { uMap[p.session_id] = p; });
       setUserParticipations(uMap);
       const aMap: Record<string, Participation[]> = {};
-      ((allPartsRes as any).data || []).forEach((p: any) => {
-        if (!aMap[p.session_id]) aMap[p.session_id] = [];
-        aMap[p.session_id].push(p);
+      (combosRes as any[]).forEach((entry: any) => {
+        aMap[entry.id] = (entry.rows || []).map((r: any) => ({
+          session_id: entry.id,
+          user_id: r.user_id,
+          data: { combo: r.combo },
+        })) as any;
       });
       setAllParticipations(aMap);
     }
