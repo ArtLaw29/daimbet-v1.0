@@ -83,6 +83,34 @@ export default function Navbar() {
     };
   }, [user, profile]);
 
+  // Track unread admin replies → red badge on Profil tab
+  useEffect(() => {
+    if (!user) { setHasUnreadTicket(false); return; }
+
+    const computeUnread = async () => {
+      const { data } = await supabase
+        .from('tickets')
+        .select('admin_replied_at, user_last_seen_at')
+        .eq('user_id', user.id);
+      const unread = (data || []).some((t: any) => {
+        if (!t.admin_replied_at) return false;
+        if (!t.user_last_seen_at) return true;
+        return new Date(t.admin_replied_at) > new Date(t.user_last_seen_at);
+      });
+      setHasUnreadTicket(unread);
+    };
+
+    computeUnread();
+
+    const channel = supabase
+      .channel(`tickets-badge-${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `user_id=eq.${user.id}` }, () => computeUnread())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ticket_messages' }, () => computeUnread())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, location.pathname]);
+
   // Filter tabs based on admin config
   const visibleNavTabs = ALL_TABS.filter((tab) => {
     if (!tab.configKey) return true; // non-maskable tabs always show
