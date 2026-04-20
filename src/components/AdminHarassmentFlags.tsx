@@ -15,8 +15,7 @@ interface FlagRow {
   sources: string[];
 }
 
-const FANTASY_SESSION_ID = '00000000-0000-0000-0000-000000000002';
-const GOUV_SESSION_ID = '00000000-0000-0000-0000-000000000001';
+// Session IDs are looked up dynamically (game_type) to survive nuclear resets.
 
 export default function AdminHarassmentFlags() {
   const [loading, setLoading] = useState(true);
@@ -74,24 +73,36 @@ export default function AdminHarassmentFlags() {
       }
     });
 
-    // 4. Fantasy Firm & Gouvernement (active simulations)
-    const { data: simParts } = await supabase
-      .from('game_participations')
-      .select('session_id, data')
-      .in('session_id', [FANTASY_SESSION_ID, GOUV_SESSION_ID]);
-    (simParts || []).forEach((p: any) => {
-      const label = p.session_id === FANTASY_SESSION_ID ? 'Fantasy Firm' : 'Gouvernement';
-      const d = p.data || {};
-      if (Array.isArray(d.members)) {
-        d.members.forEach((m: any) => m?.name && all.push({ prenom: m.name, source: label }));
-      }
-      if (d.ministers && typeof d.ministers === 'object') {
-        Object.values(d.ministers).forEach((v: any) => typeof v === 'string' && v && all.push({ prenom: v, source: label }));
-      }
-      if (Array.isArray(d.custom_ministries)) {
-        d.custom_ministries.forEach((cm: any) => cm?.person && all.push({ prenom: cm.person, source: label }));
-      }
+    // 4. Fantasy Firm & Gouvernement (latest active simulation sessions, dynamic lookup)
+    const { data: simSessions } = await supabase
+      .from('game_sessions')
+      .select('id, game_type')
+      .in('game_type', ['fantasy', 'gouvernement']);
+    const simIds = (simSessions || []).map((s: any) => s.id);
+    const labelById: Record<string, string> = {};
+    (simSessions || []).forEach((s: any) => {
+      labelById[s.id] = s.game_type === 'fantasy' ? 'Fantasy Firm' : 'Gouvernement';
     });
+
+    if (simIds.length > 0) {
+      const { data: simParts } = await supabase
+        .from('game_participations')
+        .select('session_id, data')
+        .in('session_id', simIds);
+      (simParts || []).forEach((p: any) => {
+        const label = labelById[p.session_id] || 'Simulation';
+        const d = p.data || {};
+        if (Array.isArray(d.members)) {
+          d.members.forEach((m: any) => m?.name && all.push({ prenom: m.name, source: label }));
+        }
+        if (d.ministers && typeof d.ministers === 'object') {
+          Object.values(d.ministers).forEach((v: any) => typeof v === 'string' && v && all.push({ prenom: v, source: label }));
+        }
+        if (Array.isArray(d.custom_ministries)) {
+          d.custom_ministries.forEach((cm: any) => cm?.person && all.push({ prenom: cm.person, source: label }));
+        }
+      });
+    }
 
     setCitations(all);
     setLoading(false);
