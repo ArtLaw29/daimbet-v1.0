@@ -49,6 +49,7 @@ export default function AuthPage() {
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const [signupDone, setSignupDone] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
+  const [showRules, setShowRules] = useState(false);
 
   const [takenNames, setTakenNames] = useState<Set<string>>(new Set());
   const [checkingName, setCheckingName] = useState(false);
@@ -152,6 +153,11 @@ export default function AuthPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSignup()) return;
+    // Show rules screen instead of immediately creating account
+    setShowRules(true);
+  };
+
+  const performSignup = async () => {
     setLoading(true);
 
     const { data: existingProfile } = await supabase
@@ -165,6 +171,7 @@ export default function AuthPage() {
       setNameAvailable(false);
       setTakenNames(prev => new Set([...prev, selectedName]));
       setLoading(false);
+      setShowRules(false);
       return;
     }
 
@@ -174,7 +181,7 @@ export default function AuthPage() {
       email,
       password,
       options: {
-        data: { display_name: selectedName, emoji },
+        data: { display_name: selectedName, emoji, rules_accepted: true },
         emailRedirectTo: `${window.location.origin}/welcome`,
       },
     });
@@ -182,11 +189,13 @@ export default function AuthPage() {
     if (error) {
       toast.error(error.message);
       setLoading(false);
+      setShowRules(false);
       return;
     }
 
     setSignupEmail(email);
     setSignupDone(true);
+    setShowRules(false);
     setLoading(false);
   };
 
