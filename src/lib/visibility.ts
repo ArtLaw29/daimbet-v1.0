@@ -7,10 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 export async function fetchHiddenNames(
   field: 'visible_in_sondages' | 'visible_in_kiss_marry'
 ): Promise<Set<string>> {
-  const { data } = await (supabase
-    .from('profiles_public') as any)
-    .select('display_name,' + field) as any)
-    .eq(field, false);
+  const { data } = await ((supabase as any)
+    .from('profiles_public')
+    .select('display_name,' + field)
+    .eq(field, false));
   const set = new Set<string>();
   (data || []).forEach((p: any) => {
     if (p.display_name) set.add(String(p.display_name).toLowerCase());
