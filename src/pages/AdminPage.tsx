@@ -270,7 +270,7 @@ export default function AdminPage() {
     // Fetch proposer names
     if (props.length > 0) {
       const uids = [...new Set(props.map(p => p.user_id))];
-      const { data: pNames } = await supabase.from('profiles').select('user_id, display_name').in('user_id', uids);
+      const { data: pNames } = await (supabase as any).from('profiles_public').select('user_id, display_name').in('user_id', uids);
       if (pNames) {
         const m: Record<string, string> = {};
         pNames.forEach(p => { m[p.user_id] = p.display_name; });
@@ -282,7 +282,7 @@ export default function AdminPage() {
     setTierceSuggestions(suggestions);
     if (suggestions.length > 0) {
       const sUids = [...new Set(suggestions.map((s: any) => s.suggested_by))];
-      const { data: sNames } = await supabase.from('profiles').select('user_id, display_name').in('user_id', sUids);
+      const { data: sNames } = await (supabase as any).from('profiles_public').select('user_id, display_name').in('user_id', sUids);
       if (sNames) {
         const sm: Record<string, string> = {};
         sNames.forEach((p: any) => { sm[p.user_id] = p.display_name; });

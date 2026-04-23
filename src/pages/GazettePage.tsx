@@ -28,7 +28,7 @@ export default function GazettePage() {
     const [msgRes, reactRes, profilesRes] = await Promise.all([
       supabase.from('gazette_messages').select('*').eq('is_deleted', false).order('created_at', { ascending: false }),
       supabase.from('gazette_reactions').select('*'),
-      supabase.from('profiles').select('*'),
+      (supabase as any).from('profiles_public').select('*'),
     ]);
     setMessages(msgRes.data || []);
     setReactions(reactRes.data || []);

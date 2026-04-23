@@ -8,7 +8,7 @@ export async function fetchHiddenNames(
   field: 'visible_in_sondages' | 'visible_in_kiss_marry'
 ): Promise<Set<string>> {
   const { data } = await (supabase
-    .from('profiles')
+    .from('profiles_public') as any)
     .select('display_name,' + field) as any)
     .eq(field, false);
   const set = new Set<string>();

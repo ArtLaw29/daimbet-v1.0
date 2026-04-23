@@ -56,7 +56,7 @@ export default function AdminSondages() {
 
     const userIds = [...new Set(parts.map(p => p.user_id))];
     if (userIds.length > 0) {
-      const { data: profs } = await supabase.from('profiles').select('user_id, display_name').in('user_id', userIds);
+      const { data: profs } = await (supabase as any).from('profiles_public').select('user_id, display_name').in('user_id', userIds);
       const map: Record<string, string> = {};
       (profs || []).forEach(p => { map[p.user_id] = p.display_name; });
       setProfiles(map);

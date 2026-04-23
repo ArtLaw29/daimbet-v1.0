@@ -58,7 +58,7 @@ export default function AdminTournois() {
       const ids = items.map(s => s.id);
       const [partsRes, profilesRes] = await Promise.all([
         supabase.from('game_participations').select('*').in('session_id', ids),
-        supabase.from('profiles').select('user_id, display_name, emoji'),
+        (supabase as any).from('profiles_public').select('user_id, display_name, emoji'),
       ]);
       const partsMap: Record<string, Participation[]> = {};
       (partsRes.data as Participation[] || []).forEach(p => {
