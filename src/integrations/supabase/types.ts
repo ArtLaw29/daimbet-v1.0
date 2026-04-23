@@ -850,6 +850,36 @@ export type Database = {
       }
     }
     Views: {
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          balance: number | null
+          display_name: string | null
+          emoji: string | null
+          user_id: string | null
+          visible_in_kiss_marry: boolean | null
+          visible_in_sondages: boolean | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          balance?: number | null
+          display_name?: string | null
+          emoji?: string | null
+          user_id?: string | null
+          visible_in_kiss_marry?: boolean | null
+          visible_in_sondages?: boolean | null
+        }
+        Update: {
+          avatar_url?: string | null
+          balance?: number | null
+          display_name?: string | null
+          emoji?: string | null
+          user_id?: string | null
+          visible_in_kiss_marry?: boolean | null
+          visible_in_sondages?: boolean | null
+        }
+        Relationships: []
+      }
       tierce_suggestions_public: {
         Row: {
           bet_id: string | null
