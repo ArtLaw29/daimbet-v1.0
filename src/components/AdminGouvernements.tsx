@@ -49,7 +49,7 @@ export default function AdminGouvernements() {
           .select('id, user_id, created_at, data')
           .eq('session_id', govSession.id)
           .order('created_at', { ascending: false }),
-        supabase.from('profiles').select('user_id, display_name, emoji'),
+        (supabase as any).from('profiles_public').select('user_id, display_name, emoji'),
       ]);
       setGouvs((parts as any[]) || []);
       const map: Record<string, ProfileLite> = {};

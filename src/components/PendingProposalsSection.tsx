@@ -43,7 +43,7 @@ export default function PendingProposalsSection({ kind, title }: Props) {
 
     if (items.length > 0) {
       const uids = [...new Set(items.map((p) => p.user_id))];
-      const { data: profs } = await supabase.from('profiles').select('user_id, display_name').in('user_id', uids);
+      const { data: profs } = await (supabase as any).from('profiles_public').select('user_id, display_name').in('user_id', uids);
       if (profs) {
         const map: Record<string, string> = {};
         profs.forEach((p) => { map[p.user_id] = p.display_name; });

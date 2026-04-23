@@ -75,7 +75,7 @@ export default function AuthPage() {
   }, [forgotCooldown]);
 
   const fetchTakenNames = async () => {
-    const { data } = await supabase.from('profiles').select('display_name');
+    const { data } = await (supabase as any).from('profiles_public').select('display_name');
     if (data) {
       setTakenNames(new Set(data.map(p => p.display_name)));
     }

@@ -41,7 +41,7 @@ export default function LeaderboardPage() {
   const fetchAll = useCallback(async () => {
     const monday = getMonday().toISOString();
     const [profRes, histRes, weekGainsRes] = await Promise.all([
-      supabase.from('profiles').select('*'),
+      (supabase as any).from('profiles_public').select('*'),
       supabase.from('solde_history').select('*').gte('created_at', getFirstOfMonth().toISOString()),
       supabase.from('solde_history').select('id').gte('created_at', monday).gt('delta_dc', 0).limit(1),
     ]);

@@ -49,7 +49,7 @@ export default function AdminModerationLog() {
     // Fetch actor display names
     const ids = Array.from(new Set(list.map(e => e.actor_id).filter(Boolean))) as string[];
     if (ids.length > 0) {
-      const { data: profs } = await supabase.from('profiles').select('user_id, display_name').in('user_id', ids);
+      const { data: profs } = await (supabase as any).from('profiles_public').select('user_id, display_name').in('user_id', ids);
       const map: Record<string, string> = {};
       (profs || []).forEach(p => { map[p.user_id] = p.display_name; });
       setActorNames(map);

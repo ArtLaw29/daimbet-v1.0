@@ -68,7 +68,7 @@ export default function GouvernementPage() {
     const fetch = async () => {
       const [gouvRes, profilesRes] = await Promise.all([
         (supabase as any).rpc('get_gouvernements_public', { p_session_id: '00000000-0000-0000-0000-000000000001' }),
-        supabase.from('profiles').select('user_id, display_name, emoji, balance'),
+        (supabase as any).from('profiles_public').select('user_id, display_name, emoji, balance'),
       ]);
 
       const allData = (gouvRes.data || []).map(p => ({
