@@ -1,61 +1,34 @@
+# Remplacement Sophie/Sonia → Sonya
 
+## Contexte
 
-## Diagnostic — Reset password ne fonctionne pas
+Une recherche dans la base de données (profils, votes Kiss/Marry, suggestions Tiercé, paris, options, sondages, tournois, gazette, propositions Pipeline) **n'a retourné aucune occurrence** de "Sophie" ou "Sonia". Ces prénoms n'existent donc que dans le **code source**, dans les listes de prénoms en dur de la promo.
 
-### Cause racine (preuves dans les logs auth)
-Logs auth `2026-04-20T09:51` :
-1. `09:51:23` → `user_recovery_requested` envoyé ✅ (le mail part)
-2. `09:51:38` → `/verify` réussi MAIS log_type = **`login`** (pas recovery) → l'utilisateur est **connecté silencieusement** au lieu d'être amené sur l'écran reset
-3. `09:51:45` & `09:52:32` → autres clics sur le lien : **`403 One-time token not found`** (le token a déjà été consommé au premier clic)
+Trois fichiers contiennent ces prénoms :
 
-### Trois problèmes cumulés
+1. **`src/lib/pari-mutuel.ts`** — liste maîtresse des prénoms de la promo (utilisée pour Tiercé du Daim, autocomplétion, etc.) → contient `'Sonia'`
+2. **`src/components/GouvernementPage.tsx`** — liste des prénoms candidats pour le jeu Gouvernement → contient `'Sonia'`
+3. **`src/components/FantasyFirmPage.tsx`** — config Daim Fantasy Firm → contient `'Sophie'` (clé de spécialité + nom complet "Sophie Grinstein")
 
-**Problème #1 — Le token recovery est consommé par un préfetch / double-clic**
-Le lien de reset est un OTP **à usage unique**. Quand l'email client (Outlook, Gmail, antivirus, Safe Links Microsoft) ou le navigateur fait un préfetch du lien, le token est consommé côté Supabase → l'utilisateur arrive avec un token déjà mort. Résultat : `303` vers le site, sans hash `#access_token=…&type=recovery` → la page ne détecte pas le mode recovery.
+## Modifications
 
-**Problème #2 — `ProfilePage.resetPassword` n'envoie PAS de `redirectTo`**
-```ts
-// src/pages/ProfilePage.tsx:250
-await supabase.auth.resetPasswordForEmail(user.email); // ❌ pas de redirectTo
-```
-Sans `redirectTo`, Supabase utilise la **Site URL** par défaut du projet → l'utilisateur est redirigé vers `/` (qui le connecte directement vu qu'il a une session) au lieu de `/reset-password`. C'est exactement ce qu'on voit dans le log : `/verify` → `login` event → redirection vers la home.
+### 1. `src/lib/pari-mutuel.ts`
+- Remplacer `'Sonia'` par `'Sonya'` dans la liste `PROMO_PRENOMS`.
+- Re-trier alphabétiquement si la liste est triée (Sonya reste après Sofia).
 
-**Problème #3 — `ResetPasswordPage` ne gère pas le cas "user déjà loggué + event PASSWORD_RECOVERY"**
-Quand le user est déjà connecté (cas Outlook qui ouvre dans la même session), Supabase déclenche bien `PASSWORD_RECOVERY` mais notre `App.tsx` route `/reset-password` derrière Navbar. Si la route appelée est `/` (à cause du #2), on n'arrive même pas sur la page.
+### 2. `src/components/GouvernementPage.tsx`
+- Remplacer `'Sonia'` par `'Sonya'` dans la liste de prénoms (ligne 40).
 
-### Plan de correction
+### 3. `src/components/FantasyFirmPage.tsx`
+- Remplacer la clé `'Sophie': 'Droit bancaire/financier et boursier'` par `'Sonya': 'Droit bancaire/financier et boursier'`.
+- Remplacer `'Sophie': 'Sophie Grinstein'` par `'Sonya': 'Sonya Grinstein'` dans la map des noms complets.
+- Vérifier qu'aucune autre référence à `'Sophie'` ne subsiste dans le fichier (ex: ordre d'affichage, exports).
 
-**Fix 1 — Ajouter `redirectTo` dans `ProfilePage.resetPassword`** (1 ligne)
-```ts
-await supabase.auth.resetPasswordForEmail(user.email, {
-  redirectTo: `${window.location.origin}/reset-password`,
-});
-```
+## Vérification post-changement
 
-**Fix 2 — Robustifier `ResetPasswordPage`** :
-- Lire à la fois `window.location.hash` ET `window.location.search` (selon la version du flow Supabase, le token arrive en query ou en fragment).
-- Si on détecte un `access_token` + `type=recovery` dans le hash, appeler `supabase.auth.setSession(...)` explicitement pour forcer l'event `PASSWORD_RECOVERY`.
-- Allonger le timeout de fallback (1500 ms → 4000 ms) pour laisser le temps à `onAuthStateChange` de se déclencher.
-- Si `error_code=otp_expired` ou `access_denied` dans le hash, afficher l'écran "Lien expiré" avec bouton "Renvoyer" qui appelle directement `resetPasswordForEmail` sur l'email courant.
+- `grep -ri "Sophie\|Sonia"` sur `src/` doit ne rien retourner.
+- Lancer le build TypeScript pour s'assurer qu'aucune référence cassée ne subsiste (les maps de FantasyFirm sont consommées par clé).
 
-**Fix 3 — Intercepter `PASSWORD_RECOVERY` au niveau global (`AuthContext`)**
-Si l'event `PASSWORD_RECOVERY` arrive alors qu'on n'est pas sur `/reset-password` (cas où Supabase redirige vers `/` à cause d'une mauvaise Site URL ou d'un préfetch), forcer `navigate('/reset-password')` automatiquement. Sinon le user est connecté sur la home sans jamais voir l'écran reset.
+## Note importante
 
-**Fix 4 — Vérifier la config Supabase Auth** (info à donner à l'utilisateur)
-Dans **Cloud → Auth → URL Configuration**, vérifier que :
-- **Site URL** = `https://daimbet.lovable.app`
-- **Redirect URLs** contient bien `https://daimbet.lovable.app/reset-password` ET `https://id-preview--*.lovable.app/reset-password` (preview).
-Si `/reset-password` n'est pas whitelisté, Supabase **silencieusement** rabat sur la Site URL (`/`) → exactement le bug observé.
-
-### Fichiers modifiés
-- `src/pages/ProfilePage.tsx` — ajouter `redirectTo`
-- `src/pages/ResetPasswordPage.tsx` — gérer query string + setSession + écran "lien expiré" enrichi
-- `src/contexts/AuthContext.tsx` — listener global `PASSWORD_RECOVERY` → redirect
-
-### Risques
-- Le Fix 3 ne doit pas créer de boucle de navigation (guard sur `location.pathname !== '/reset-password'`).
-- Si la cause #4 (Redirect URLs non whitelistée) est réelle, seul l'utilisateur peut la corriger côté config — je le signalerai clairement après la correction code.
-
-### Test final
-Demander un nouveau lien depuis `/connexion`, ouvrir l'email **dans un onglet privé** (évite préfetch Outlook), vérifier qu'on atterrit bien sur le formulaire "Nouveau mot de passe".
-
+Aucune migration BDD n'est nécessaire : aucune donnée existante ne référence ces prénoms. Si des votes/paris ont été créés **après** ce changement avec l'ancien nom, ils ne seront pas affectés rétroactivement (mais la requête actuelle confirme qu'il n'y en a aucun).

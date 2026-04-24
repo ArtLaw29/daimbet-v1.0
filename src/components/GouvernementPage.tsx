@@ -37,7 +37,7 @@ const FEMALE_NAMES = [
   'Alice', 'Anaïs', 'Angélique', 'Beatrice', 'Carla', 'Celia', 'Clara', 'Cyrine',
   'Dana', 'Elma', 'Garance', 'Hania', 'Hanna', 'Ibtissam', 'Imane', 'Inès',
   'Jihane', 'Laura L.', 'Laura V.', 'Laure', 'Louise', 'Léa', 'Maïlys', 'Manon',
-  'Mathilde', 'Nicole', 'Olivia', 'Philippine', 'Rosalie', 'Sofia', 'Sonia',
+  'Mathilde', 'Nicole', 'Olivia', 'Philippine', 'Rosalie', 'Sofia', 'Sonya',
   'Tiffany', 'Yara',
 ];
 
