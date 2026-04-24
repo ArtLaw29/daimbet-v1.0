@@ -404,6 +404,13 @@ export type Database = {
             referencedRelation: "gazette_messages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gazette_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "gazette_messages_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       kiss_marry_votes: {
@@ -850,6 +857,33 @@ export type Database = {
       }
     }
     Views: {
+      gazette_messages_public: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string | null
+          is_deleted: boolean | null
+          is_system_message: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_deleted?: boolean | null
+          is_system_message?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_deleted?: boolean | null
+          is_system_message?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null

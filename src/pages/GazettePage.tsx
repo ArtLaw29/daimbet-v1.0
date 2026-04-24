@@ -26,7 +26,7 @@ export default function GazettePage() {
 
   const fetchAll = useCallback(async () => {
     const [msgRes, reactRes, profilesRes] = await Promise.all([
-      supabase.from('gazette_messages').select('*').eq('is_deleted', false).order('created_at', { ascending: false }),
+      (supabase as any).from('gazette_messages_public').select('*').order('created_at', { ascending: false }),
       supabase.from('gazette_reactions').select('*'),
       (supabase as any).from('profiles_public').select('*'),
     ]);
