@@ -6,7 +6,7 @@ export const PROMO_NAMES = [
   'Inès', 'Issam', 'James-Marie', 'Jihane', 'Laura L.', 'Laura V.',
   'Laure', 'Louise', 'Léa', 'Luca', 'Maïlys', 'Manon', 'Mathilde',
   'Nassih', 'Nicolas', 'Nicole', 'Noé', 'Olivia', 'Paul', 'Philippine',
-  'Pierre', 'Rosalie', 'Samory', 'Sofia', 'Sonia', 'Thomas', 'Tiffany',
+  'Pierre', 'Rosalie', 'Samory', 'Sofia', 'Sonya', 'Thomas', 'Tiffany',
   'Tom', 'Willem', 'Yanis', 'Yara', 'Yash', 'Yoann',
 ];
 
