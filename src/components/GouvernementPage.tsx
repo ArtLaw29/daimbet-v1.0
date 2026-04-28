@@ -12,6 +12,7 @@ import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import ContactFooter from '@/components/ContactFooter';
 import jsPDF from 'jspdf';
+import daimcoinLogo from '@/assets/daimcoin-logo.png';
 
 const FIXED_MINISTRIES = [
   { id: 'interieur', label: 'Intérieur', regalian: true },
@@ -52,7 +53,30 @@ interface GouvData {
   creator_name?: string;
 }
 
-function generateGouvPDF(gouv: GouvData, displayName: string) {
+const MINISTRY_EMOJIS: Record<string, string> = {
+  interieur: '🚨', armees: '⚔️', travail: '🔧', ecologie: '🌿',
+  justice: '⚖️', economie: '💰', agriculture: '🌾', education: '🎓',
+  affaires_etrangeres: '🌍', sante: '🏥', culture: '🎭',
+  sports: '🏆', numerique: '💻', comptes_publics: '📊',
+};
+
+function emojiToDataUrl(emoji: string, size = 28): string {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+    ctx.font = `${size * 0.78}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, size / 2, size / 2);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return '';
+  }
+}
+
+function generateGouvPDF(gouv: GouvData, displayName: string, logoUrl: string) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -78,10 +102,14 @@ function generateGouvPDF(gouv: GouvData, displayName: string) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.text('DAIMBET', margin, 32);
+    // Logo on the right
+    try {
+      doc.addImage(logoUrl, 'PNG', pageWidth - margin - 38, 9, 32, 32);
+    } catch {}
     doc.setFontSize(12);
     const govLabel = gouv.gov_name || 'Gouvernement';
     const w = doc.getTextWidth(govLabel);
-    doc.text(govLabel, pageWidth - margin - w, 32);
+    doc.text(govLabel, pageWidth - margin - 44 - w, 32);
   };
 
   const ensureSpace = (needed: number) => {
@@ -102,7 +130,7 @@ function generateGouvPDF(gouv: GouvData, displayName: string) {
   doc.setFillColor(...cardBg);
   doc.setDrawColor(...goldDim);
   doc.setLineWidth(0.8);
-  const pmCardHeight = gouv.created_at ? 78 : 56;
+  const pmCardHeight = gouv.created_at ? 92 : 70;
   doc.roundedRect(margin, cursorY, pageWidth - margin * 2, pmCardHeight, 6, 6, 'FD');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
@@ -112,6 +140,11 @@ function generateGouvPDF(gouv: GouvData, displayName: string) {
   doc.setFontSize(16);
   doc.setTextColor(...textWhite);
   doc.text(displayName, margin + 14, cursorY + 42);
+  // Gold subtitle line
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...goldColor);
+  doc.text('Premier Ministre de la Republique du DAIM', margin + 14, cursorY + 56);
   if (gouv.created_at) {
     const d = new Date(gouv.created_at);
     const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -119,7 +152,7 @@ function generateGouvPDF(gouv: GouvData, displayName: string) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...textMuted);
-    doc.text(`Formé le ${dateStr} à ${timeStr}`, margin + 14, cursorY + 62);
+    doc.text(`Formé le ${dateStr} à ${timeStr}`, margin + 14, cursorY + 76);
   }
   cursorY += pmCardHeight + 18;
 
@@ -131,30 +164,44 @@ function generateGouvPDF(gouv: GouvData, displayName: string) {
   doc.text('COMPOSITION DU GOUVERNEMENT', margin, cursorY);
   cursorY += 16;
 
-  const drawMinistry = (label: string, person: string, regalian: boolean) => {
-    ensureSpace(34);
-    doc.setFillColor(...cardBg);
+  const altBg: [number, number, number] = [22, 26, 40];
+  let rowIndex = 0;
+  const drawMinistry = (label: string, person: string, regalian: boolean, emojiId?: string) => {
+    ensureSpace(40);
+    const fillCol = rowIndex % 2 === 0 ? cardBg : altBg;
+    doc.setFillColor(...fillCol);
     doc.setDrawColor(40, 44, 54);
     doc.setLineWidth(0.4);
-    doc.roundedRect(margin, cursorY, pageWidth - margin * 2, 30, 4, 4, 'FD');
+    doc.roundedRect(margin, cursorY, pageWidth - margin * 2, 36, 4, 4, 'FD');
     if (regalian) {
       doc.setFillColor(...goldColor);
-      doc.circle(margin + 10, cursorY + 15, 2.4, 'F');
+      doc.circle(margin + 10, cursorY + 18, 2.4, 'F');
+    }
+    let textOffsetX = 18;
+    if (emojiId && MINISTRY_EMOJIS[emojiId]) {
+      const dataUrl = emojiToDataUrl(MINISTRY_EMOJIS[emojiId]);
+      if (dataUrl) {
+        try {
+          doc.addImage(dataUrl, 'PNG', margin + 18, cursorY + 9, 18, 18);
+          textOffsetX = 42;
+        } catch {}
+      }
     }
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...textMuted);
-    doc.text(label.toUpperCase(), margin + 18, cursorY + 12);
+    doc.text(label.toUpperCase(), margin + textOffsetX, cursorY + 14);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(...textWhite);
-    doc.text(person, margin + 18, cursorY + 24);
-    cursorY += 34;
+    doc.text(person, margin + textOffsetX, cursorY + 28);
+    cursorY += 40;
+    rowIndex++;
   };
 
   FIXED_MINISTRIES.forEach(m => {
     const person = gouv.ministers?.[m.id];
-    if (person) drawMinistry(m.label, person, m.regalian);
+    if (person) drawMinistry(m.label, person, m.regalian, m.id);
   });
 
   (gouv.custom_ministries || []).forEach(cm => {
@@ -163,7 +210,13 @@ function generateGouvPDF(gouv: GouvData, displayName: string) {
 
   // Comment block
   if (gouv.comment) {
-    cursorY += 10;
+    // Gold separator line
+    cursorY += 8;
+    doc.setDrawColor(...goldColor);
+    doc.setLineWidth(0.6);
+    doc.line(margin, cursorY, pageWidth - margin, cursorY);
+    doc.setLineWidth(0.4);
+    cursorY += 14;
     const commentLines = doc.splitTextToSize(gouv.comment, pageWidth - margin * 2 - 28) as string[];
     const warningLines = doc.splitTextToSize(
       "Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.",
@@ -293,7 +346,7 @@ export default function GouvernementPage() {
 
   const handleDownloadPDF = () => {
     if (!existingGouv || !profile) return;
-    generateGouvPDF(existingGouv, existingGouv.creator_name || profile.display_name);
+    generateGouvPDF(existingGouv, existingGouv.creator_name || profile.display_name, daimcoinLogo);
     toast.success('PDF téléchargé 📄');
   };
 
