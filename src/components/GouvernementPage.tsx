@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Star, CheckCircle, Loader2, Crown, Users, RefreshCw } from 'lucide-react';
+import { Star, CheckCircle, Loader2, Crown, Users, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,7 @@ import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import ContactFooter from '@/components/ContactFooter';
+import jsPDF from 'jspdf';
 
 const FIXED_MINISTRIES = [
   { id: 'interieur', label: 'Intérieur', regalian: true },
@@ -47,6 +48,8 @@ interface GouvData {
   comment?: string;
   gov_number: number;
   gov_name: string;
+  created_at?: string;
+  creator_name?: string;
 }
 
 export default function GouvernementPage() {
@@ -159,6 +162,8 @@ export default function GouvernementPage() {
       custom_ministries: customMinistries.filter(cm => cm.name.trim() && cm.person),
       gov_number: govNumber,
       gov_name: govName,
+      created_at: new Date().toISOString(),
+      creator_name: profile.display_name,
     };
 
     // Always insert a new record
