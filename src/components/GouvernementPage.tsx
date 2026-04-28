@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Star, CheckCircle, Loader2, Crown, Users, RefreshCw } from 'lucide-react';
+import { Star, CheckCircle, Loader2, Crown, Users, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,7 @@ import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import ContactFooter from '@/components/ContactFooter';
+import jsPDF from 'jspdf';
 
 const FIXED_MINISTRIES = [
   { id: 'interieur', label: 'Intérieur', regalian: true },
@@ -47,6 +48,162 @@ interface GouvData {
   comment?: string;
   gov_number: number;
   gov_name: string;
+  created_at?: string;
+  creator_name?: string;
+}
+
+function generateGouvPDF(gouv: GouvData, displayName: string) {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+
+  // Theme colors
+  const bgColor: [number, number, number] = [13, 15, 22]; // #0D0F16
+  const goldColor: [number, number, number] = [228, 175, 49]; // hsl(42 92% 55%)
+  const goldDim: [number, number, number] = [180, 138, 38];
+  const textWhite: [number, number, number] = [245, 240, 230]; // warm white
+  const textMuted: [number, number, number] = [160, 155, 145];
+  const cardBg: [number, number, number] = [22, 26, 36];
+
+  const paintBackground = () => {
+    doc.setFillColor(...bgColor);
+    doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  };
+
+  const paintHeader = () => {
+    doc.setFillColor(...goldColor);
+    doc.rect(0, 0, pageWidth, 50, 'F');
+    doc.setTextColor(...bgColor);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('DAIMBET', margin, 32);
+    doc.setFontSize(12);
+    const govLabel = gouv.gov_name || 'Gouvernement';
+    const w = doc.getTextWidth(govLabel);
+    doc.text(govLabel, pageWidth - margin - w, 32);
+  };
+
+  const ensureSpace = (needed: number) => {
+    if (cursorY + needed > pageHeight - 60) {
+      doc.addPage();
+      paintBackground();
+      paintHeader();
+      cursorY = 80;
+    }
+  };
+
+  paintBackground();
+  paintHeader();
+  let cursorY = 80;
+
+  // Premier Ministre card
+  ensureSpace(80);
+  doc.setFillColor(...cardBg);
+  doc.setDrawColor(...goldDim);
+  doc.setLineWidth(0.8);
+  const pmCardHeight = gouv.created_at ? 78 : 56;
+  doc.roundedRect(margin, cursorY, pageWidth - margin * 2, pmCardHeight, 6, 6, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...goldColor);
+  doc.text('PREMIER MINISTRE', margin + 14, cursorY + 20);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...textWhite);
+  doc.text(displayName, margin + 14, cursorY + 42);
+  if (gouv.created_at) {
+    const d = new Date(gouv.created_at);
+    const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...textMuted);
+    doc.text(`Formé le ${dateStr} à ${timeStr}`, margin + 14, cursorY + 62);
+  }
+  cursorY += pmCardHeight + 18;
+
+  // Ministries
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...goldColor);
+  ensureSpace(28);
+  doc.text('COMPOSITION DU GOUVERNEMENT', margin, cursorY);
+  cursorY += 16;
+
+  const drawMinistry = (label: string, person: string, regalian: boolean) => {
+    ensureSpace(34);
+    doc.setFillColor(...cardBg);
+    doc.setDrawColor(40, 44, 54);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(margin, cursorY, pageWidth - margin * 2, 30, 4, 4, 'FD');
+    if (regalian) {
+      doc.setFillColor(...goldColor);
+      doc.circle(margin + 10, cursorY + 15, 2.4, 'F');
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...textMuted);
+    doc.text(label.toUpperCase(), margin + 18, cursorY + 12);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...textWhite);
+    doc.text(person, margin + 18, cursorY + 24);
+    cursorY += 34;
+  };
+
+  FIXED_MINISTRIES.forEach(m => {
+    const person = gouv.ministers?.[m.id];
+    if (person) drawMinistry(m.label, person, m.regalian);
+  });
+
+  (gouv.custom_ministries || []).forEach(cm => {
+    if (cm.name?.trim() && cm.person) drawMinistry(cm.name, cm.person, false);
+  });
+
+  // Comment block
+  if (gouv.comment) {
+    cursorY += 10;
+    const commentLines = doc.splitTextToSize(gouv.comment, pageWidth - margin * 2 - 28) as string[];
+    const warningLines = doc.splitTextToSize(
+      "Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.",
+      pageWidth - margin * 2 - 28
+    ) as string[];
+    const blockHeight = 30 + commentLines.length * 14 + 10 + warningLines.length * 10 + 16;
+    ensureSpace(blockHeight);
+    doc.setFillColor(...cardBg);
+    doc.setDrawColor(...goldDim);
+    doc.setLineWidth(0.8);
+    doc.roundedRect(margin, cursorY, pageWidth - margin * 2, blockHeight, 6, 6, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...goldColor);
+    doc.text('COMMENTAIRE DU PRESIDENT JORDAIM BELFORT', margin + 14, cursorY + 20);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(11);
+    doc.setTextColor(...textWhite);
+    doc.text(commentLines, margin + 14, cursorY + 38);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...textMuted);
+    doc.text(warningLines, margin + 14, cursorY + 38 + commentLines.length * 14 + 14);
+    cursorY += blockHeight + 10;
+  }
+
+  // Footer page numbers
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...textMuted);
+    const label = `page ${i} / ${pageCount}`;
+    const w = doc.getTextWidth(label);
+    doc.text(label, pageWidth - margin - w, pageHeight - 20);
+  }
+
+  const safeName = (gouv.gov_name || 'gouvernement').replace(/[^\w\s\-]/g, '').trim() || 'gouvernement';
+  doc.save(`${safeName}.pdf`);
 }
 
 export default function GouvernementPage() {
@@ -134,6 +291,12 @@ export default function GouvernementPage() {
     setExistingGouv(null);
   };
 
+  const handleDownloadPDF = () => {
+    if (!existingGouv || !profile) return;
+    generateGouvPDF(existingGouv, existingGouv.creator_name || profile.display_name);
+    toast.success('PDF téléchargé 📄');
+  };
+
   const handleSubmit = async () => {
     if (!user || !profile || !isValid) return;
     setSubmitting(true);
@@ -159,6 +322,8 @@ export default function GouvernementPage() {
       custom_ministries: customMinistries.filter(cm => cm.name.trim() && cm.person),
       gov_number: govNumber,
       gov_name: govName,
+      created_at: new Date().toISOString(),
+      creator_name: profile.display_name,
     };
 
     // Always insert a new record
@@ -248,9 +413,24 @@ export default function GouvernementPage() {
       {existingGouv?.comment && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <Crown className="w-5 h-5 text-primary" />
-            <h3 className="font-display text-primary">{existingGouv.gov_name}</h3>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-primary" />
+                <h3 className="font-display text-primary">{existingGouv.gov_name}</h3>
+              </div>
+              {existingGouv.created_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Formé par {existingGouv.creator_name || profile?.display_name} le{' '}
+                  {new Date(existingGouv.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
+                  à {new Date(existingGouv.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={handleDownloadPDF} className="flex-shrink-0">
+              <Download className="w-4 h-4 mr-1.5" />
+              Télécharger le PDF
+            </Button>
           </div>
           <p className="text-sm whitespace-pre-line">{existingGouv.comment}</p>
           <p className="text-xs text-foreground/80 italic mt-3 border-t border-primary/20 pt-3 font-medium">
