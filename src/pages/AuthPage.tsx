@@ -121,22 +121,6 @@ export default function AuthPage() {
       return;
     }
 
-    // Check is_activated
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', data.user.id)
-        .single();
-
-      if (profile && !(profile as any).is_activated) {
-        await supabase.auth.signOut();
-        toast.error('Ton compte n\'est pas encore activé. Vérifie ta boîte mail (et tes spams) pour cliquer sur le lien de confirmation.');
-        setLoading(false);
-        return;
-      }
-    }
-
     toast.success('Bienvenue sur DAIMBet ! 🦌');
     setLoading(false);
   };

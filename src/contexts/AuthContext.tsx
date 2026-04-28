@@ -44,24 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
     setProfile(data);
     setHasAcceptedCharter(data?.has_accepted_charter ?? false);
-
-    // Activate profile on first confirmed login if not yet activated
-    if (data && !(data as any).is_activated) {
-      await supabase
-        .from('profiles')
-        .update({ is_activated: true } as any)
-        .eq('user_id', userId);
-      // Re-fetch to get updated state
-      const { data: updated } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      setProfile(updated);
-    }
   };
 
   const fetchRole = async (userId: string) => {

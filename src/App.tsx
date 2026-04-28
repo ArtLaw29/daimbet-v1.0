@@ -106,6 +106,7 @@ function AppRoutes() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/welcome" element={<WelcomePage />} />
           <Route path="*" element={<LandingPage />} />
         </Routes>
       </Suspense>
