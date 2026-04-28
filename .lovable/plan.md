@@ -1,43 +1,56 @@
-# Nettoyage du compte James-Marie
+# Correction du compte Chris-Aurélien
 
-## Situation actuelle
+## Situation
 
-Deux comptes existent dans la base :
+Un seul compte existe pour Chris-Aurélien :
 
-| Compte | Email | Statut | Action |
-|---|---|---|---|
-| Doublon | `james-marie.bruniaux@essec.edu` (avec tiret) | Jamais confirmé, créé par erreur | À supprimer entièrement |
-| Officiel | `jamesmarie.bruniaux@essec.edu` | Confirmé, fonctionnel, 1000 DC | À conserver, renommer en "James Marie" |
+| Champ | Valeur actuelle | Problème |
+|---|---|---|
+| Email | `chris-aurelien.ndjilaagassi@essec.edu` (avec tiret) | Mauvais — pas reconnu comme email ESSEC officiel |
+| Confirmé | Non | Bloqué à la connexion |
+| Display name | `Chris-Aurélien` | OK |
+| Solde | 1000 DC | OK |
+| Activité | Aucune (0 paris, 0 votes, 0 tickets) | RAS |
+| UUID | `133ec0c2-a304-4f4f-929f-90dcc682a0fe` | — |
 
-## Actions à effectuer
+Le bon email officiel `chrisaurelien.ndjilaagassi@essec.edu` (sans tiret) n'existe **pas** dans la base : aucun doublon à supprimer.
 
-### 1. Supprimer entièrement le compte doublon (`dcaf7eed-d82a-4e60-ac11-38d9b912503c`)
+## Action unique
 
-Appel à la fonction edge `admin-delete-user` pour supprimer en cascade :
-- L'utilisateur `auth.users`
-- Son profil `profiles`
-- Ses rôles `user_roles` (s'il y en a)
-- Tout son historique `solde_history`, paris `wagers`, votes, etc.
+Corriger l'email du compte **et** le confirmer manuellement, via une migration SQL ciblée sur `auth.users` et `auth.identities` :
 
-Cette fonction existe déjà dans le projet et utilise la `service_role` pour bypasser les RLS.
-
-### 2. Renommer le display_name du compte officiel
-
-Mise à jour SQL ciblée sur le compte conservé :
 ```sql
-UPDATE public.profiles
-SET display_name = 'James Marie', updated_at = now()
-WHERE user_id = '35a2afe1-1146-4a2e-b50e-0ce76c83f992';
+-- 1. Corriger l'email + confirmer
+UPDATE auth.users
+SET email = 'chrisaurelien.ndjilaagassi@essec.edu',
+    email_confirmed_at = now(),
+    updated_at = now()
+WHERE id = '133ec0c2-a304-4f4f-929f-90dcc682a0fe';
+
+-- 2. Mettre à jour l'identity associée (provider 'email')
+UPDATE auth.identities
+SET identity_data = jsonb_set(
+      identity_data, 
+      '{email}', 
+      '"chrisaurelien.ndjilaagassi@essec.edu"'
+    ),
+    email = 'chrisaurelien.ndjilaagassi@essec.edu',
+    updated_at = now()
+WHERE user_id = '133ec0c2-a304-4f4f-929f-90dcc682a0fe'
+  AND provider = 'email';
 ```
 
-### 3. Vérification finale
+## Après la correction
 
-Une requête de contrôle pour confirmer :
-- Qu'il ne reste qu'**un seul** compte James-Marie
-- Que son email est bien `jamesmarie.bruniaux@essec.edu`
-- Que son display_name est bien `James Marie`
-- Que son solde de 1000 DC est intact
+Chris-Aurélien devra utiliser **"Mot de passe oublié"** depuis la page de login pour définir son mot de passe (puisqu'il n'avait jamais confirmé le compte initialement, il n'a probablement pas de mot de passe utilisable). Je le précise dans la confirmation finale.
+
+## Vérification
+
+Une requête de contrôle après migration pour confirmer :
+- Email = `chrisaurelien.ndjilaagassi@essec.edu`
+- `email_confirmed_at` non nul
+- Profil + solde 1000 DC intacts
 
 ## Aucun changement de code
 
-Aucun fichier source n'est modifié. C'est une opération de nettoyage de données ponctuelle via la fonction admin existante + un UPDATE ciblé.
+Opération de maintenance pure, aucun fichier source modifié.
