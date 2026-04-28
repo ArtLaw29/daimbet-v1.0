@@ -346,7 +346,7 @@ export default function GouvernementPage() {
 
   const handleDownloadPDF = () => {
     if (!existingGouv || !profile) return;
-    generateGouvPDF(existingGouv, existingGouv.creator_name || profile.display_name);
+    generateGouvPDF(existingGouv, existingGouv.creator_name || profile.display_name, daimcoinLogo);
     toast.success('PDF téléchargé 📄');
   };
 
