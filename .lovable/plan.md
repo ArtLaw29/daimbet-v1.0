@@ -1,55 +1,50 @@
-# Correction du compte Chris-Aurélien
+# Mise à jour exceptionnelle de l'email d'Alexandre Brunet
 
 ## Situation
 
-Un seul compte existe pour Chris-Aurélien :
+| Champ | Valeur actuelle |
+|---|---|
+| UUID | `5b0f232f-04e6-4af1-85ec-7647f322b626` |
+| Email actuel | `alexandre.brunet@essec.edu` |
+| Nouveau email | `b00831024@essec.edu` |
+| Confirmé | Non |
+| Display name | `Alexandre` |
+| Solde | 1000 DC |
 
-| Champ | Valeur actuelle | Problème |
-|---|---|---|
-| Email | `chris-aurelien.ndjilaagassi@essec.edu` (avec tiret) | Mauvais — pas reconnu comme email ESSEC officiel |
-| Confirmé | Non | Bloqué à la connexion |
-| Display name | `Chris-Aurélien` | OK |
-| Solde | 1000 DC | OK |
-| Activité | Aucune (0 paris, 0 votes, 0 tickets) | RAS |
-| UUID | `133ec0c2-a304-4f4f-929f-90dcc682a0fe` | — |
+Aucun compte existant avec `b00831024@essec.edu` → pas de conflit, pas de doublon à supprimer.
 
-Le bon email officiel `chrisaurelien.ndjilaagassi@essec.edu` (sans tiret) n'existe **pas** dans la base : aucun doublon à supprimer.
+Note : bien que `b00831024@essec.edu` ne ressemble pas à un email ESSEC standard (il s'agit d'un identifiant numérique), tu as précisé "exceptionnellement", donc je procède au remplacement tel que demandé.
 
-## Action unique
-
-Corriger l'email du compte **et** le confirmer manuellement, via une migration SQL ciblée sur `auth.users` et `auth.identities` :
+## Action unique : migration SQL
 
 ```sql
--- 1. Corriger l'email + confirmer
+-- 1. Mettre à jour l'email + confirmer le compte
 UPDATE auth.users
-SET email = 'chrisaurelien.ndjilaagassi@essec.edu',
-    email_confirmed_at = now(),
+SET email = 'b00831024@essec.edu',
+    email_confirmed_at = COALESCE(email_confirmed_at, now()),
     updated_at = now()
-WHERE id = '133ec0c2-a304-4f4f-929f-90dcc682a0fe';
+WHERE id = '5b0f232f-04e6-4af1-85ec-7647f322b626';
 
 -- 2. Mettre à jour l'identity associée (provider 'email')
 UPDATE auth.identities
-SET identity_data = jsonb_set(
-      identity_data, 
-      '{email}', 
-      '"chrisaurelien.ndjilaagassi@essec.edu"'
-    ),
-    email = 'chrisaurelien.ndjilaagassi@essec.edu',
+SET identity_data = jsonb_set(identity_data, '{email}', '"b00831024@essec.edu"'),
+    email = 'b00831024@essec.edu',
     updated_at = now()
-WHERE user_id = '133ec0c2-a304-4f4f-929f-90dcc682a0fe'
+WHERE user_id = '5b0f232f-04e6-4af1-85ec-7647f322b626'
   AND provider = 'email';
 ```
 
+Le compte n'ayant jamais été confirmé, je le confirme manuellement au passage pour qu'Alexandre puisse se connecter directement.
+
 ## Après la correction
 
-Chris-Aurélien devra utiliser **"Mot de passe oublié"** depuis la page de login pour définir son mot de passe (puisqu'il n'avait jamais confirmé le compte initialement, il n'a probablement pas de mot de passe utilisable). Je le précise dans la confirmation finale.
+Alexandre devra utiliser **"Mot de passe oublié"** depuis la page de login (avec son nouvel email `b00831024@essec.edu`) pour définir son mot de passe, puisque le compte n'avait jamais été activé.
+
+Profil, display name et solde 1000 DC restent intacts.
 
 ## Vérification
 
-Une requête de contrôle après migration pour confirmer :
-- Email = `chrisaurelien.ndjilaagassi@essec.edu`
-- `email_confirmed_at` non nul
-- Profil + solde 1000 DC intacts
+Requête de contrôle après migration pour confirmer email, statut de confirmation et profil intact.
 
 ## Aucun changement de code
 
