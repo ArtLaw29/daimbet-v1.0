@@ -1,62 +1,27 @@
-## Objectif
+## Problème
 
-Sur la page **Gouvernement** (/jeux → onglet Gouvernement) :
-1. Faire apparaître le commentaire du Président Jordaim Belfort **en bas** de la page, après les ministères et après le bouton « Remanier le gouvernement ».
-2. Garantir que la session de gouvernement de l'utilisateur soit **toujours conservée** entre les changements de page, jusqu'au clic explicite sur « Remanier le gouvernement ».
+Le cabinet Fantasy Firm peut disparaître après changement de page / déconnexion. La logique de chargement est en place mais fragile : elle ne logge pas les erreurs, le nommage met `update` côté UI mais l'état `existingFirm` n'est rechargé qu'à la première visite, et des `INSERT` répétés peuvent créer des doublons silencieux que le tri ne gère pas toujours bien.
 
-## Diagnostic du point 2
+Vérifié en base : `game_participations` pour la session `00000000-0000-0000-0000-000000000002` est vide → la sauvegarde n'a pas abouti lors du dernier essai (erreur silencieuse probable).
 
-Dans `src/components/GouvernementPage.tsx` :
-- Chaque clic sur « Former le gouvernement » fait un `INSERT` dans `game_participations` (toujours un nouveau record, ligne ~514).
-- Au chargement (`useEffect` ligne ~409), on appelle le RPC `get_gouvernements_public` puis `allData.find(g => g.user_id === user.id)`.
-- Le RPC ne fait **aucun ORDER BY**, et `find()` retourne le **premier** match dans l'ordre arbitraire renvoyé par Postgres.
-- Conséquence : si l'utilisateur a plusieurs records (ex. tentatives antérieures, anciens gouvernements, ou même un premier insert sans commentaire avant l'UPDATE), `find()` peut tomber sur un record incomplet/vide → l'utilisateur voit la page vide alors que sa session existe pourtant en base.
+## Changements (`src/components/FantasyFirmPage.tsx`)
 
-## Modifications
+1. **Chargement robuste** dans le `useEffect` :
+   - Récupérer toutes les rows de l'utilisateur ordonnées `created_at DESC`.
+   - Sélectionner la première ayant un `firm_name` et au moins 1 `member` valide (skip rows vides/corrompues).
+   - Logger toute erreur Supabase dans la console pour diagnostic.
 
-### 1. `src/components/GouvernementPage.tsx`
+2. **Sauvegarde atomique** dans `confirmName` :
+   - Toujours `DELETE` les rows existantes de l'utilisateur pour cette session, puis `INSERT` une nouvelle row.
+   - Garantit une seule source de vérité, plus de doublons.
+   - Logger et propager toute erreur (`throw`) pour que le toast d'erreur s'affiche au lieu d'un succès trompeur.
 
-**a) Réorganisation du JSX (point 1)**
-Déplacer le bloc « commentaire de Jordaim » (actuellement lignes ~597-625) :
-- Le retirer de sa position actuelle (juste après `PendingProposalsSection`).
-- Le réinsérer **après** la card du formulaire qui contient le bouton « Remanier le gouvernement » (après la fermeture de `</div>` ligne ~723), juste avant la section « Autres gouvernements ».
-- Faire pareil pour le bloc `loadingComment` (lignes ~627-632) qui doit aussi se trouver en bas, au même endroit, pour que l'utilisateur voie l'animation de rédaction sous son gouvernement et non au-dessus.
+3. **`resetForm`** (bouton « Former un nouveau cabinet ») reste tel quel : supprime la row puis remet le formulaire à zéro — ce qui satisfait la règle « persistance jusqu'à clic explicite ».
 
-**b) Persistance fiable (point 2)**
-Dans le `useEffect` de fetch initial :
-- Au lieu de `allData.find(g => g.user_id === user.id)`, sélectionner explicitement le **plus récent** record de l'utilisateur :
-  - Filtrer toutes les entrées de l'utilisateur, trier par `created_at` desc, et prendre la première qui contient un `gov_name` non vide (i.e. un gouvernement réellement formé).
-- Cela nécessite que le RPC retourne `created_at` (déjà le cas, vérifié).
+## Résultat
 
-**c) Anti-régression sur le re-rendu**
-Vérifier que `handleSubmit` met bien à jour `existingGouv` avec la version finale (incluant le `comment`) — c'est déjà le cas (ligne ~560 et ~564). RAS.
+- Cabinet sauvegardé immédiatement et durablement en base.
+- Rechargement automatique à chaque visite/connexion tant que l'utilisateur n'a pas cliqué sur « Former un nouveau cabinet ».
+- Erreurs visibles dans la console + toast clair en cas d'échec.
 
-### 2. (Optionnel mais recommandé) `supabase/migrations/...`
-
-Améliorer le RPC `get_gouvernements_public` pour qu'il retourne les rows triées par `created_at DESC`. Cela rend la lecture plus déterministe pour tous les usages :
-
-```sql
-CREATE OR REPLACE FUNCTION public.get_gouvernements_public(p_session_id uuid)
-RETURNS TABLE(id uuid, user_id uuid, data jsonb, created_at timestamptz)
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-  SELECT id, user_id, data, created_at
-  FROM public.game_participations
-  WHERE session_id = p_session_id
-  ORDER BY created_at DESC;
-$$;
-```
-
-Dans la liste « Autres gouvernements », adapter pour ne garder que **le plus récent par utilisateur** (groupement par `user_id`), afin de ne pas afficher plusieurs fois le même joueur s'il a remanié.
-
-## Ce qui ne change pas
-
-- Le bouton « Remanier le gouvernement » continue d'effacer uniquement l'état local (`setExistingGouv(null)`, vidage des sélecteurs). Aucun delete en base — c'est conservé par design pour garder l'historique.
-- La logique de génération du commentaire IA et du PDF est inchangée.
-- Les autres pages/jeux ne sont pas touchés.
-
-## Fichiers modifiés
-
-- `src/components/GouvernementPage.tsx` (réorganisation JSX + sélection du record le plus récent)
-- `supabase/migrations/<timestamp>_order_gouvernements_rpc.sql` (tri du RPC) — optionnel mais recommandé
+Aucun changement DB nécessaire.
