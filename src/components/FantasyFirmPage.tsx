@@ -11,6 +11,9 @@ import TabIntro from '@/components/TabIntro';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import ContactFooter from '@/components/ContactFooter';
+import goldenDeerSeal from '@/assets/golden-deer-seal.png';
+import { generateFantasyFirmPDF } from '@/lib/fantasyFirmPdf';
+import { Download } from 'lucide-react';
 
 const ROLES = [
   { id: 'associe', label: 'Associé', icon: '⭐' },
@@ -243,7 +246,18 @@ export default function FantasyFirmPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = async () => {
+    if (existingFirm && user) {
+      await supabase.from('game_participations')
+        .delete()
+        .eq('session_id', FANTASY_SESSION_ID)
+        .eq('user_id', user.id);
+    }
+    setExistingFirm(null);
+    setMembers([
+      { name: '', role: 'associe' },
+      { name: '', role: 'collaborateur' },
+    ]);
     setStep('form');
     setNameSuggestions([]);
     setFirmName('');
@@ -268,6 +282,25 @@ export default function FantasyFirmPage() {
     }
   };
 
+  const downloadPDF = async () => {
+    if (!existingFirm) return;
+    try {
+      await generateFantasyFirmPDF({
+        firmName: existingFirm.firm_name,
+        members: existingFirm.members.map(m => ({
+          fullName: FULL_NAMES[m.name] || m.name,
+          role: m.role,
+          specialty: SPECIALTIES[m.name] || '',
+        })),
+        roles: ROLES.map(r => ({ id: r.id, label: r.label })),
+      });
+      toast.success('PDF téléchargé !');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erreur lors de la génération du PDF');
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
   if (!user) return <p className="text-center py-10 text-muted-foreground">Connecte-toi pour créer ton cabinet.</p>;
 
@@ -277,9 +310,6 @@ export default function FantasyFirmPage() {
       ...r,
       members: existingFirm.members.filter(m => m.role === r.id),
     })).filter(g => g.members.length > 0);
-
-    const initials = existingFirm.members.filter(m => m.role === 'associe')
-      .map(m => (FULL_NAMES[m.name] || m.name).charAt(0).toUpperCase()).join('');
 
     return (
       <div className="space-y-6">
@@ -296,9 +326,14 @@ export default function FantasyFirmPage() {
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-8 text-center border-b border-primary/10">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/10 border-2 border-primary/30 flex items-center justify-center">
-              <span className="text-xl font-bold text-primary tracking-wider">{initials || '⚖️'}</span>
-            </div>
+            <img
+              src={goldenDeerSeal}
+              alt="Sceau du cabinet"
+              loading="lazy"
+              width={1024}
+              height={1024}
+              className="w-24 h-24 mx-auto mb-4 object-contain"
+            />
             <h2 className="text-2xl md:text-3xl font-display tracking-wide text-foreground">
               {existingFirm.firm_name}
             </h2>
@@ -338,11 +373,14 @@ export default function FantasyFirmPage() {
 
           {/* Footer */}
           <div className="p-6 pt-2 flex gap-2 justify-center">
+            <Button variant="default" size="sm" onClick={downloadPDF}>
+              <Download className="w-4 h-4 mr-1" /> Télécharger en PDF
+            </Button>
             <Button variant="outline" size="sm" onClick={shareCard}>
               <Share2 className="w-4 h-4 mr-1" /> Partager
             </Button>
             <Button variant="ghost" size="sm" onClick={resetForm}>
-              Modifier le cabinet
+              Former un nouveau cabinet
             </Button>
           </div>
         </motion.div>
