@@ -1,32 +1,61 @@
-## Problème identifié
+# Problème — Les paris ne se clôturent jamais automatiquement
 
-Les composants `src/pages/EventsPage.tsx` (feed des paris) et `src/pages/BetDetailPage.tsx` (détail d'un pari) s'abonnent via Supabase Realtime aux tables `bets` et `wagers` pour rafraîchir les cotes pari-mutuel dès qu'une nouvelle mise est posée :
+## Diagnostic
 
-```ts
-.on('postgres_changes', { event: '*', schema: 'public', table: 'bets' }, …)
-.on('postgres_changes', { event: '*', schema: 'public', table: 'wagers' }, …)
+L'edge function `supabase/functions/check-auto-close/index.ts` **existe** et fait correctement le travail : elle scanne les paris `ouvert` dont `close_date <= now()` et appelle `auto_close_bet` pour les passer en `cloture_en_attente`.
+
+**Mais elle n'est jamais appelée.** En inspectant `cron.job`, j'ai trouvé seulement 3 cron jobs actifs :
+- `admin-notify-email-daily`
+- `ticket-lifecycle-daily`
+- `km-reveal-tick-hourly`
+
+→ **Aucun cron n'invoque `check-auto-close`.** Donc tous les paris restent en `ouvert` indéfiniment, et `place_wager` (qui vérifie `status = 'ouvert'`) accepte les mises bien après la `close_date`.
+
+De plus, `place_wager` ne vérifie pas `close_date` — il se fie uniquement au champ `status`. Tant que personne ne flippe le statut, on peut miser.
+
+## Solution (2 niveaux pour défense en profondeur)
+
+### 1. Cron job toutes les minutes (correctif principal)
+Ajouter un cron `pg_cron` qui appelle `check-auto-close` chaque minute avec le `x-cron-secret`. Ça refermera les paris dès que leur `close_date` est dépassée (latence max ~1 min).
+
+```sql
+SELECT cron.schedule(
+  'check-auto-close-every-minute',
+  '* * * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://aiffhgbzoxglfewdutea.supabase.co/functions/v1/check-auto-close',
+    headers:=jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-cron-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret' LIMIT 1)
+    ),
+    body:='{}'::jsonb
+  );
+  $$
+);
 ```
 
-Or, en interrogeant `pg_publication_tables`, **ces tables ne sont PAS dans la publication `supabase_realtime`**. Seules `profiles`, `gazette_messages`, `gazette_reactions`, `ticket_messages`, `game_sessions`, `game_participations` y sont.
+(Insertion via outil insert — pas migration — car l'URL/clé sont spécifiques au projet.)
 
-Conséquence : la souscription est créée côté client mais Postgres ne diffuse jamais les changements → les cotes ne se mettent à jour que sur rechargement / changement d'onglet. Les utilisateurs qui laissent l'écran ouvert (Noé, Christophe, Yara, Samory) ne voient donc jamais évoluer les cotes ni la cagnotte.
+### 2. Garde-fou serveur dans `place_wager` (ceinture + bretelles)
+Modifier la fonction `place_wager` pour rejeter une mise si `now() >= bets.close_date`, même si le statut n'a pas encore basculé (au cas où le cron serait en retard ou désactivé) :
 
-## Correctif
+```sql
+IF v_bet.close_date IS NOT NULL AND now() >= v_bet.close_date THEN
+  RETURN jsonb_build_object('error', 'Les mises sont clôturées pour ce pari');
+END IF;
+```
 
-Une seule migration SQL suffit :
+Ajouté juste après le check `status <> 'ouvert'`. Migration SQL standard.
 
-1. Ajouter `public.bets`, `public.wagers` et `public.bet_options` à la publication `supabase_realtime` (avec `IF NOT EXISTS` via bloc `DO` pour rester idempotent).
-2. Forcer `REPLICA IDENTITY FULL` sur ces trois tables, requis pour que le payload `UPDATE`/`DELETE` contienne toutes les colonnes nécessaires aux écrans (montants des mises, statut, total_mises_dc).
+### 3. Rattrapage immédiat
+Appeler `check-auto-close` une fois manuellement après déploiement pour refermer tous les paris déjà en retard.
 
-`bet_options` est ajouté en bonus : `total_mises_dc` est mis à jour à chaque mise et plusieurs vues l'utilisent — c'est cohérent de le diffuser aussi.
-
-## Fichier créé
-
-- `supabase/migrations/<timestamp>_realtime_bets_wagers.sql`
+## Fichiers touchés
+- Insert SQL : création du cron `check-auto-close-every-minute`
+- Migration SQL : `place_wager` durci avec check `close_date`
+- Aucun changement front (le `BetCard` affichera automatiquement "cloture_en_attente" dès que le statut bascule)
 
 ## Vérification post-déploiement
-
-- Re-requête de `pg_publication_tables` pour confirmer que les 3 tables apparaissent.
-- Test manuel : ouvrir un pari sur deux navigateurs, miser depuis l'un, vérifier que les cotes/cagnotte bougent automatiquement sur l'autre sans recharger.
-
-Aucun changement de code front nécessaire — les souscriptions existantes commenceront simplement à recevoir des évènements.
+- `SELECT id, title, status, close_date FROM bets WHERE close_date < now() AND status = 'ouvert';` → doit renvoyer 0 ligne quelques minutes après.
+- Tenter une mise sur un pari échu via l'UI → doit afficher "Les mises sont clôturées".
