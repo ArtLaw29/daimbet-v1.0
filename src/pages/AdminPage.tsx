@@ -82,6 +82,7 @@ export default function AdminPage() {
   const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [exportingStats, setExportingStats] = useState(false);
 
   const [bets, setBets] = useState<BetWithOptions[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
