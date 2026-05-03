@@ -602,43 +602,6 @@ export default function GouvernementPage() {
       </div>
       <PendingProposalsSection kind="gouvernement" />
 
-      {/* Existing government comment */}
-      {existingGouv?.comment && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-primary" />
-                <h3 className="font-display text-primary">{existingGouv.gov_name}</h3>
-              </div>
-              {existingGouv.created_at && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Formé par {existingGouv.creator_name || profile?.display_name} le{' '}
-                  {new Date(existingGouv.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
-                  à {new Date(existingGouv.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              )}
-            </div>
-            <Button size="sm" variant="outline" onClick={handleDownloadPDF} className="flex-shrink-0">
-              <Download className="w-4 h-4 mr-1.5" />
-              Télécharger le PDF
-            </Button>
-          </div>
-          <p className="text-sm whitespace-pre-line">{existingGouv.comment}</p>
-          <p className="text-xs text-foreground/80 italic mt-3 border-t border-primary/20 pt-3 font-medium">
-            🤖 Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.
-          </p>
-        </motion.div>
-      )}
-
-      {loadingComment && (
-        <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Le Président Jordaim Belfort rédige son commentaire...</p>
-        </div>
-      )}
-
       {/* Form */}
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -729,6 +692,43 @@ export default function GouvernementPage() {
           </Button>
         )}
       </div>
+
+      {/* Existing government comment (displayed below the form / "Remanier" button) */}
+      {existingGouv?.comment && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-primary" />
+                <h3 className="font-display text-primary">{existingGouv.gov_name}</h3>
+              </div>
+              {existingGouv.created_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Formé par {existingGouv.creator_name || profile?.display_name} le{' '}
+                  {new Date(existingGouv.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
+                  à {new Date(existingGouv.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={handleDownloadPDF} className="flex-shrink-0">
+              <Download className="w-4 h-4 mr-1.5" />
+              Télécharger le PDF
+            </Button>
+          </div>
+          <p className="text-sm whitespace-pre-line">{existingGouv.comment}</p>
+          <p className="text-xs text-foreground/80 italic mt-3 border-t border-primary/20 pt-3 font-medium">
+            🤖 Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.
+          </p>
+        </motion.div>
+      )}
+
+      {loadingComment && (
+        <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Le Président Jordaim Belfort rédige son commentaire...</p>
+        </div>
+      )}
 
       {/* Other governments */}
       {allGouvs.filter(g => g.user_id !== user?.id && g.data.gov_name).length > 0 && (
