@@ -1,61 +1,62 @@
-# Problème — Les paris ne se clôturent jamais automatiquement
+## Objectif
 
-## Diagnostic
+Sur la page **Gouvernement** (/jeux → onglet Gouvernement) :
+1. Faire apparaître le commentaire du Président Jordaim Belfort **en bas** de la page, après les ministères et après le bouton « Remanier le gouvernement ».
+2. Garantir que la session de gouvernement de l'utilisateur soit **toujours conservée** entre les changements de page, jusqu'au clic explicite sur « Remanier le gouvernement ».
 
-L'edge function `supabase/functions/check-auto-close/index.ts` **existe** et fait correctement le travail : elle scanne les paris `ouvert` dont `close_date <= now()` et appelle `auto_close_bet` pour les passer en `cloture_en_attente`.
+## Diagnostic du point 2
 
-**Mais elle n'est jamais appelée.** En inspectant `cron.job`, j'ai trouvé seulement 3 cron jobs actifs :
-- `admin-notify-email-daily`
-- `ticket-lifecycle-daily`
-- `km-reveal-tick-hourly`
+Dans `src/components/GouvernementPage.tsx` :
+- Chaque clic sur « Former le gouvernement » fait un `INSERT` dans `game_participations` (toujours un nouveau record, ligne ~514).
+- Au chargement (`useEffect` ligne ~409), on appelle le RPC `get_gouvernements_public` puis `allData.find(g => g.user_id === user.id)`.
+- Le RPC ne fait **aucun ORDER BY**, et `find()` retourne le **premier** match dans l'ordre arbitraire renvoyé par Postgres.
+- Conséquence : si l'utilisateur a plusieurs records (ex. tentatives antérieures, anciens gouvernements, ou même un premier insert sans commentaire avant l'UPDATE), `find()` peut tomber sur un record incomplet/vide → l'utilisateur voit la page vide alors que sa session existe pourtant en base.
 
-→ **Aucun cron n'invoque `check-auto-close`.** Donc tous les paris restent en `ouvert` indéfiniment, et `place_wager` (qui vérifie `status = 'ouvert'`) accepte les mises bien après la `close_date`.
+## Modifications
 
-De plus, `place_wager` ne vérifie pas `close_date` — il se fie uniquement au champ `status`. Tant que personne ne flippe le statut, on peut miser.
+### 1. `src/components/GouvernementPage.tsx`
 
-## Solution (2 niveaux pour défense en profondeur)
+**a) Réorganisation du JSX (point 1)**
+Déplacer le bloc « commentaire de Jordaim » (actuellement lignes ~597-625) :
+- Le retirer de sa position actuelle (juste après `PendingProposalsSection`).
+- Le réinsérer **après** la card du formulaire qui contient le bouton « Remanier le gouvernement » (après la fermeture de `</div>` ligne ~723), juste avant la section « Autres gouvernements ».
+- Faire pareil pour le bloc `loadingComment` (lignes ~627-632) qui doit aussi se trouver en bas, au même endroit, pour que l'utilisateur voie l'animation de rédaction sous son gouvernement et non au-dessus.
 
-### 1. Cron job toutes les minutes (correctif principal)
-Ajouter un cron `pg_cron` qui appelle `check-auto-close` chaque minute avec le `x-cron-secret`. Ça refermera les paris dès que leur `close_date` est dépassée (latence max ~1 min).
+**b) Persistance fiable (point 2)**
+Dans le `useEffect` de fetch initial :
+- Au lieu de `allData.find(g => g.user_id === user.id)`, sélectionner explicitement le **plus récent** record de l'utilisateur :
+  - Filtrer toutes les entrées de l'utilisateur, trier par `created_at` desc, et prendre la première qui contient un `gov_name` non vide (i.e. un gouvernement réellement formé).
+- Cela nécessite que le RPC retourne `created_at` (déjà le cas, vérifié).
 
-```sql
-SELECT cron.schedule(
-  'check-auto-close-every-minute',
-  '* * * * *',
-  $$
-  SELECT net.http_post(
-    url:='https://aiffhgbzoxglfewdutea.supabase.co/functions/v1/check-auto-close',
-    headers:=jsonb_build_object(
-      'Content-Type', 'application/json',
-      'x-cron-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret' LIMIT 1)
-    ),
-    body:='{}'::jsonb
-  );
-  $$
-);
-```
+**c) Anti-régression sur le re-rendu**
+Vérifier que `handleSubmit` met bien à jour `existingGouv` avec la version finale (incluant le `comment`) — c'est déjà le cas (ligne ~560 et ~564). RAS.
 
-(Insertion via outil insert — pas migration — car l'URL/clé sont spécifiques au projet.)
+### 2. (Optionnel mais recommandé) `supabase/migrations/...`
 
-### 2. Garde-fou serveur dans `place_wager` (ceinture + bretelles)
-Modifier la fonction `place_wager` pour rejeter une mise si `now() >= bets.close_date`, même si le statut n'a pas encore basculé (au cas où le cron serait en retard ou désactivé) :
+Améliorer le RPC `get_gouvernements_public` pour qu'il retourne les rows triées par `created_at DESC`. Cela rend la lecture plus déterministe pour tous les usages :
 
 ```sql
-IF v_bet.close_date IS NOT NULL AND now() >= v_bet.close_date THEN
-  RETURN jsonb_build_object('error', 'Les mises sont clôturées pour ce pari');
-END IF;
+CREATE OR REPLACE FUNCTION public.get_gouvernements_public(p_session_id uuid)
+RETURNS TABLE(id uuid, user_id uuid, data jsonb, created_at timestamptz)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT id, user_id, data, created_at
+  FROM public.game_participations
+  WHERE session_id = p_session_id
+  ORDER BY created_at DESC;
+$$;
 ```
 
-Ajouté juste après le check `status <> 'ouvert'`. Migration SQL standard.
+Dans la liste « Autres gouvernements », adapter pour ne garder que **le plus récent par utilisateur** (groupement par `user_id`), afin de ne pas afficher plusieurs fois le même joueur s'il a remanié.
 
-### 3. Rattrapage immédiat
-Appeler `check-auto-close` une fois manuellement après déploiement pour refermer tous les paris déjà en retard.
+## Ce qui ne change pas
 
-## Fichiers touchés
-- Insert SQL : création du cron `check-auto-close-every-minute`
-- Migration SQL : `place_wager` durci avec check `close_date`
-- Aucun changement front (le `BetCard` affichera automatiquement "cloture_en_attente" dès que le statut bascule)
+- Le bouton « Remanier le gouvernement » continue d'effacer uniquement l'état local (`setExistingGouv(null)`, vidage des sélecteurs). Aucun delete en base — c'est conservé par design pour garder l'historique.
+- La logique de génération du commentaire IA et du PDF est inchangée.
+- Les autres pages/jeux ne sont pas touchés.
 
-## Vérification post-déploiement
-- `SELECT id, title, status, close_date FROM bets WHERE close_date < now() AND status = 'ouvert';` → doit renvoyer 0 ligne quelques minutes après.
-- Tenter une mise sur un pari échu via l'UI → doit afficher "Les mises sont clôturées".
+## Fichiers modifiés
+
+- `src/components/GouvernementPage.tsx` (réorganisation JSX + sélection du record le plus récent)
+- `supabase/migrations/<timestamp>_order_gouvernements_rpc.sql` (tri du RPC) — optionnel mais recommandé

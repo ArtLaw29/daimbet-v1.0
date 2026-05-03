@@ -424,11 +424,19 @@ export default function GouvernementPage() {
       setProfiles(prMap);
 
       if (user) {
-        const mine = allData.find(g => g.user_id === user.id);
-        if (mine) {
-          setExistingGouv(mine.data);
-          setMinisters(mine.data.ministers || {});
-          setCustomMinistries(mine.data.custom_ministries?.length ? mine.data.custom_ministries : [{ name: '', person: '' }, { name: '', person: '' }]);
+        // Sélectionner le record le plus récent de l'utilisateur qui contient un gouvernement réellement formé
+        const mineAll = (gouvRes.data || [])
+          .filter((p: any) => p.user_id === user.id)
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const mineLatest = mineAll.find((p: any) => {
+          const d = p.data as GouvData;
+          return d?.gov_name && (Object.values(d.ministers || {}).some(Boolean) || (d.custom_ministries || []).some((cm: any) => cm.person));
+        });
+        if (mineLatest) {
+          const data = mineLatest.data as GouvData;
+          setExistingGouv(data);
+          setMinisters(data.ministers || {});
+          setCustomMinistries(data.custom_ministries?.length ? data.custom_ministries : [{ name: '', person: '' }, { name: '', person: '' }]);
         }
       }
       setLoading(false);
@@ -594,43 +602,6 @@ export default function GouvernementPage() {
       </div>
       <PendingProposalsSection kind="gouvernement" />
 
-      {/* Existing government comment */}
-      {existingGouv?.comment && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-primary" />
-                <h3 className="font-display text-primary">{existingGouv.gov_name}</h3>
-              </div>
-              {existingGouv.created_at && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Formé par {existingGouv.creator_name || profile?.display_name} le{' '}
-                  {new Date(existingGouv.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
-                  à {new Date(existingGouv.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              )}
-            </div>
-            <Button size="sm" variant="outline" onClick={handleDownloadPDF} className="flex-shrink-0">
-              <Download className="w-4 h-4 mr-1.5" />
-              Télécharger le PDF
-            </Button>
-          </div>
-          <p className="text-sm whitespace-pre-line">{existingGouv.comment}</p>
-          <p className="text-xs text-foreground/80 italic mt-3 border-t border-primary/20 pt-3 font-medium">
-            🤖 Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.
-          </p>
-        </motion.div>
-      )}
-
-      {loadingComment && (
-        <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Le Président Jordaim Belfort rédige son commentaire...</p>
-        </div>
-      )}
-
       {/* Form */}
       <div className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -721,6 +692,43 @@ export default function GouvernementPage() {
           </Button>
         )}
       </div>
+
+      {/* Existing government comment (displayed below the form / "Remanier" button) */}
+      {existingGouv?.comment && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-primary" />
+                <h3 className="font-display text-primary">{existingGouv.gov_name}</h3>
+              </div>
+              {existingGouv.created_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Formé par {existingGouv.creator_name || profile?.display_name} le{' '}
+                  {new Date(existingGouv.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{' '}
+                  à {new Date(existingGouv.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+            <Button size="sm" variant="outline" onClick={handleDownloadPDF} className="flex-shrink-0">
+              <Download className="w-4 h-4 mr-1.5" />
+              Télécharger le PDF
+            </Button>
+          </div>
+          <p className="text-sm whitespace-pre-line">{existingGouv.comment}</p>
+          <p className="text-xs text-foreground/80 italic mt-3 border-t border-primary/20 pt-3 font-medium">
+            🤖 Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.
+          </p>
+        </motion.div>
+      )}
+
+      {loadingComment && (
+        <div className="rounded-xl border border-border bg-card p-6 text-center space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Le Président Jordaim Belfort rédige son commentaire...</p>
+        </div>
+      )}
 
       {/* Other governments */}
       {allGouvs.filter(g => g.user_id !== user?.id && g.data.gov_name).length > 0 && (
