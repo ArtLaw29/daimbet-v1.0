@@ -40,7 +40,27 @@ Deno.serve(async (req) => {
       if (!closeErr) closed.push(bet.id);
     }
 
-    return new Response(JSON.stringify({ closed_count: closed.length, closed_ids: closed }), {
+    // Also auto-resolve sondages whose end_date has passed
+    const nowIso = new Date().toISOString();
+    const { data: sondagesToResolve } = await supabase
+      .from("game_sessions")
+      .select("id, config")
+      .eq("game_type", "sondage")
+      .in("status", ["active", "voting"]);
+
+    const resolved: string[] = [];
+    for (const s of sondagesToResolve || []) {
+      const endDate = (s as any).config?.end_date;
+      if (!endDate) continue;
+      if (new Date(endDate).toISOString() > nowIso) continue;
+      const { error: resErr } = await supabase.rpc("resolve_sondage", { p_session_id: s.id });
+      if (!resErr) resolved.push(s.id);
+    }
+
+    return new Response(JSON.stringify({
+      closed_count: closed.length, closed_ids: closed,
+      resolved_sondages_count: resolved.length, resolved_sondages_ids: resolved,
+    }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
