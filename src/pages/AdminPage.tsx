@@ -82,6 +82,7 @@ export default function AdminPage() {
   const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [exportingStats, setExportingStats] = useState(false);
 
   const [bets, setBets] = useState<BetWithOptions[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -700,6 +701,191 @@ export default function AdminPage() {
     setSidebarOpen(false);
   };
 
+  const handleExportStats = async () => {
+    setExportingStats(true);
+    try {
+      const [
+        profilesRes, wagersRes, betsRes, sessionsRes, participationsRes,
+        kmRes, soldeRes, ticketsRes, proposalsRes, gazetteRes, injectionsRes,
+      ] = await Promise.all([
+        supabase.from('profiles').select('user_id, balance, created_at, is_suspended'),
+        supabase.from('wagers').select('user_id, bet_id, montant_dc, is_retracted, created_at'),
+        supabase.from('bets').select('id, status, created_at, close_date, updated_at'),
+        supabase.from('game_sessions').select('id, game_type, status, title, created_at'),
+        supabase.from('game_participations').select('user_id, session_id, created_at'),
+        supabase.from('kiss_marry_votes').select('id, month_year, created_at'),
+        supabase.from('solde_history').select('user_id, delta_dc, reason, created_at'),
+        supabase.from('tickets').select('id, status, created_at'),
+        supabase.from('daimocratie_proposals').select('id, status, created_at'),
+        supabase.from('gazette_messages').select('id, created_at'),
+        supabase.from('liquidity_injections').select('id, triggered_at'),
+      ]);
+
+      const errs = [profilesRes, wagersRes, betsRes, sessionsRes, participationsRes, kmRes, soldeRes, ticketsRes, proposalsRes, gazetteRes, injectionsRes].map(r => r.error).filter(Boolean);
+      if (errs.length) throw errs[0];
+
+      const profilesD = profilesRes.data ?? [];
+      const wagersD = wagersRes.data ?? [];
+      const betsD = betsRes.data ?? [];
+      const sessionsD = sessionsRes.data ?? [];
+      const partsD = participationsRes.data ?? [];
+      const kmD = kmRes.data ?? [];
+      const soldeD = soldeRes.data ?? [];
+      const ticketsD = ticketsRes.data ?? [];
+      const proposalsD = proposalsRes.data ?? [];
+      const gazetteD = gazetteRes.data ?? [];
+      const injectionsD = injectionsRes.data ?? [];
+
+      const total_users = profilesD.length;
+      const balances = profilesD.map((p: any) => p.balance ?? 0);
+      const sortedBal = [...balances].sort((a, b) => a - b);
+      const median_balance_dc = sortedBal.length === 0 ? 0 : (sortedBal.length % 2 ? sortedBal[Math.floor(sortedBal.length / 2)] : (sortedBal[sortedBal.length / 2 - 1] + sortedBal[sortedBal.length / 2]) / 2);
+      const sumBal = balances.reduce((s, x) => s + x, 0);
+
+      const activeWagerUsers = new Set(wagersD.filter((w: any) => !w.is_retracted).map((w: any) => w.user_id));
+      const partUsers = new Set(partsD.map((p: any) => p.user_id));
+      const active_users = new Set([...activeWagerUsers, ...partUsers]).size;
+
+      const total_wagered_dc = wagersD.filter((w: any) => !w.is_retracted).reduce((s, w: any) => s + w.montant_dc, 0);
+      const total_retracted_dc = wagersD.filter((w: any) => w.is_retracted).reduce((s, w: any) => s + w.montant_dc, 0);
+      const total_retraction_count = wagersD.filter((w: any) => w.is_retracted).length;
+      const total_gains_bruts_dc = soldeD.filter((s: any) => s.delta_dc > 0 && (s.reason ?? '').startsWith('Gain')).reduce((s, h: any) => s + h.delta_dc, 0);
+
+      // Paris
+      const countStatus = (st: string) => betsD.filter((b: any) => b.status === st).length;
+      const bettorsByBet = new Map<string, Set<string>>();
+      for (const w of wagersD) {
+        if (w.is_retracted) continue;
+        if (!bettorsByBet.has(w.bet_id)) bettorsByBet.set(w.bet_id, new Set());
+        bettorsByBet.get(w.bet_id)!.add(w.user_id);
+      }
+      const total_unique_bettors = activeWagerUsers.size;
+      const avg_bettors_per_bet = bettorsByBet.size === 0 ? 0 : Math.round([...bettorsByBet.values()].reduce((s, set) => s + set.size, 0) / bettorsByBet.size);
+
+      // Jeux
+      const gameTypes = ['sondage', 'tournoi', 'gouvernement', 'fantasy'];
+      const jeux = gameTypes.map(gt => {
+        const sessOfType = sessionsD.filter((s: any) => s.game_type === gt);
+        const sessIds = new Set(sessOfType.map((s: any) => s.id));
+        const partsOfType = partsD.filter((p: any) => sessIds.has(p.session_id));
+        const uniqueParts = new Set(partsOfType.map((p: any) => p.user_id));
+        const total_sessions = sessOfType.length;
+        const unique_participants = uniqueParts.size;
+        return {
+          game_type: gt,
+          total_sessions,
+          active_sessions: sessOfType.filter((s: any) => s.status === 'active' || s.status === 'voting').length,
+          total_submissions: partsOfType.length,
+          unique_participants,
+          avg_participants_per_session: total_sessions === 0 ? 0 : Math.round(unique_participants / total_sessions),
+          participation_rate_pct: total_users === 0 ? 0 : Math.round(unique_participants / total_users * 100),
+          users_not_participated: total_users - unique_participants,
+        };
+      });
+
+      // Kiss/Marry
+      const now = new Date();
+      const current_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const votes_this_month = kmD.filter((v: any) => v.month_year === current_month).length;
+      const estimated_voters_this_month = Math.round(votes_this_month / 4);
+
+      // Non-participants
+      const non_participants = [
+        ...jeux.map(j => ({
+          game: ({ sondage: 'Sondages', tournoi: 'Tournois', gouvernement: 'Gouvernement', fantasy: 'Fantasy Firm' } as any)[j.game_type],
+          users_not_participated: j.users_not_participated,
+          pct_not_participated: total_users === 0 ? 0 : Math.round(j.users_not_participated / total_users * 100),
+        })),
+        {
+          game: 'Paris',
+          users_not_participated: total_users - total_unique_bettors,
+          pct_not_participated: total_users === 0 ? 0 : Math.round((total_users - total_unique_bettors) / total_users * 100),
+        },
+        {
+          game: 'Kiss/Marry ce mois',
+          users_not_participated: total_users - estimated_voters_this_month,
+          pct_not_participated: total_users === 0 ? 0 : Math.round((total_users - estimated_voters_this_month) / total_users * 100),
+        },
+      ];
+
+      // Timeline helper
+      const groupByDay = (rows: any[], field: string, sumField?: string) => {
+        const map: Record<string, number> = {};
+        for (const r of rows) {
+          const d = String(r[field]).slice(0, 10);
+          map[d] = (map[d] ?? 0) + (sumField ? (r[sumField] ?? 0) : 1);
+        }
+        return map;
+      };
+
+      const report = {
+        generated_at: new Date().toISOString(),
+        global: {
+          total_users,
+          active_users,
+          total_circulation_dc: sumBal,
+          avg_balance_dc: total_users === 0 ? 0 : Math.round(sumBal / total_users),
+          median_balance_dc,
+          min_balance_dc: balances.length ? Math.min(...balances) : 0,
+          max_balance_dc: balances.length ? Math.max(...balances) : 0,
+          total_wagered_dc,
+          total_retracted_dc,
+          total_retraction_count,
+          total_gains_bruts_dc,
+        },
+        paris: {
+          open: countStatus('ouvert'),
+          closed_pending: countStatus('cloture_en_attente'),
+          resolved: countStatus('resolu'),
+          suspended: countStatus('suspendu'),
+          deleted: countStatus('supprime'),
+          total_unique_bettors,
+          pct_users_who_bet: total_users === 0 ? 0 : Math.round(total_unique_bettors / total_users * 100),
+          avg_bettors_per_bet,
+        },
+        jeux,
+        kiss_marry: {
+          total_votes_all_time: kmD.length,
+          current_month,
+          votes_this_month,
+          estimated_voters_this_month,
+          participation_rate_pct: total_users === 0 ? 0 : Math.round(estimated_voters_this_month / total_users * 100),
+          users_not_voted_this_month: total_users - estimated_voters_this_month,
+        },
+        engagement: {
+          open_tickets: ticketsD.filter((t: any) => t.status === 'ouvert' || t.status === 'en_cours').length,
+          pending_proposals: proposalsD.filter((p: any) => p.status === 'en_attente').length,
+          total_gazette_messages: gazetteD.length,
+          total_liquidity_injections: injectionsD.length,
+        },
+        non_participants,
+        timeline: {
+          users_by_day: groupByDay(profilesD, 'created_at'),
+          wagers_by_day: groupByDay(wagersD, 'created_at', 'montant_dc'),
+          participations_by_day: groupByDay(partsD, 'created_at'),
+          bets_created_by_day: groupByDay(betsD, 'created_at'),
+          gazette_messages_by_day: groupByDay(gazetteD, 'created_at'),
+        },
+      };
+
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `daimbet-stats-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Statistiques exportées');
+    } catch (err: any) {
+      console.error('Export stats error:', err);
+      toast.error("Échec de l'export des statistiques");
+    } finally {
+      setExportingStats(false);
+    }
+  };
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       {/* ══════ SIDEBAR ══════ */}
@@ -993,6 +1179,9 @@ export default function AdminPage() {
                 <Button variant="outline" size="sm" onClick={() => navigateTo('tickets')}><Ticket className="w-3 h-3 mr-1" /> Tickets ({openTicketsCount})</Button>
                 <Button variant="outline" size="sm" onClick={() => navigateTo('gazette')}><MessageSquare className="w-3 h-3 mr-1" /> Gazette ({flaggedGazetteCount})</Button>
                 <Button variant="outline" size="sm" onClick={() => navigateTo('pipeline')}><Vote className="w-3 h-3 mr-1" /> Pipeline</Button>
+                <Button variant="outline" size="sm" onClick={handleExportStats} disabled={exportingStats}>
+                  {exportingStats ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Calcul en cours…</> : <>📊 Exporter les statistiques</>}
+                </Button>
               </div>
             </div>
           </div>
