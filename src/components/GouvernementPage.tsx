@@ -89,170 +89,302 @@ function generateGouvPDF(gouv: GouvData, displayName: string, logoUrl: string) {
   const textWhite: [number, number, number] = [245, 240, 230]; // warm white
   const textMuted: [number, number, number] = [160, 155, 145];
   const cardBg: [number, number, number] = [22, 26, 36];
+  const cardBgAlt: [number, number, number] = [26, 30, 42];
+  const dividerCol: [number, number, number] = [60, 55, 35];
 
   const paintBackground = () => {
     doc.setFillColor(...bgColor);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
+    // Subtle watermark logo, centered
+    try {
+      const anyDoc = doc as any;
+      if (anyDoc.GState && anyDoc.setGState) {
+        anyDoc.setGState(new anyDoc.GState({ opacity: 0.05 }));
+        const wmSize = 320;
+        doc.addImage(logoUrl, 'PNG', (pageWidth - wmSize) / 2, (pageHeight - wmSize) / 2, wmSize, wmSize);
+        anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
+      }
+    } catch {}
   };
 
   const paintHeader = () => {
+    // Gold band
     doc.setFillColor(...goldColor);
-    doc.rect(0, 0, pageWidth, 50, 'F');
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    // Thin liserés (above & below)
+    doc.setDrawColor(...goldDim);
+    doc.setLineWidth(0.4);
+    doc.line(margin, 4, pageWidth - margin, 4);
+    doc.line(margin, 36, pageWidth - margin, 36);
+    // DAIMBET wordmark in serif
     doc.setTextColor(...bgColor);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('DAIMBET', margin, 32);
-    // Logo on the right
+    doc.setFont('times', 'bold');
+    doc.setFontSize(20);
+    doc.text('DAIMBET', margin, 27, { charSpace: 2 });
+    // Logo on right
     try {
-      doc.addImage(logoUrl, 'PNG', pageWidth - margin - 38, 9, 32, 32);
+      doc.addImage(logoUrl, 'PNG', pageWidth - margin - 28, 6, 28, 28);
     } catch {}
-    doc.setFontSize(12);
+    // Sub-header band (gov_name)
+    doc.setFillColor(18, 21, 30);
+    doc.rect(0, 40, pageWidth, 50, 'F');
+    doc.setDrawColor(...goldDim);
+    doc.setLineWidth(0.3);
+    doc.line(margin, 90, pageWidth - margin, 90);
     const govLabel = gouv.gov_name || 'Gouvernement';
-    const w = doc.getTextWidth(govLabel);
-    doc.text(govLabel, pageWidth - margin - 44 - w, 32);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(...goldColor);
+    doc.text(govLabel, margin, 70);
+    if (gouv.created_at) {
+      const d = new Date(gouv.created_at);
+      const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const dt = `Formé le ${dateStr} à ${timeStr}`;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...textMuted);
+      const w = doc.getTextWidth(dt);
+      doc.text(dt, pageWidth - margin - w, 84);
+    }
+  };
+
+  const paintFooter = (pageIdx: number, total: number) => {
+    doc.setDrawColor(...goldDim);
+    doc.setLineWidth(0.3);
+    doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...textMuted);
+    doc.text('DAIMBET — République du DAIM', margin, pageHeight - 16);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    const disc = "Ce commentaire a été généré par une IA et ne reflète pas une opinion réelle.";
+    const dw = doc.getTextWidth(disc);
+    doc.text(disc, (pageWidth - dw) / 2, pageHeight - 16);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const label = `page ${pageIdx} / ${total}`;
+    const w = doc.getTextWidth(label);
+    doc.text(label, pageWidth - margin - w, pageHeight - 16);
   };
 
   const ensureSpace = (needed: number) => {
-    if (cursorY + needed > pageHeight - 60) {
+    if (cursorY + needed > pageHeight - 50) {
       doc.addPage();
       paintBackground();
       paintHeader();
-      cursorY = 80;
+      cursorY = 110;
     }
   };
 
   paintBackground();
   paintHeader();
-  let cursorY = 80;
+  let cursorY = 110;
 
   // Premier Ministre card
-  ensureSpace(80);
+  ensureSpace(90);
+  const pmCardHeight = 78;
   doc.setFillColor(...cardBg);
   doc.setDrawColor(...goldDim);
   doc.setLineWidth(0.8);
-  const pmCardHeight = gouv.created_at ? 92 : 70;
   doc.roundedRect(margin, cursorY, pageWidth - margin * 2, pmCardHeight, 6, 6, 'FD');
-  doc.setFont('helvetica', 'bold');
+  // Left gold accent bar
+  doc.setFillColor(...goldColor);
+  doc.rect(margin, cursorY, 3, pmCardHeight, 'F');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...goldColor);
-  doc.text('PREMIER MINISTRE', margin + 14, cursorY + 20);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.text('PREMIER MINISTRE', margin + 16, cursorY + 22, { charSpace: 2 });
+  doc.setFont('times', 'bold');
+  doc.setFontSize(22);
   doc.setTextColor(...textWhite);
-  doc.text(displayName, margin + 14, cursorY + 42);
-  // Gold subtitle line
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.text(displayName, margin + 16, cursorY + 50);
+  doc.setFont('times', 'italic');
+  doc.setFontSize(10);
   doc.setTextColor(...goldColor);
-  doc.text('Premier Ministre de la Republique du DAIM', margin + 14, cursorY + 56);
-  if (gouv.created_at) {
-    const d = new Date(gouv.created_at);
-    const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(...textMuted);
-    doc.text(`Formé le ${dateStr} à ${timeStr}`, margin + 14, cursorY + 76);
-  }
-  cursorY += pmCardHeight + 18;
+  doc.text('Premier Ministre de la République du DAIM', margin + 16, cursorY + 68);
+  cursorY += pmCardHeight + 22;
 
   // Ministries
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(13);
   doc.setTextColor(...goldColor);
   ensureSpace(28);
-  doc.text('COMPOSITION DU GOUVERNEMENT', margin, cursorY);
-  cursorY += 16;
+  doc.text('COMPOSITION DU GOUVERNEMENT', margin, cursorY, { charSpace: 1.5 });
+  cursorY += 6;
+  doc.setDrawColor(...goldDim);
+  doc.setLineWidth(0.4);
+  doc.line(margin, cursorY, pageWidth - margin, cursorY);
+  cursorY += 14;
 
-  const altBg: [number, number, number] = [22, 26, 40];
-  let rowIndex = 0;
-  const drawMinistry = (label: string, person: string, regalian: boolean, emojiId?: string) => {
-    ensureSpace(40);
-    const fillCol = rowIndex % 2 === 0 ? cardBg : altBg;
-    doc.setFillColor(...fillCol);
-    doc.setDrawColor(40, 44, 54);
+  // Build the list of ministries to render
+  const items: { label: string; person: string; regalian: boolean; emojiId?: string }[] = [];
+  FIXED_MINISTRIES.forEach(m => {
+    const person = gouv.ministers?.[m.id];
+    if (person) items.push({ label: m.label, person, regalian: m.regalian, emojiId: m.id });
+  });
+  (gouv.custom_ministries || []).forEach(cm => {
+    if (cm.name?.trim() && cm.person) items.push({ label: cm.name, person: cm.person, regalian: false });
+  });
+
+  const colGap = 12;
+  const cardW = (pageWidth - margin * 2 - colGap) / 2;
+  const cardH = 48;
+  const rowGap = 10;
+
+  const drawMinistryCard = (item: { label: string; person: string; regalian: boolean; emojiId?: string }, x: number, y: number, alt: boolean) => {
+    doc.setFillColor(...(alt ? cardBgAlt : cardBg));
+    doc.setDrawColor(...dividerCol);
     doc.setLineWidth(0.4);
-    doc.roundedRect(margin, cursorY, pageWidth - margin * 2, 36, 4, 4, 'FD');
-    if (regalian) {
+    doc.roundedRect(x, y, cardW, cardH, 5, 5, 'FD');
+    // Régalien left bar
+    if (item.regalian) {
       doc.setFillColor(...goldColor);
-      doc.circle(margin + 10, cursorY + 18, 2.4, 'F');
+      doc.rect(x, y, 2.4, cardH, 'F');
     }
-    let textOffsetX = 18;
-    if (emojiId && MINISTRY_EMOJIS[emojiId]) {
-      const dataUrl = emojiToDataUrl(MINISTRY_EMOJIS[emojiId]);
+    // Emoji
+    let textX = x + 10;
+    if (item.emojiId && MINISTRY_EMOJIS[item.emojiId]) {
+      const dataUrl = emojiToDataUrl(MINISTRY_EMOJIS[item.emojiId]);
       if (dataUrl) {
         try {
-          doc.addImage(dataUrl, 'PNG', margin + 18, cursorY + 9, 18, 18);
-          textOffsetX = 42;
+          doc.addImage(dataUrl, 'PNG', x + 8, y + 14, 22, 22);
+          textX = x + 36;
         } catch {}
       }
     }
+    // Validation badge top-right
+    const bx = x + cardW - 12;
+    const by = y + 10;
+    doc.setFillColor(...goldColor);
+    doc.circle(bx, by, 5, 'F');
+    doc.setDrawColor(...bgColor);
+    doc.setLineWidth(1);
+    doc.line(bx - 2.2, by + 0.2, bx - 0.6, by + 1.8);
+    doc.line(bx - 0.6, by + 1.8, bx + 2.4, by - 1.6);
+    // Texts
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(...textMuted);
-    doc.text(label.toUpperCase(), margin + textOffsetX, cursorY + 14);
+    const labelLines = doc.splitTextToSize(item.label.toUpperCase(), cardW - (textX - x) - 18) as string[];
+    doc.text(labelLines[0], textX, y + 16, { charSpace: 0.6 });
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(...textWhite);
-    doc.text(person, margin + textOffsetX, cursorY + 28);
-    cursorY += 40;
-    rowIndex++;
+    doc.text(item.person, textX, y + 34);
   };
 
-  FIXED_MINISTRIES.forEach(m => {
-    const person = gouv.ministers?.[m.id];
-    if (person) drawMinistry(m.label, person, m.regalian, m.id);
-  });
+  for (let i = 0; i < items.length; i += 2) {
+    ensureSpace(cardH + rowGap);
+    drawMinistryCard(items[i], margin, cursorY, false);
+    if (items[i + 1]) drawMinistryCard(items[i + 1], margin + cardW + colGap, cursorY, true);
+    cursorY += cardH + rowGap;
+  }
 
-  (gouv.custom_ministries || []).forEach(cm => {
-    if (cm.name?.trim() && cm.person) drawMinistry(cm.name, cm.person, false);
-  });
-
-  // Comment block
+  // Comment block — always on a new page
   if (gouv.comment) {
-    // Gold separator line
-    cursorY += 8;
-    doc.setDrawColor(...goldColor);
-    doc.setLineWidth(0.6);
-    doc.line(margin, cursorY, pageWidth - margin, cursorY);
+    doc.addPage();
+    paintBackground();
+    paintHeader();
+    cursorY = 110;
+
+    // Title
+    doc.setDrawColor(...goldDim);
     doc.setLineWidth(0.4);
+    doc.line(margin, cursorY - 8, pageWidth - margin, cursorY - 8);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...goldColor);
+    const title = 'COMMENTAIRE DU PRÉSIDENT JORDAIM BELFORT';
+    const tw = doc.getTextWidth(title);
+    doc.text(title, (pageWidth - tw) / 2, cursorY + 8, { charSpace: 1.5 });
     cursorY += 14;
-    const commentLines = doc.splitTextToSize(gouv.comment, pageWidth - margin * 2 - 28) as string[];
-    const warningLines = doc.splitTextToSize(
-      "Ce commentaire a été généré par une intelligence artificielle et ne reflète pas une opinion réelle.",
-      pageWidth - margin * 2 - 28
-    ) as string[];
-    const blockHeight = 30 + commentLines.length * 14 + 10 + warningLines.length * 10 + 16;
-    ensureSpace(blockHeight);
+    doc.line(margin, cursorY + 4, pageWidth - margin, cursorY + 4);
+    cursorY += 22;
+
+    // Big editorial card
+    const innerPad = 22;
+    const blockX = margin;
+    const blockW = pageWidth - margin * 2;
+    const textW = blockW - innerPad * 2;
+
+    // Drop cap
+    const raw = gouv.comment.trim();
+    const firstLetter = raw.charAt(0);
+    const rest = raw.slice(1);
+    const dropSize = 38;
+    const indentW = 28; // width reserved for drop cap on first lines
+    const indentLines = 3;
+
+    // Lines: first N lines wrap to (textW - indentW), then full textW
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    const indented = doc.splitTextToSize(rest, textW - indentW) as string[];
+    const firstChunk = indented.slice(0, indentLines);
+    const remainingText = indented.slice(indentLines).join(' ');
+    const rest2 = remainingText ? (doc.splitTextToSize(remainingText, textW) as string[]) : [];
+    const lineH = 14;
+    const totalLines = firstChunk.length + rest2.length;
+    const signatureH = 32;
+    const blockH = innerPad * 2 + Math.max(dropSize, firstChunk.length * lineH) + rest2.length * lineH + signatureH;
+
     doc.setFillColor(...cardBg);
     doc.setDrawColor(...goldDim);
     doc.setLineWidth(0.8);
-    doc.roundedRect(margin, cursorY, pageWidth - margin * 2, blockHeight, 6, 6, 'FD');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.roundedRect(blockX, cursorY, blockW, blockH, 8, 8, 'FD');
+
+    const tx = blockX + innerPad;
+    let ty = cursorY + innerPad + 12;
+
+    // Drop cap
+    doc.setFont('times', 'bold');
+    doc.setFontSize(dropSize);
     doc.setTextColor(...goldColor);
-    doc.text('COMMENTAIRE DU PRESIDENT JORDAIM BELFORT', margin + 14, cursorY + 20);
-    doc.setFont('helvetica', 'italic');
+    doc.text(firstLetter, tx, ty + dropSize - 14);
+
+    // First indented lines
+    doc.setFont('times', 'normal');
     doc.setFontSize(11);
     doc.setTextColor(...textWhite);
-    doc.text(commentLines, margin + 14, cursorY + 38);
+    let lineY = ty;
+    firstChunk.forEach((ln) => {
+      doc.text(ln, tx + indentW, lineY);
+      lineY += lineH;
+    });
+    // Remaining full-width lines
+    if (rest2.length > 0) {
+      // align baseline with first chunk continuation
+      let y2 = ty + firstChunk.length * lineH;
+      rest2.forEach((ln) => {
+        doc.text(ln, tx, y2);
+        y2 += lineH;
+      });
+    }
+
+    // Signature, right-aligned at bottom of card
+    const sigY = cursorY + blockH - innerPad - 4;
+    doc.setFont('times', 'italic');
+    doc.setFontSize(16);
+    doc.setTextColor(...goldColor);
+    const sig = 'Jordaim Belfort';
+    const sw = doc.getTextWidth(sig);
+    doc.text(sig, blockX + blockW - innerPad - sw, sigY - 12);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...textMuted);
-    doc.text(warningLines, margin + 14, cursorY + 38 + commentLines.length * 14 + 14);
-    cursorY += blockHeight + 10;
+    const role = 'Président de la République';
+    const rw = doc.getTextWidth(role);
+    doc.text(role, blockX + blockW - innerPad - rw, sigY);
+
+    cursorY += blockH;
   }
 
-  // Footer page numbers
+  // Footer on every page
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...textMuted);
-    const label = `page ${i} / ${pageCount}`;
-    const w = doc.getTextWidth(label);
-    doc.text(label, pageWidth - margin - w, pageHeight - 20);
+    paintFooter(i, pageCount);
   }
 
   const safeName = (gouv.gov_name || 'gouvernement').replace(/[^\w\s\-]/g, '').trim() || 'gouvernement';
