@@ -949,6 +949,22 @@ export type Database = {
     }
     Functions: {
       auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
+      get_bet_participant_counts: {
+        Args: { p_bet_ids: string[] }
+        Returns: {
+          bet_id: string
+          participants: number
+        }[]
+      }
+      get_bet_pools: {
+        Args: { p_bet_ids: string[] }
+        Returns: {
+          bet_id: string
+          option_id: string
+          participants: number
+          pool_dc: number
+        }[]
+      }
       get_gouvernements_public: {
         Args: { p_session_id: string }
         Returns: {
