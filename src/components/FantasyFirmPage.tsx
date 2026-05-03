@@ -143,20 +143,21 @@ export default function FantasyFirmPage() {
   useEffect(() => {
     const fetchExisting = async () => {
       if (!user) { setLoading(false); return; }
-      const { data } = await supabase.from('game_participations').select('*')
+      const { data, error } = await supabase.from('game_participations').select('*')
         .eq('session_id', FANTASY_SESSION_ID)
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const row = data && data.length > 0 ? data[0] : null;
+        .order('created_at', { ascending: false });
+      if (error) console.error('Fantasy fetch error:', error);
+      const row = (data || []).find((r: any) => {
+        const d = r.data as FirmData;
+        return d?.firm_name && Array.isArray(d?.members) && d.members.length > 0;
+      });
       if (row) {
         const d = row.data as unknown as FirmData;
-        if (d?.firm_name && Array.isArray(d?.members) && d.members.length > 0) {
-          setExistingFirm(d);
-          setMembers(d.members);
-          setFirmName(d.firm_name || '');
-          setStep('card');
-        }
+        setExistingFirm(d);
+        setMembers(d.members);
+        setFirmName(d.firm_name || '');
+        setStep('card');
       }
       setLoading(false);
     };
@@ -228,16 +229,21 @@ export default function FantasyFirmPage() {
         firm_number: firmNumber,
       };
 
-      if (existingFirm) {
-        await supabase.from('game_participations')
-          .update({ data: firmData as any })
-          .eq('session_id', FANTASY_SESSION_ID).eq('user_id', user!.id);
-      } else {
-        await supabase.from('game_participations').insert({
-          session_id: FANTASY_SESSION_ID,
-          user_id: user!.id,
-          data: firmData as any,
-        });
+      // Atomic save: wipe any previous rows, then insert a fresh one.
+      const { error: delErr } = await supabase.from('game_participations')
+        .delete()
+        .eq('session_id', FANTASY_SESSION_ID)
+        .eq('user_id', user!.id);
+      if (delErr) console.error('Fantasy delete error:', delErr);
+
+      const { error: insErr } = await supabase.from('game_participations').insert({
+        session_id: FANTASY_SESSION_ID,
+        user_id: user!.id,
+        data: firmData as any,
+      });
+      if (insErr) {
+        console.error('Fantasy insert error:', insErr);
+        throw insErr;
       }
 
       setExistingFirm(firmData);
