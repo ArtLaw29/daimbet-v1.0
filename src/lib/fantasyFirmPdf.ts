@@ -18,12 +18,7 @@ interface GeneratePDFInput {
   roles: PDFRole[];
 }
 
-const ROLE_ICONS: Record<string, string> = {
-  associe: '★',
-  counsel: '◆',
-  collaborateur: '◇',
-  stagiaire: '•',
-};
+// No role icons in PDF — Helvetica doesn't include those glyphs and they render as garbled chars.
 
 async function loadImageAsDataURL(src: string): Promise<string> {
   const res = await fetch(src);
@@ -51,12 +46,12 @@ export async function generateFantasyFirmPDF({ firmName, members, roles }: Gener
   doc.setFillColor(...cream);
   doc.rect(0, 0, pageW, pageH, 'F');
 
-  // Watermark diagonal
+  // Watermark diagonal (smaller, centered)
   doc.saveGraphicsState();
   // @ts-ignore
-  doc.setGState(new (doc as any).GState({ opacity: 0.04 }));
+  doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(60);
+  doc.setFontSize(28);
   doc.setTextColor(...ink);
   doc.text('CONFIDENTIAL — INTERNAL DIRECTORY', pageW / 2, pageH / 2, {
     align: 'center',
@@ -82,19 +77,24 @@ export async function generateFantasyFirmPDF({ firmName, members, roles }: Gener
 
   let y = margin + 10 + 28 + 10;
 
+  // Helper: draw text centered while accounting for charSpace
+  const drawCentered = (text: string, yPos: number, charSpace: number) => {
+    const baseW = doc.getTextWidth(text);
+    const totalW = baseW + charSpace * Math.max(0, text.length - 1);
+    doc.text(text, (pageW - totalW) / 2, yPos, { charSpace });
+  };
+
   // Firm name
   doc.setTextColor(...ink);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(26);
-  const upper = firmName.toUpperCase();
-  // emulate letter-spacing
-  doc.text(upper, pageW / 2, y, { align: 'center', charSpace: 2 });
+  drawCentered(firmName.toUpperCase(), y, 2);
   y += 7;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...muted);
-  doc.text('AVOCATS À LA COUR', pageW / 2, y, { align: 'center', charSpace: 4 });
+  drawCentered('AVOCATS À LA COUR', y, 4);
   y += 6;
 
   // Gold separator
@@ -116,8 +116,7 @@ export async function generateFantasyFirmPDF({ firmName, members, roles }: Gener
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...gold);
-    const icon = ROLE_ICONS[role.id] || '•';
-    const title = `${icon}   ${role.label.toUpperCase()}${group.length > 1 ? 'S' : ''}`;
+    const title = `${role.label.toUpperCase()}${group.length > 1 ? 'S' : ''}`;
     doc.text(title, contentLeft, y, { charSpace: 2 });
     y += 2;
     doc.setDrawColor(...gold);
