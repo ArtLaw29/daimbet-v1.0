@@ -144,13 +144,19 @@ export default function FantasyFirmPage() {
     const fetchExisting = async () => {
       if (!user) { setLoading(false); return; }
       const { data } = await supabase.from('game_participations').select('*')
-        .eq('session_id', FANTASY_SESSION_ID).eq('user_id', user.id).maybeSingle();
-      if (data) {
-        const d = data.data as unknown as FirmData;
-        setExistingFirm(d);
-        setMembers(d.members || []);
-        setFirmName(d.firm_name || '');
-        setStep('card');
+        .eq('session_id', FANTASY_SESSION_ID)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const row = data && data.length > 0 ? data[0] : null;
+      if (row) {
+        const d = row.data as unknown as FirmData;
+        if (d?.firm_name && Array.isArray(d?.members) && d.members.length > 0) {
+          setExistingFirm(d);
+          setMembers(d.members);
+          setFirmName(d.firm_name || '');
+          setStep('card');
+        }
       }
       setLoading(false);
     };
