@@ -424,11 +424,19 @@ export default function GouvernementPage() {
       setProfiles(prMap);
 
       if (user) {
-        const mine = allData.find(g => g.user_id === user.id);
-        if (mine) {
-          setExistingGouv(mine.data);
-          setMinisters(mine.data.ministers || {});
-          setCustomMinistries(mine.data.custom_ministries?.length ? mine.data.custom_ministries : [{ name: '', person: '' }, { name: '', person: '' }]);
+        // Sélectionner le record le plus récent de l'utilisateur qui contient un gouvernement réellement formé
+        const mineAll = (gouvRes.data || [])
+          .filter((p: any) => p.user_id === user.id)
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const mineLatest = mineAll.find((p: any) => {
+          const d = p.data as GouvData;
+          return d?.gov_name && (Object.values(d.ministers || {}).some(Boolean) || (d.custom_ministries || []).some((cm: any) => cm.person));
+        });
+        if (mineLatest) {
+          const data = mineLatest.data as GouvData;
+          setExistingGouv(data);
+          setMinisters(data.ministers || {});
+          setCustomMinistries(data.custom_ministries?.length ? data.custom_ministries : [{ name: '', person: '' }, { name: '', person: '' }]);
         }
       }
       setLoading(false);
