@@ -9,8 +9,18 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const cronSecret = Deno.env.get("CRON_SECRET");
-  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+  const provided = req.headers.get("x-cron-secret");
+  if (!cronSecret || provided !== cronSecret) {
+    return new Response(JSON.stringify({
+      error: "Unauthorized",
+      debug: {
+        env_secret_present: !!cronSecret,
+        env_secret_length: cronSecret?.length ?? 0,
+        env_secret_prefix: cronSecret?.slice(0, 6) ?? null,
+        provided_length: provided?.length ?? 0,
+        provided_prefix: provided?.slice(0, 6) ?? null,
+      }
+    }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
