@@ -70,40 +70,47 @@ export default function EventsPage() {
 
     if (items.length > 0) {
       const betIds = items.map(b => b.id);
-      const { data: wagers } = await supabase
-        .from('wagers')
-        .select('bet_id, option_id, montant_dc, is_retracted, user_id')
-        .in('bet_id', betIds);
-      if (wagers) {
-        const pools: Record<string, Record<string, number>> = {};
-        const totals: Record<string, number> = {};
-        const counts: Record<string, Set<string>> = {};
-        const myWagers: Record<string, UserWager> = {};
+      // Public aggregates via RPC (no per-user data exposed)
+      const [{ data: poolsData }, { data: countsData }] = await Promise.all([
+        supabase.rpc('get_bet_pools', { p_bet_ids: betIds }),
+        supabase.rpc('get_bet_participant_counts', { p_bet_ids: betIds }),
+      ]);
 
-        for (const w of wagers) {
-          if (!w.is_retracted) {
-            if (!pools[w.bet_id]) pools[w.bet_id] = {};
-            pools[w.bet_id][w.option_id] = (pools[w.bet_id][w.option_id] || 0) + w.montant_dc;
-            totals[w.bet_id] = (totals[w.bet_id] || 0) + w.montant_dc;
-            if (!counts[w.bet_id]) counts[w.bet_id] = new Set();
-            counts[w.bet_id].add(w.user_id);
-
-            if (user && w.user_id === user.id) {
-              const opt = items.flatMap(b => b.bet_options).find(o => o.id === w.option_id);
-              myWagers[w.bet_id] = {
-                bet_id: w.bet_id,
-                option_id: w.option_id,
-                montant_dc: w.montant_dc,
-                option_label: opt?.label,
-              };
-            }
-          }
-        }
-        setWagerPools(pools);
-        setBetTotals(totals);
-        setWagerCounts(Object.fromEntries(Object.entries(counts).map(([k, v]) => [k, v.size])));
-        setUserWagers(myWagers);
+      const pools: Record<string, Record<string, number>> = {};
+      const totals: Record<string, number> = {};
+      for (const row of (poolsData || []) as Array<{ bet_id: string; option_id: string; pool_dc: number }>) {
+        if (!pools[row.bet_id]) pools[row.bet_id] = {};
+        pools[row.bet_id][row.option_id] = Number(row.pool_dc) || 0;
+        totals[row.bet_id] = (totals[row.bet_id] || 0) + (Number(row.pool_dc) || 0);
       }
+      const counts: Record<string, number> = {};
+      for (const row of (countsData || []) as Array<{ bet_id: string; participants: number }>) {
+        counts[row.bet_id] = Number(row.participants) || 0;
+      }
+      setWagerPools(pools);
+      setBetTotals(totals);
+      setWagerCounts(counts);
+
+      // Personal wagers (only mine; allowed by RLS)
+      const myWagers: Record<string, UserWager> = {};
+      if (user) {
+        const { data: mine } = await supabase
+          .from('wagers')
+          .select('bet_id, option_id, montant_dc')
+          .eq('user_id', user.id)
+          .eq('is_retracted', false)
+          .in('bet_id', betIds);
+        for (const w of mine || []) {
+          const opt = items.flatMap(b => b.bet_options).find(o => o.id === w.option_id);
+          myWagers[w.bet_id] = {
+            bet_id: w.bet_id,
+            option_id: w.option_id,
+            montant_dc: w.montant_dc,
+            option_label: opt?.label,
+          };
+        }
+      }
+      setUserWagers(myWagers);
     }
     setLoading(false);
   };
