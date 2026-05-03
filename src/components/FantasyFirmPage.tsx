@@ -246,7 +246,18 @@ export default function FantasyFirmPage() {
     }
   };
 
-  const resetForm = () => {
+  const resetForm = async () => {
+    if (existingFirm && user) {
+      await supabase.from('game_participations')
+        .delete()
+        .eq('session_id', FANTASY_SESSION_ID)
+        .eq('user_id', user.id);
+    }
+    setExistingFirm(null);
+    setMembers([
+      { name: '', role: 'associe' },
+      { name: '', role: 'collaborateur' },
+    ]);
     setStep('form');
     setNameSuggestions([]);
     setFirmName('');
