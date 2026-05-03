@@ -993,6 +993,9 @@ export default function AdminPage() {
                 <Button variant="outline" size="sm" onClick={() => navigateTo('tickets')}><Ticket className="w-3 h-3 mr-1" /> Tickets ({openTicketsCount})</Button>
                 <Button variant="outline" size="sm" onClick={() => navigateTo('gazette')}><MessageSquare className="w-3 h-3 mr-1" /> Gazette ({flaggedGazetteCount})</Button>
                 <Button variant="outline" size="sm" onClick={() => navigateTo('pipeline')}><Vote className="w-3 h-3 mr-1" /> Pipeline</Button>
+                <Button variant="outline" size="sm" onClick={handleExportStats} disabled={exportingStats}>
+                  {exportingStats ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Calcul en cours…</> : <>📊 Exporter les statistiques</>}
+                </Button>
               </div>
             </div>
           </div>
