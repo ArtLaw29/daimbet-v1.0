@@ -55,30 +55,37 @@ export default function BetDetailPage() {
     if (error || !data) { toast.error('Pari introuvable'); setLoading(false); return; }
     setBet(data as BetWithOptions);
 
-    // Fetch wagers
-    const { data: wagers } = await supabase
-      .from('wagers')
-      .select('*')
-      .eq('bet_id', id)
-      .eq('is_retracted', false);
-    if (wagers) {
-      const p: Record<string, number> = {};
-      let total = 0;
-      const userIds = new Set<string>();
-      const mine: (WagerRow & { option_label?: string })[] = [];
-      for (const w of wagers) {
-        p[w.option_id] = (p[w.option_id] || 0) + w.montant_dc;
-        total += w.montant_dc;
-        userIds.add(w.user_id);
-        if (user && w.user_id === user.id) {
-          const opt = (data as BetWithOptions).bet_options.find(o => o.id === w.option_id);
-          mine.push({ ...w, option_label: opt?.label });
-        }
-      }
-      setPools(p);
-      setTotalPool(total);
-      setWagerCount(userIds.size);
+    // Public aggregates via RPC (so non-admins see the full pool)
+    const [{ data: poolsData }, { data: countsData }] = await Promise.all([
+      supabase.rpc('get_bet_pools', { p_bet_ids: [id] }),
+      supabase.rpc('get_bet_participant_counts', { p_bet_ids: [id] }),
+    ]);
+    const p: Record<string, number> = {};
+    let total = 0;
+    for (const row of (poolsData || []) as Array<{ option_id: string; pool_dc: number }>) {
+      const v = Number(row.pool_dc) || 0;
+      p[row.option_id] = v;
+      total += v;
+    }
+    setPools(p);
+    setTotalPool(total);
+    setWagerCount(Number((countsData?.[0] as any)?.participants) || 0);
+
+    // My own wagers (RLS allows me to see mine)
+    if (user) {
+      const { data: myRows } = await supabase
+        .from('wagers')
+        .select('*')
+        .eq('bet_id', id)
+        .eq('user_id', user.id)
+        .eq('is_retracted', false);
+      const mine: (WagerRow & { option_label?: string })[] = (myRows || []).map(w => {
+        const opt = (data as BetWithOptions).bet_options.find(o => o.id === w.option_id);
+        return { ...w, option_label: opt?.label };
+      });
       setMyWagers(mine);
+    } else {
+      setMyWagers([]);
     }
     // Fetch user's suggestions for this bet (RLS now restricts to author)
     if (user && data) {
