@@ -1,71 +1,75 @@
-## Objectif
+# Diagnostic
 
-Enrichir le formulaire de proposition de pari (`ProposeNewDialog` quand `kind === 'bet'`) pour permettre à l'utilisateur de fournir plus de contexte, et lui offrir une bascule vers un sondage si l'évènement n'a pas vocation à se réaliser.
+Christophe (et les autres non-admins) ne voient plus :
+- le **classement** (vide ou avec eux seuls),
+- les **noms d'auteurs** des paris / propositions / messages,
+- les listes de joueurs dans Sondages/Tournois/Gouvernement,
+ce qui donne l'impression d'être "déconnecté".
 
-## Nouveaux champs dans le dialogue "Proposer un pari"
+## Cause racine
 
-1. **Sous-titre** (optionnel, max 120 caractères) — petite Input texte
-2. **Description** (optionnel, max 500 caractères) — Textarea
-3. **Date et heure de fin** (optionnel mais recommandé)
-   - Datepicker shadcn (Popover + Calendar) pour la date
-   - Input `type="time"` à côté pour l'heure
-   - Combiné en un seul `Date` ISO envoyé dans `end_date_proposed`
-   - Validation : doit être dans le futur
-4. **Cotes suggérées** (optionnel) — uniquement quand au moins un choix est rempli
-   - Pour chaque choix saisi, un petit Input numérique (`step=0.05`, min `1.0`) à droite du label
-   - Indication "purement indicatif, l'admin peut ajuster"
-5. **Bascule "C'est plutôt un sondage"** — un `Switch` en haut du dialogue
-   - Si activé, le `kind` envoyé devient `sondage` au lieu de `bet`, et le copy/labels du formulaire s'adaptent (question au lieu d'intitulé, etc.)
-   - Le sous-titre/description/date/cotes restent disponibles (la date devient la fin du sondage ; les cotes sont ignorées côté sondage)
-   - Aide affichée : "Si l'évènement ne va pas vraiment se produire (juste un avis collectif), transforme-le en sondage."
+La vue `public.profiles_public` est définie avec `security_invoker=on`. Elle interroge donc la table `profiles` **avec les droits de l'appelant**. Or la policy SELECT de `profiles` est :
 
-## Mapping vers la table `daimocratie_proposals`
-
-Aucune migration nécessaire — tout passe par les colonnes existantes :
-
-- `title` → intitulé
-- `end_date_proposed` → date+heure combinées en ISO
-- `proposal_kind` → `'bet'` ou `'sondage'` selon le switch
-- `options_json` → tableau enrichi `[{ label, suggested_cote }]` (le champ `suggested_cote` est ignoré côté sondage / activation, pas de breaking change car le edge function lit `o.label`)
-- `payload` → on y range le reste :
-  ```json
-  {
-    "subtitle": "...",
-    "description": "...",
-    "end_date": "2026-05-10T18:00:00.000Z",
-    "suggested_odds": [{ "label": "OUI", "cote": 1.8 }, ...]
-  }
-  ```
-
-## Affichage des nouvelles infos
-
-- **`ProposalCard`** (à mettre à jour) : afficher sous-titre, description tronquée, date proposée formatée, et les cotes suggérées si présentes — pour que les votants aient le contexte avant de voter 👍/👎.
-- **`activate-proposal` edge function** : déjà compatible — elle lit `payload.subtitle`, `payload.description`, `proposal.end_date_proposed`. Aucun changement requis. (Les cotes suggérées restent purement indicatives ; les vraies cotes restent calculées par `recalculate_odds`.)
-
-## Détails techniques
-
-```text
-ProposeNewDialog (bet/sondage uniquement)
-├── Switch "Transformer en sondage"  ← nouveau
-├── Input  Intitulé / Question         (selon switch)
-├── Input  Sous-titre (optionnel)      ← nouveau
-├── Textarea Description (optionnel)   ← nouveau
-├── Date Picker + time input           ← nouveau
-├── Choix [ Input label | Input cote ] ← cote nouvelle (bet only)
-│   + bouton "Ajouter un choix"
-└── Soumettre
+```
+(auth.uid() = user_id) OR has_role(auth.uid(), 'admin')
 ```
 
-Validation côté client avec `zod` :
-- `title` non vide, ≤ 200
-- `subtitle` ≤ 120
-- `description` ≤ 500
-- `end_date` > now si fourni
-- chaque cote ≥ 1.0 si fournie
+→ Un utilisateur non-admin ne voit, à travers `profiles_public`, **que sa propre ligne**. C'est confirmé dans les logs réseau de Christophe :
 
-## Fichiers modifiés
+- `GET /profiles_public?select=display_name` → `[]`
+- `GET /profiles?select=user_id,balance&order=balance.desc` → 1 seule ligne (la sienne)
+- `GET /profiles_public?select=user_id,display_name&user_id=in.(...)` → `[]`
 
-- `src/components/ProposeNewDialog.tsx` — ajout des champs, switch, validation, mapping payload
-- `src/components/ProposalCard.tsx` — afficher sous-titre / description / date / cotes suggérées (lecture seule)
+Conséquences observées :
+- **LeaderboardPage** : un seul profil renvoyé → classement vide / "1 sur 1".
+- **Navbar `topProfiles`**, **PendingProposalsSection** (auteurs), **AdminSondages/Tournois/Gouvernements**, **GazettePage**, **AuthPage** (vérification de pseudos pris) → vides.
+- Les paris sont bien retournés par l'API, mais sans noms d'auteurs/joueurs et sans classement, l'interface donne l'illusion d'une déconnexion.
 
-Aucune migration DB, aucun changement d'edge function nécessaire.
+Cette vue a été introduite récemment (mémoire RBAC 2026-04-23) pour cacher les champs sensibles (`is_suspended`, `has_accepted_charter`, `rules_accepted`, `created_at`). Le `security_invoker=on` annule complètement son intérêt public.
+
+# Solution
+
+## 1. Migration SQL
+
+Recréer `profiles_public` **sans** `security_invoker=on` (donc en SECURITY DEFINER implicite, exécutée avec les droits du propriétaire `postgres`), pour que les champs publics soient lisibles par tous les utilisateurs authentifiés, tout en gardant les colonnes sensibles non-exposées.
+
+```sql
+DROP VIEW IF EXISTS public.profiles_public;
+
+CREATE VIEW public.profiles_public AS
+SELECT
+  user_id,
+  display_name,
+  emoji,
+  avatar_url,
+  balance,
+  visible_in_sondages,
+  visible_in_kiss_marry
+FROM public.profiles;
+
+-- Lecture publique (champs non-sensibles uniquement)
+GRANT SELECT ON public.profiles_public TO authenticated, anon;
+
+-- Empêcher toute écriture via la vue
+REVOKE INSERT, UPDATE, DELETE ON public.profiles_public FROM PUBLIC, authenticated, anon;
+```
+
+La table de base `profiles` reste protégée par sa RLS actuelle (les champs sensibles `is_suspended`, `has_accepted_charter`, `rules_accepted`, `created_at` ne sont accessibles directement qu'au propriétaire ou à un admin).
+
+## 2. Mettre à jour la mémoire RBAC
+
+Préciser que `profiles_public` est désormais une vue **SECURITY DEFINER** (sans `security_invoker`), exposant uniquement les colonnes publiques, et que la table `profiles` ne doit jamais être interrogée pour lire le profil d'un autre utilisateur.
+
+## 3. Vérification après migration
+
+- Recharger `/classement` → tous les utilisateurs apparaissent.
+- Recharger `/` (Events) → noms d'auteurs des paris/propositions s'affichent.
+- Vérifier `/jeux` (Sondages, Tournois, Gouvernement) → listes de joueurs OK.
+- Vérifier l'inscription (`AuthPage`) → la détection des pseudos déjà pris fonctionne à nouveau.
+
+# Fichiers impactés
+
+- Nouvelle migration SQL (recréation de la vue + grants).
+- `mem://tech/auth/rbac` (mise à jour de la note de sécurité).
+
+Aucun changement de code TS nécessaire — toutes les requêtes utilisent déjà `profiles_public`.
