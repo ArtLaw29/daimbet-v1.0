@@ -6,6 +6,8 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { POSITIVE_THRESHOLD, NEGATIVE_BLOCK, voteOnProposal, KIND_LABELS, type ProposalKind } from '@/lib/proposals';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface PendingProposal {
   id: string;
@@ -15,6 +17,8 @@ interface PendingProposal {
   votes_negative: number;
   created_at: string;
   payload: Record<string, unknown> | null;
+  end_date_proposed?: string | null;
+  options_json?: any;
 }
 
 interface Props {
@@ -33,7 +37,7 @@ export default function PendingProposalsSection({ kind, title }: Props) {
   const fetchProposals = useCallback(async () => {
     const { data } = await (supabase as any)
       .from('daimocratie_proposals')
-      .select('id, title, user_id, votes_positive, votes_negative, created_at, payload')
+      .select('id, title, user_id, votes_positive, votes_negative, created_at, payload, end_date_proposed, options_json')
       .eq('proposal_kind', kind)
       .eq('status', 'en_attente')
       .order('created_at', { ascending: false });
@@ -123,9 +127,29 @@ export default function PendingProposalsSection({ kind, title }: Props) {
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
                   <h4 className="font-semibold text-sm">{p.title}</h4>
+                  {p.payload?.subtitle && (
+                    <p className="text-xs text-foreground/80 mt-0.5 italic">{String(p.payload.subtitle)}</p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Proposé par {proposerNames[p.user_id] || 'Inconnu'} 🦌
                   </p>
+                  {p.payload?.description && (
+                    <p className="text-xs text-muted-foreground mt-1.5 whitespace-pre-wrap">{String(p.payload.description)}</p>
+                  )}
+                  {p.end_date_proposed && (
+                    <p className="text-[11px] text-muted-foreground mt-1.5">
+                      🗓️ Fin proposée : {format(new Date(p.end_date_proposed), "d MMM yyyy 'à' HH'h'mm", { locale: fr })}
+                    </p>
+                  )}
+                  {Array.isArray(p.payload?.suggested_odds) && (p.payload!.suggested_odds as any[]).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {(p.payload!.suggested_odds as { label: string; cote: number }[]).map((o, i) => (
+                        <span key={i} className="text-[11px] bg-secondary px-2 py-0.5 rounded-full">
+                          {o.label} <span className="text-primary font-semibold">×{Number(o.cote).toFixed(2)}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
