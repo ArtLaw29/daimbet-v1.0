@@ -759,9 +759,7 @@ export default function GouvernementPage() {
                   <h4 className="font-semibold text-sm">{g.data.gov_name}</h4>
                   <span className="text-[10px] text-muted-foreground">({filledPosts} postes)</span>
                 </div>
-                {g.data.comment && (
-                  <p className="text-xs text-muted-foreground italic line-clamp-3">{g.data.comment}</p>
-                )}
+                {/* Le commentaire IA de Jordaim Belfort est privé : visible uniquement par l'auteur du gouvernement. */}
               </motion.div>
             );
           })}
