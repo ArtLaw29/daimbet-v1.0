@@ -521,11 +521,17 @@ export default function GouvernementPage() {
     };
 
     // Always insert a new record
-    await supabase.from('game_participations').insert({
+    const { error: insertError } = await supabase.from('game_participations').insert({
       session_id: '00000000-0000-0000-0000-000000000001',
       user_id: user.id,
       data: gouvData as any,
     });
+    if (insertError) {
+      console.error('Erreur sauvegarde gouvernement:', insertError);
+      toast.error("Échec de la sauvegarde du gouvernement. Réessaie.");
+      setSubmitting(false);
+      return;
+    }
 
     // Generate AI comment
     setLoadingComment(true);
@@ -561,9 +567,12 @@ export default function GouvernementPage() {
         .limit(1);
 
       if (latestRows && latestRows.length > 0) {
-        await supabase.from('game_participations')
+        const { error: updateError } = await supabase.from('game_participations')
           .update({ data: gouvData as any })
           .eq('id', latestRows[0].id);
+        if (updateError) {
+          console.error('Erreur mise à jour commentaire:', updateError);
+        }
       }
 
       setExistingGouv(gouvData);
