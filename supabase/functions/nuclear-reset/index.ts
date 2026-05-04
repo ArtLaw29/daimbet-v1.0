@@ -49,6 +49,17 @@ const purgeAllGameData = async (supabase: any, errors: string[]) => {
     console.log("Deleted all game_sessions");
   }
 
+  // Re-seed the constant sessions used by Gouvernement & Fantasy Firm
+  const { error: seedErr } = await supabase
+    .from("game_sessions")
+    .upsert([
+      { id: GOVERNMENT_SESSION_ID, game_type: "gouvernement", title: "République du DAIM", status: "active", config: {} },
+      { id: FANTASY_SESSION_ID, game_type: "fantasy", title: "Fantasy Firm", status: "active", config: {} },
+    ], { onConflict: "id" });
+  if (!pushError(errors, "game_sessions (reseed)", seedErr)) {
+    console.log("Re-seeded constant game_sessions (gouvernement, fantasy)");
+  }
+
 };
 
 Deno.serve(async (req) => {
