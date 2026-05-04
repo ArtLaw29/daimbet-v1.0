@@ -11,6 +11,7 @@ import { PROMO_NAMES } from '@/lib/pari-mutuel';
 import PendingProposalsSection from '@/components/PendingProposalsSection';
 import ProposeNewDialog from '@/components/ProposeNewDialog';
 import ContactFooter from '@/components/ContactFooter';
+import GouvernementStats from '@/components/GouvernementStats';
 import jsPDF from 'jspdf';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 
@@ -757,6 +758,15 @@ export default function GouvernementPage() {
           })}
         </div>
       )}
+      <GouvernementStats
+        allGouvs={allGouvs}
+        profiles={profiles}
+        currentUserId={user?.id}
+        onDownloadDreamTeamPDF={(gouv) => {
+          generateGouvPDF(gouv, 'La Promo', daimcoinLogo);
+          toast.success('PDF Dream Team téléchargé 📄');
+        }}
+      />
       <ContactFooter />
     </div>
   );
