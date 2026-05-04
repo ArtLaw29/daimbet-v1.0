@@ -46,6 +46,7 @@ export default function KissMarryPage() {
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set(['coup_soir', 'plan_q']));
   const [optedOutNames, setOptedOutNames] = useState<Set<string>>(new Set());
   const [revealConfig, setRevealConfig] = useState<{ reveal_dates: string[] } | null>(null);
+  const [revealLoading, setRevealLoading] = useState(false);
 
   // Fetch users who opted out of Kiss/Marry visibility
   useEffect(() => {
@@ -106,24 +107,35 @@ export default function KissMarryPage() {
 
   const countdown = useCountdown(nextRevealDate);
 
-  // Filter out user's own name + opted-out users
-  const availableNames = filterNames(
-    PROMO_NAMES.filter(n => n.toLowerCase() !== (profile?.display_name || '').toLowerCase()),
-    optedOutNames
+  // Filter out user's own name + opted-out users.
+  // optedOutNames contains full display_names (e.g. "Léa Martin"); promo names are first names ("Léa").
+  // Match by first token of display_name OR full equality.
+  const optedOutFirstTokens = new Set(
+    Array.from(optedOutNames).map(dn => dn.split(/\s+/)[0])
   );
+  const myFirstToken = (profile?.display_name || '').split(/\s+/)[0].toLowerCase();
+  const availableNames = PROMO_NAMES.filter(n => {
+    const lower = n.toLowerCase();
+    if (lower === (profile?.display_name || '').toLowerCase()) return false;
+    if (lower === myFirstToken) return false;
+    if (optedOutNames.has(lower)) return false;
+    if (optedOutFirstTokens.has(lower)) return false;
+    return true;
+  });
 
   const checkIfVoted = useCallback(async () => {
     try {
       // Server-side check (localStorage alone is unreliable after nuclear reset)
       const { data, error } = await supabase.functions.invoke('km-vote', {
-        body: { action: 'check', month_year: monthYear },
+        body: { action: 'check' },
       });
+      const periodKey = data?.period_id || monthYear;
       if (!error && data?.has_voted) {
-        localStorage.setItem(`km_voted_${monthYear}`, 'true');
+        localStorage.setItem(`km_voted_${periodKey}`, 'true');
         setHasVoted(true);
       } else {
         // Clear stale localStorage if server says not voted
-        localStorage.removeItem(`km_voted_${monthYear}`);
+        localStorage.removeItem(`km_voted_${periodKey}`);
         setHasVoted(false);
       }
     } catch {
@@ -167,7 +179,7 @@ export default function KissMarryPage() {
       }
     }
     setIndices(generated);
-  }, [monthYear]);
+  }, [monthYear, hiddenCategories]);
 
   useEffect(() => {
     if (!revealConfig) return; // wait until period ID is resolved
@@ -198,48 +210,70 @@ export default function KissMarryPage() {
       .filter(([_, name]) => name)
       .map(([category, voted_prenom]) => ({ category, voted_prenom }));
 
+    if (monthYear === 'post-cycle') {
+      toast.error("Aucune période de vote n'est ouverte actuellement 🦌");
+      setSubmitting(false);
+      setShowConfirm(false);
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke('km-vote', {
-      body: { votes, month_year: monthYear },
+      body: { votes },
     });
 
     if (error || data?.error) {
       toast.error(data?.error || 'Erreur lors du vote');
       setSubmitting(false);
+      setShowConfirm(false);
       return;
     }
 
-    localStorage.setItem(`km_voted_${monthYear}`, 'true');
+    const periodKey = data?.period_id || monthYear;
+    localStorage.setItem(`km_voted_${periodKey}`, 'true');
     toast.success('Votes enregistrés ! 🔒');
     setHasVoted(true);
     setSubmitting(false);
+    setShowConfirm(false);
     generateIndices();
   };
 
   // Auto-fetch reveal data when revealMode activates
-  // Auto-reveal: on the 1st of the month at 10h, fetch LAST month's results
   useEffect(() => {
     if (!isRevealDay || revealStarted) return;
     setRevealStarted(true);
+    setRevealLoading(true);
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
     (async () => {
       const { data } = await (supabase.rpc as any)('get_km_top3', { p_month_year: revealMonthYear });
-      if (!data || data.length === 0) return;
       const catData: Record<string, { name: string; count: number }[]> = {};
-      for (const row of data as any[]) {
+      for (const row of (data as any[]) || []) {
         if (!catData[row.category]) catData[row.category] = [];
         catData[row.category].push({ name: row.voted_prenom, count: Number(row.vote_count) });
       }
       setRevealData(catData);
+      setRevealLoading(false);
+      if (Object.keys(catData).length === 0) return;
       setRevealStep(-3);
-      setTimeout(() => setRevealStep(-2), 1000);
-      setTimeout(() => setRevealStep(-1), 2000);
-      setTimeout(() => setRevealStep(0), 3000);
-      setTimeout(() => setRevealStep(1), 5500);
-      setTimeout(() => setRevealStep(2), 8000);
-      setTimeout(() => setRevealStep(3), 10500);
+      timeouts.push(setTimeout(() => setRevealStep(-2), 1000));
+      timeouts.push(setTimeout(() => setRevealStep(-1), 2000));
+      timeouts.push(setTimeout(() => setRevealStep(0), 3000));
+      timeouts.push(setTimeout(() => setRevealStep(1), 5500));
+      timeouts.push(setTimeout(() => setRevealStep(2), 8000));
+      timeouts.push(setTimeout(() => setRevealStep(3), 10500));
     })();
+    return () => { timeouts.forEach(clearTimeout); };
   }, [isRevealDay, revealMonthYear, revealStarted]);
 
   if (loading) return <div className="text-center py-20 text-muted-foreground">Chargement...</div>;
+
+  // REVEAL LOADING (avoid flashing the vote form before reveal data arrives)
+  if (isRevealDay && (revealLoading || (Object.keys(revealData).length === 0 && !revealStarted))) {
+    return (
+      <div className="container mx-auto px-4 py-20 max-w-2xl text-center text-muted-foreground">
+        🏆 Chargement de la révélation…
+      </div>
+    );
+  }
 
   // REVEAL MODE
   if (isRevealDay && Object.keys(revealData).length > 0) {
