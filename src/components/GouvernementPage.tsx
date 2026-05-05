@@ -479,10 +479,21 @@ export default function GouvernementPage() {
     return idx >= 0 ? idx + 1 : sorted.length;
   }, [profiles, user]);
 
-  const handleRemanier = () => {
+  const handleRemanier = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('game_participations')
+      .delete()
+      .eq('session_id', '00000000-0000-0000-0000-000000000001')
+      .eq('user_id', user.id);
+    if (error) {
+      toast.error("Impossible de remanier : " + error.message);
+      return;
+    }
     setMinisters({});
     setCustomMinistries([{ name: '', person: '' }, { name: '', person: '' }]);
     setExistingGouv(null);
+    toast.success('Gouvernement dissous, à toi de jouer ! 🏛️');
   };
 
   const handleDownloadPDF = () => {
