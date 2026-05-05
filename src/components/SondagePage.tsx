@@ -429,7 +429,7 @@ export default function SondagePage() {
         <p className="text-4xl">🗳️</p>
         <h2 className="text-xl font-display mt-1">Daimocratie — Sondages</h2>
         <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto">
-          Bienvenue dans Daimocratie — Sondages ! Réponds aux sondages proposés et parie des DaimCoins sur l'option que tu penses être la plus populaire. Si ton pronostic secret est le bon, tu recevras un bonus de DaimCoins !
+          Bienvenue dans Daimocratie — Sondages, où tu réponds aux questions en exprimant ton choix personnel via un vote classique tout en pariant sur l'option que tu penses être la plus populaire. Ce pronostic secret reste invisible des autres et te permet de miser tes DaimCoins sur le résultat collectif final. Toute la subtilité repose sur le décalage stratégique : tu peux voter selon ton cœur tout en pariant sur une autre option si tu penses que la majorité fera un choix différent. Si ton pronostic secret est le bon, tu reçois un bonus de DaimCoins.
         </p>
       </div>
 
