@@ -190,6 +190,112 @@ export type Database = {
         }
         Relationships: []
       }
+      challenges: {
+        Row: {
+          code: string
+          created_at: string
+          creator_id: string
+          expires_at: string | null
+          game_type: string
+          id: string
+          mise: number
+          session_id: string | null
+          status: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          creator_id: string
+          expires_at?: string | null
+          game_type: string
+          id?: string
+          mise?: number
+          session_id?: string | null
+          status?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          creator_id?: string
+          expires_at?: string | null
+          game_type?: string
+          id?: string
+          mise?: number
+          session_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenges_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "games_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_content: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          scheduled_date: string
+          status: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          data: Json
+          id?: string
+          scheduled_date: string
+          status?: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          scheduled_date?: string
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      daily_scores: {
+        Row: {
+          content_id: string | null
+          finished_at: string
+          id: string
+          rank: number | null
+          rewarded: boolean
+          user_id: string
+        }
+        Insert: {
+          content_id?: string | null
+          finished_at?: string
+          id?: string
+          rank?: number | null
+          rewarded?: boolean
+          user_id: string
+        }
+        Update: {
+          content_id?: string | null
+          finished_at?: string
+          id?: string
+          rank?: number | null
+          rewarded?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_scores_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "daily_content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daimocratie_proposals: {
         Row: {
           created_at: string
@@ -267,6 +373,39 @@ export type Database = {
           },
         ]
       }
+      external_bets: {
+        Row: {
+          created_at: string
+          id: string
+          mise: number
+          player1_id: string
+          player2_id: string | null
+          result_player1: string | null
+          result_player2: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mise?: number
+          player1_id: string
+          player2_id?: string | null
+          result_player1?: string | null
+          result_player2?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mise?: number
+          player1_id?: string
+          player2_id?: string | null
+          result_player1?: string | null
+          result_player2?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       game_participations: {
         Row: {
           created_at: string
@@ -335,6 +474,48 @@ export type Database = {
           subtitle?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      games_sessions: {
+        Row: {
+          created_at: string
+          game_state: Json
+          game_type: string
+          id: string
+          mise_player1: number
+          mise_player2: number
+          player1_id: string | null
+          player2_id: string | null
+          status: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_state?: Json
+          game_type: string
+          id?: string
+          mise_player1?: number
+          mise_player2?: number
+          player1_id?: string | null
+          player2_id?: string | null
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_state?: Json
+          game_type?: string
+          id?: string
+          mise_player1?: number
+          mise_player2?: number
+          player1_id?: string | null
+          player2_id?: string | null
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
         }
         Relationships: []
       }
