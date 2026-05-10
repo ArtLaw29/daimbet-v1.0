@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { Target, Newspaper, Trophy, Gamepad2, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ResumeGameBanner from '@/components/ResumeGameBanner';
 
 interface NavTab {
   to: string;
