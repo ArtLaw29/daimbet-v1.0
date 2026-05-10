@@ -23,6 +23,7 @@ import TicketThread from '@/components/TicketThread';
 import AdminCreateTicketDialog from '@/components/AdminCreateTicketDialog';
 import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
+import AdminDailyContent from '@/components/AdminDailyContent';
 import AdminKmFullResults from '@/components/AdminKmFullResults';
 import AdminGouvernements from '@/components/AdminGouvernements';
 import AdminSondages from '@/components/AdminSondages';
