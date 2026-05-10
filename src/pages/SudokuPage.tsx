@@ -52,11 +52,19 @@ export default function SudokuPage() {
   const loadScores = async (contentId: string) => {
     const { data } = await supabase
       .from('daily_scores')
-      .select('*, profiles!inner(display_name, emoji)')
+      .select('*')
       .eq('content_id', contentId)
       .order('finished_at', { ascending: true })
       .limit(20);
-    setScores(data || []);
+    const rows = data || [];
+    const ids = Array.from(new Set(rows.map((r: any) => r.user_id)));
+    let profMap: Record<string, any> = {};
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from('profiles').select('user_id, display_name, emoji').in('user_id', ids);
+      (profs || []).forEach((p: any) => { profMap[p.user_id] = p; });
+    }
+    setScores(rows.map((r: any) => ({ ...r, profiles: profMap[r.user_id] })));
   };
 
   // Timer
