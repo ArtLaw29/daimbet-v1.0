@@ -38,6 +38,7 @@ const Puissance4Page = lazy(() => import("./pages/Puissance4Page"));
 const EchecsPage = lazy(() => import("./pages/EchecsPage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 import RulesScreen from "./components/RulesScreen";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -159,7 +160,7 @@ function AppRoutes() {
           <Route path="/jeux/sudoku" element={<><Navbar /><ResolutionNotifier /><SudokuPage /></>} />
           <Route path="/jeux/pari-externe" element={<><Navbar /><ResolutionNotifier /><PariExternePage /></>} />
           <Route path="/jeux/mots-croises" element={<><Navbar /><ResolutionNotifier /><MotsCroisesPage /></>} />
-          <Route path="/jeux/duels" element={<><Navbar /><ResolutionNotifier /><DuelsPage /></>} />
+          <Route path="/jeux/duels" element={<><Navbar /><ResolutionNotifier /><ErrorBoundary label="DuelsPage"><DuelsPage /></ErrorBoundary></>} />
           <Route path="/jeux/pendu/:sessionId" element={<><Navbar /><ResolutionNotifier /><PenduPage /></>} />
           <Route path="/jeux/puissance4/:sessionId" element={<><Navbar /><ResolutionNotifier /><Puissance4Page /></>} />
           <Route path="/jeux/echecs/:sessionId" element={<><Navbar /><ResolutionNotifier /><EchecsPage /></>} />
