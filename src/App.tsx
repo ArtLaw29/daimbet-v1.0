@@ -31,6 +31,11 @@ const BlackjackPage = lazy(() => import("./pages/BlackjackPage"));
 const WordlePage = lazy(() => import("./pages/WordlePage"));
 const SudokuPage = lazy(() => import("./pages/SudokuPage"));
 const PariExternePage = lazy(() => import("./pages/PariExternePage"));
+const MotsCroisesPage = lazy(() => import("./pages/MotsCroisesPage"));
+const DuelsPage = lazy(() => import("./pages/DuelsPage"));
+const PenduPage = lazy(() => import("./pages/PenduPage"));
+const Puissance4Page = lazy(() => import("./pages/Puissance4Page"));
+const EchecsPage = lazy(() => import("./pages/EchecsPage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 import RulesScreen from "./components/RulesScreen";
 
@@ -153,6 +158,11 @@ function AppRoutes() {
           <Route path="/jeux/wordle" element={<><Navbar /><ResolutionNotifier /><WordlePage /></>} />
           <Route path="/jeux/sudoku" element={<><Navbar /><ResolutionNotifier /><SudokuPage /></>} />
           <Route path="/jeux/pari-externe" element={<><Navbar /><ResolutionNotifier /><PariExternePage /></>} />
+          <Route path="/jeux/mots-croises" element={<><Navbar /><ResolutionNotifier /><MotsCroisesPage /></>} />
+          <Route path="/jeux/duels" element={<><Navbar /><ResolutionNotifier /><DuelsPage /></>} />
+          <Route path="/jeux/pendu/:sessionId" element={<><Navbar /><ResolutionNotifier /><PenduPage /></>} />
+          <Route path="/jeux/puissance4/:sessionId" element={<><Navbar /><ResolutionNotifier /><Puissance4Page /></>} />
+          <Route path="/jeux/echecs/:sessionId" element={<><Navbar /><ResolutionNotifier /><EchecsPage /></>} />
           <Route path="/kiss-marry" element={<Navigate to="/jeux" replace />} />
           <Route path="/profil" element={<><Navbar /><ResolutionNotifier /><ProfilePage /></>} />
           <Route path="/proposals" element={<><Navbar /><ResolutionNotifier /><ProposalsPage /></>} />
