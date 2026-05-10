@@ -126,9 +126,9 @@ export default function SudokuPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-muted-foreground">Chargement…</div>;
-
   const reveal = useRevealCountdown((content as any)?.reveal_at, todayStr());
+
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Chargement…</div>;
 
   return (
     <div className="container mx-auto px-4 py-6 pb-20 md:pb-6 max-w-md">
