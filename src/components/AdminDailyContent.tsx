@@ -93,13 +93,15 @@ function WordleEditor() {
   const [date, setDate] = useState(next7Days()[0]);
   const [word, setWord] = useState('');
   const [rewards, setRewards] = useState('500,300,200,100,50');
+  const [revealAt, setRevealAt] = useState('09:30');
   const existing = items.find((it) => it.scheduled_date === date);
 
   useEffect(() => {
     if (existing) {
       setWord(String(existing.data?.word || ''));
       setRewards(((existing.data?.rewards as number[]) || []).join(','));
-    } else { setWord(''); setRewards('500,300,200,100,50'); }
+      setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
+    } else { setWord(''); setRewards('500,300,200,100,50'); setRevealAt('09:30'); }
   }, [date, existing?.id]);
 
   const save = async () => {
@@ -107,11 +109,12 @@ function WordleEditor() {
     if (w.length !== 5 || !/^[A-Z]+$/.test(w)) return toast.error('Le mot doit faire exactement 5 lettres (A-Z)');
     const rw = rewards.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
     const payload = { word: w, rewards: rw };
+    const reveal = `${revealAt}:00`;
     if (existing) {
-      const { error } = await supabase.from('daily_content').update({ data: payload, status: 'actif' }).eq('id', existing.id);
+      const { error } = await supabase.from('daily_content').update({ data: payload, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
       if (error) return toast.error(error.message);
     } else {
-      const { error } = await supabase.from('daily_content').insert({ type: 'wordle', scheduled_date: date, status: 'actif', data: payload });
+      const { error } = await supabase.from('daily_content').insert({ type: 'wordle', scheduled_date: date, status: 'actif', data: payload, reveal_at: reveal } as any);
       if (error) return toast.error(error.message);
     }
     toast.success('Wordle enregistré ✅');
@@ -137,6 +140,10 @@ function WordleEditor() {
         <Label>Récompenses (DC, séparées par virgule)</Label>
         <Input value={rewards} onChange={(e) => setRewards(e.target.value)} />
       </div>
+      <div>
+        <Label>Heure de dévoilement (Europe/Paris)</Label>
+        <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
+      </div>
       <div className="flex gap-2">
         <Button onClick={save} className="flex-1">Enregistrer</Button>
         {existing && <Button variant="outline" onClick={remove}><Trash2 className="w-4 h-4" /></Button>}
@@ -150,22 +157,29 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
   const { items, reload } = useDailyItems(type);
   const [date, setDate] = useState(next7Days()[0]);
   const [json, setJson] = useState('');
+  const [revealAt, setRevealAt] = useState('09:30');
   const existing = items.find((it) => it.scheduled_date === date);
 
   useEffect(() => {
-    if (existing) setJson(JSON.stringify(existing.data, null, 2));
-    else setJson('');
+    if (existing) {
+      setJson(JSON.stringify(existing.data, null, 2));
+      setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
+    } else {
+      setJson('');
+      setRevealAt('09:30');
+    }
   }, [date, existing?.id]);
 
   const save = async () => {
     let parsed: any;
     try { parsed = JSON.parse(json); }
     catch (e: any) { return toast.error('JSON invalide : ' + e.message); }
+    const reveal = `${revealAt}:00`;
     if (existing) {
-      const { error } = await supabase.from('daily_content').update({ data: parsed, status: 'actif' }).eq('id', existing.id);
+      const { error } = await supabase.from('daily_content').update({ data: parsed, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
       if (error) return toast.error(error.message);
     } else {
-      const { error } = await supabase.from('daily_content').insert({ type, scheduled_date: date, status: 'actif', data: parsed });
+      const { error } = await supabase.from('daily_content').insert({ type, scheduled_date: date, status: 'actif', data: parsed, reveal_at: reveal } as any);
       if (error) return toast.error(error.message);
     }
     toast.success('Contenu enregistré ✅');
@@ -186,6 +200,10 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
       <div>
         <Label>Données JSON</Label>
         <Textarea value={json} onChange={(e) => setJson(e.target.value)} placeholder={placeholder} rows={12} className="font-mono text-xs" />
+      </div>
+      <div>
+        <Label>Heure de dévoilement (Europe/Paris)</Label>
+        <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
       </div>
       <div className="flex gap-2">
         <Button onClick={save} className="flex-1">Enregistrer</Button>
