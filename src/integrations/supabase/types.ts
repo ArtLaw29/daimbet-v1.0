@@ -193,6 +193,7 @@ export type Database = {
       challenges: {
         Row: {
           code: string
+          config: Json
           created_at: string
           creator_id: string
           expires_at: string | null
@@ -204,6 +205,7 @@ export type Database = {
         }
         Insert: {
           code: string
+          config?: Json
           created_at?: string
           creator_id: string
           expires_at?: string | null
@@ -215,6 +217,7 @@ export type Database = {
         }
         Update: {
           code?: string
+          config?: Json
           created_at?: string
           creator_id?: string
           expires_at?: string | null
@@ -1130,12 +1133,20 @@ export type Database = {
     }
     Functions: {
       auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
+      create_challenge: {
+        Args: { p_config?: Json; p_game_type: string; p_mise: number }
+        Returns: Json
+      }
       create_external_bet: {
         Args: { p_mise: number; p_opponent_id: string }
         Returns: Json
       }
       declare_external_result: {
         Args: { p_bet_id: string; p_result: string }
+        Returns: Json
+      }
+      finish_duel: {
+        Args: { p_session_id: string; p_winner_id: string }
         Returns: Json
       }
       get_bet_participant_counts: {
@@ -1218,6 +1229,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      join_challenge: { Args: { p_code: string }; Returns: Json }
       place_sondage_vote: {
         Args: {
           p_bet_amount: number
