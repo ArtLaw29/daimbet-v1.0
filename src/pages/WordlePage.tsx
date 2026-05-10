@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
 
 const ROWS = 6;
 const COLS = 5;
@@ -30,8 +31,6 @@ function evaluate(guess: string, target: string): LetterState[] {
   }
   return res;
 }
-
-const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function WordlePage() {
   const navigate = useNavigate();
@@ -164,6 +163,8 @@ export default function WordlePage() {
     });
   });
 
+  const reveal = useRevealCountdown((content as any)?.reveal_at, todayStr());
+
   if (loading) return <div className="p-8 text-center text-muted-foreground">Chargement…</div>;
 
   return (
@@ -180,6 +181,12 @@ export default function WordlePage() {
         <Card className="p-8 text-center">
           <p className="text-5xl mb-3">🌙</p>
           <p className="font-display text-xl">Aucun mot disponible aujourd'hui, reviens demain</p>
+        </Card>
+      ) : !reveal.revealed ? (
+        <Card className="p-8 text-center">
+          <p className="text-5xl mb-3">⏳</p>
+          <p className="font-display text-xl">Disponible dans</p>
+          <p className="text-4xl font-mono gold-text mt-2 tabular-nums">{reveal.countdown}</p>
         </Card>
       ) : (
         <>
