@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { Target, Newspaper, Trophy, Gamepad2, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ResumeGameBanner from '@/components/ResumeGameBanner';
 
 interface NavTab {
   to: string;
@@ -179,6 +180,8 @@ export default function Navbar() {
           </div>
         </div>
       </header>
+
+      <ResumeGameBanner />
 
       {/* ─── BOTTOM NAV (mobile only) ─── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border" role="navigation" aria-label="Navigation mobile">

@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useBeforeUnloadGame } from '@/hooks/useBeforeUnloadGame';
 
 const fmt = (s: number) => {
   if (s >= 3600) return `${Math.floor(s / 3600)}h${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`;
@@ -27,6 +28,8 @@ export default function EchecsPage() {
   const [now, setNow] = useState(Date.now());
   const channelRef = useRef<any>(null);
   const finishingRef = useRef(false);
+
+  useBeforeUnloadGame(!!session && session.status === 'en_cours');
 
   const isP1 = user?.id === session?.player1_id;
   const opponentId = isP1 ? session?.player2_id : session?.player1_id;

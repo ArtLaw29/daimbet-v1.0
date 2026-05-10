@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useBeforeUnloadGame } from '@/hooks/useBeforeUnloadGame';
 
 const KB_ROWS = ['AZERTYUIOP', 'QSDFGHJKLM', 'WXCVBN'];
 const MAX_ERRORS = 7;
@@ -40,6 +41,8 @@ export default function PenduPage() {
   const [opponentOnline, setOpponentOnline] = useState(false);
   const [confirmForfeit, setConfirmForfeit] = useState(false);
   const channelRef = useRef<any>(null);
+
+  useBeforeUnloadGame(!!session && session.status === 'en_cours');
 
   const isP1 = user?.id === session?.player1_id;
   const opponentId = isP1 ? session?.player2_id : session?.player1_id;
