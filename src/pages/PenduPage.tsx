@@ -88,9 +88,11 @@ export default function PenduPage() {
   const guessLetter = async (l: string) => {
     if (phase !== 'playing' || !isP1 === false || isP1) return; // Only J2 guesses
     if (guessed.includes(l) || wrong.includes(l)) return;
+    // Letters at position 0 and word.length-1 stay masked, so we only consider middle letters for the win check
+    const middle = word.slice(1, -1);
     if (word.includes(l)) {
       const newGuessed = [...guessed, l];
-      const allFound = word.split('').every((c) => newGuessed.includes(c));
+      const allFound = middle.split('').every((c) => newGuessed.includes(c));
       await updateState({ guessed_letters: newGuessed });
       if (allFound) {
         await supabase.rpc('finish_duel', { p_session_id: sessionId, p_winner_id: user!.id });
@@ -142,7 +144,10 @@ export default function PenduPage() {
   }
 
   const display = phase === 'playing'
-    ? word.split('').map((c) => guessed.includes(c) ? c : '_').join(' ')
+    ? word.split('').map((c, i) => {
+        if (i === 0 || i === word.length - 1) return '_';
+        return guessed.includes(c) ? c : '_';
+      }).join(' ')
     : '';
 
   const isFinished = session.status === 'termine';
