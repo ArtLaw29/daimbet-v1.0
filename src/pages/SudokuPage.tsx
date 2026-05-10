@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 export default function SudokuPage() {
@@ -128,6 +128,8 @@ export default function SudokuPage() {
 
   if (loading) return <div className="p-8 text-center text-muted-foreground">Chargement…</div>;
 
+  const reveal = useRevealCountdown((content as any)?.reveal_at, todayStr());
+
   return (
     <div className="container mx-auto px-4 py-6 pb-20 md:pb-6 max-w-md">
       <button onClick={() => navigate('/jeux')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm">
@@ -142,6 +144,12 @@ export default function SudokuPage() {
         <Card className="p-8 text-center">
           <p className="text-5xl mb-3">🌙</p>
           <p className="font-display text-xl">Aucune grille disponible aujourd'hui, reviens demain</p>
+        </Card>
+      ) : !reveal.revealed ? (
+        <Card className="p-8 text-center">
+          <p className="text-5xl mb-3">⏳</p>
+          <p className="font-display text-xl">Disponible dans</p>
+          <p className="text-4xl font-mono gold-text mt-2 tabular-nums">{reveal.countdown}</p>
         </Card>
       ) : (
         <>
