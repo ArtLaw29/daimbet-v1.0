@@ -181,6 +181,8 @@ export default function Navbar() {
         </div>
       </header>
 
+      <ResumeGameBanner />
+
       {/* ─── BOTTOM NAV (mobile only) ─── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border" role="navigation" aria-label="Navigation mobile">
         <div className="flex justify-around py-1.5">
