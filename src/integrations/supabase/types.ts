@@ -1130,6 +1130,14 @@ export type Database = {
     }
     Functions: {
       auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
+      create_external_bet: {
+        Args: { p_mise: number; p_opponent_id: string }
+        Returns: Json
+      }
+      declare_external_result: {
+        Args: { p_bet_id: string; p_result: string }
+        Returns: Json
+      }
       get_bet_participant_counts: {
         Args: { p_bet_ids: string[] }
         Returns: {
@@ -1250,8 +1258,16 @@ export type Database = {
         Args: { p_bet_id: string; p_winning_option_ids: string[] }
         Returns: Json
       }
+      resolve_external_bet_dispute: {
+        Args: { p_bet_id: string; p_resolution: string }
+        Returns: Json
+      }
       resolve_sondage: { Args: { p_session_id: string }; Returns: Json }
       resolve_tournoi: { Args: { p_session_id: string }; Returns: Json }
+      respond_external_bet: {
+        Args: { p_accept: boolean; p_bet_id: string }
+        Returns: Json
+      }
       retract_wager: {
         Args: { p_user_id: string; p_wager_id: string }
         Returns: Json
