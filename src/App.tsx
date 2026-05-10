@@ -30,6 +30,7 @@ const WelcomePage = lazy(() => import("./pages/WelcomePage"));
 const BlackjackPage = lazy(() => import("./pages/BlackjackPage"));
 const WordlePage = lazy(() => import("./pages/WordlePage"));
 const SudokuPage = lazy(() => import("./pages/SudokuPage"));
+const PariExternePage = lazy(() => import("./pages/PariExternePage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 import RulesScreen from "./components/RulesScreen";
 
@@ -151,6 +152,7 @@ function AppRoutes() {
           <Route path="/jeux/blackjack" element={<><Navbar /><ResolutionNotifier /><BlackjackPage /></>} />
           <Route path="/jeux/wordle" element={<><Navbar /><ResolutionNotifier /><WordlePage /></>} />
           <Route path="/jeux/sudoku" element={<><Navbar /><ResolutionNotifier /><SudokuPage /></>} />
+          <Route path="/jeux/pari-externe" element={<><Navbar /><ResolutionNotifier /><PariExternePage /></>} />
           <Route path="/kiss-marry" element={<Navigate to="/jeux" replace />} />
           <Route path="/profil" element={<><Navbar /><ResolutionNotifier /><ProfilePage /></>} />
           <Route path="/proposals" element={<><Navbar /><ResolutionNotifier /><ProposalsPage /></>} />
