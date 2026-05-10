@@ -242,6 +242,7 @@ export type Database = {
           created_at: string
           data: Json
           id: string
+          reveal_at: string | null
           scheduled_date: string
           status: string
           type: string
@@ -250,6 +251,7 @@ export type Database = {
           created_at?: string
           data: Json
           id?: string
+          reveal_at?: string | null
           scheduled_date: string
           status?: string
           type: string
@@ -258,6 +260,7 @@ export type Database = {
           created_at?: string
           data?: Json
           id?: string
+          reveal_at?: string | null
           scheduled_date?: string
           status?: string
           type?: string
