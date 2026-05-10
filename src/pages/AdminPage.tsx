@@ -64,6 +64,7 @@ const ADMIN_SECTIONS = [
   { id: 'dashboard', label: 'Tableau de bord', emoji: '📊' },
   { id: 'paris', label: 'Paris', emoji: '🎯' },
   { id: 'jeux', label: 'Jeux', emoji: '🎮' },
+  { id: 'jeux_dc', label: 'Jeux DC quotidiens', emoji: '🎰' },
   { id: 'gouvernements', label: 'Gouvernements', emoji: '🏛️' },
   { id: 'gazette', label: 'Gazette', emoji: '📰' },
   { id: 'users', label: 'Utilisateurs', emoji: '👥' },
@@ -1749,6 +1750,8 @@ export default function AdminPage() {
             <TabsContent value="tournois"><AdminTournois /></TabsContent>
           </Tabs>
         )}
+
+        {activeSection === 'jeux_dc' && <AdminDailyContent />}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════════ GOUVERNEMENTS ═══════════════ */}
