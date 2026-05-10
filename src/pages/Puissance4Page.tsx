@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useBeforeUnloadGame } from '@/hooks/useBeforeUnloadGame';
 
 const ROWS = 6, COLS = 7;
 const INACTIVITY_MS = 3 * 60 * 1000;
@@ -37,6 +38,8 @@ export default function Puissance4Page() {
   const [opponentOnline, setOpponentOnline] = useState(false);
   const [confirmForfeit, setConfirmForfeit] = useState(false);
   const channelRef = useRef<any>(null);
+
+  useBeforeUnloadGame(!!session && session.status === 'en_cours');
 
   const isP1 = user?.id === session?.player1_id;
   const opponentId = isP1 ? session?.player2_id : session?.player1_id;
