@@ -192,9 +192,9 @@ const DC_GAMES = [
   { id: 'blackjack', emoji: '🃏', label: 'Blackjack', subtitle: 'Bats le croupier', route: '/jeux/blackjack', available: true },
   { id: 'wordle', emoji: '🔠', label: 'Wordle du jour', subtitle: 'Défi quotidien', route: '/jeux/wordle', available: true },
   { id: 'sudoku', emoji: '🔢', label: 'Sudoku Race', subtitle: 'Le plus rapide gagne', route: '/jeux/sudoku', available: true },
-  { id: 'mots-croises', emoji: '📝', label: 'Mots croisés', subtitle: 'Grille du jour', route: '/jeux/mots-croises', available: false },
-  { id: 'duels', emoji: '⚔️', label: 'Duels', subtitle: 'Pendu, P4, Échecs', route: '/jeux/duels', available: false },
-  { id: 'pari-externe', emoji: '🤝', label: 'Pari externe', subtitle: 'Parie sur la vraie vie', route: '/jeux/pari-externe', available: false },
+  { id: 'mots-croises', emoji: '📝', label: 'Mots croisés', subtitle: 'Grille du jour', route: '/jeux/mots-croises', available: true },
+  { id: 'duels', emoji: '⚔️', label: 'Duels', subtitle: 'Pendu, P4, Échecs', route: '/jeux/duels', available: true },
+  { id: 'pari-externe', emoji: '🤝', label: 'Pari externe', subtitle: 'Parie sur la vraie vie', route: '/jeux/pari-externe', available: true },
 ];
 
 function SuspendedMessage() {
