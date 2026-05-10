@@ -61,7 +61,7 @@ export default function SudokuPage() {
     let profMap: Record<string, any> = {};
     if (ids.length) {
       const { data: profs } = await supabase
-        .from('profiles').select('user_id, display_name, emoji').in('user_id', ids);
+        .from('profiles_public' as any).select('user_id, display_name, emoji').in('user_id', ids);
       (profs || []).forEach((p: any) => { profMap[p.user_id] = p; });
     }
     setScores(rows.map((r: any) => ({ ...r, profiles: profMap[r.user_id] })));
