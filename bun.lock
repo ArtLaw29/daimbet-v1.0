@@ -48,7 +48,7 @@
         "lucide-react": "^0.462.0",
         "next-themes": "^0.3.0",
         "react": "^18.3.1",
-        "react-chessboard": "^4.7.3",
+        "react-chessboard": "4.6.1",
         "react-day-picker": "^8.10.1",
         "react-dom": "^18.3.1",
         "react-hook-form": "^7.61.1",
@@ -965,7 +965,7 @@
 
     "react": ["react@18.3.1", "", { "dependencies": { "loose-envify": "^1.1.0" } }, "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ=="],
 
-    "react-chessboard": ["react-chessboard@4.7.3", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/react-chessboard/-/react-chessboard-4.7.3.tgz", { "dependencies": { "react-dnd": "^16.0.1", "react-dnd-html5-backend": "^16.0.1", "react-dnd-touch-backend": "^16.0.1" }, "peerDependencies": { "react": ">=16.14.0", "react-dom": ">=16.14.0" } }, "sha512-pQNs/Ee3EJqv1kv5sWkO8J4TOEuZC8Nm7NOWGHcFSBmiBLX1uvbZD2/7snmKdt2GB5+QJhTQ+PSJJ+e32c3e7w=="],
+    "react-chessboard": ["react-chessboard@4.6.1", "https://europe-west1-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/react-chessboard/-/react-chessboard-4.6.1.tgz", { "dependencies": { "react-dnd": "^16.0.1", "react-dnd-html5-backend": "^16.0.1", "react-dnd-touch-backend": "^16.0.1" }, "peerDependencies": { "react": ">=16.14.0", "react-dom": ">=16.14.0" } }, "sha512-kHrWSR4/NrYxY1H+hwPTohse2c6ahD/PRuwNReuIsYIAyYYfAUHjG2pWVADIX1+j0nDVR/BQ5O6MCG89LBa0gg=="],
 
     "react-day-picker": ["react-day-picker@8.10.1", "", { "peerDependencies": { "date-fns": "^2.28.0 || ^3.0.0", "react": "^16.8.0 || ^17.0.0 || ^18.0.0" } }, "sha512-TMx7fNbhLk15eqcMt+7Z7S2KF7mfTId/XJDjKE8f+IUcFn0l08/kI4FiYTL/0yuOLmEcbR4Fwe3GJf/NiiMnPA=="],
 
