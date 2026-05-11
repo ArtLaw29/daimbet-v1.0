@@ -39,6 +39,7 @@ const EchecsPage = lazy(() => import("./pages/EchecsPage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 import RulesScreen from "./components/RulesScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { CasinoGate } from "./hooks/useCasinoSuspended";
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
