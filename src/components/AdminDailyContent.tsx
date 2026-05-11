@@ -15,7 +15,7 @@ type DailyType = 'wordle' | 'sudoku' | 'mots_croisés';
 const TYPE_LABELS: Record<DailyType, string> = {
   wordle: '🔠 Wordle',
   sudoku: '🔢 Sudoku',
-  mots_croisés: '📝 Mots croisés',
+  mots_croisés: '📝 Mots fléchés',
 };
 
 type TabKey = DailyType | 'stats' | 'controles';
@@ -67,7 +67,7 @@ export default function AdminDailyContent() {
         </TabsList>
         <TabsContent value="wordle"><WordleEditor /></TabsContent>
         <TabsContent value="sudoku"><JsonEditor type="sudoku" placeholder='{"puzzle":[0,0,0,...,81 valeurs],"solution":[...,81 valeurs],"rewards":[500,300,200,100,50]}' /></TabsContent>
-        <TabsContent value="mots_croisés"><JsonEditor type="mots_croisés" placeholder='{"grille":[[{"lettre":"P","numero":1},...],...],"cases_noires":[[0,3],...],"definitions_horizontales":[{"numero":1,"definition":"..."}],"definitions_verticales":[...],"rewards":[500,300,200,100,50]}' /></TabsContent>
+        <TabsContent value="mots_croisés"><JsonEditor type="mots_croisés" placeholder='{"grille":[[{"type":"definition","text":"Animal","direction":"right"},{"type":"lettre","correct":"C"},{"type":"lettre","correct":"H"},{"type":"lettre","correct":"A"},{"type":"lettre","correct":"T"}],[{"type":"vide"},{"type":"lettre","correct":"O"},...]],"rewards":[500,300,200,100,50]}' /></TabsContent>
         <TabsContent value="stats"><CasinoStats /></TabsContent>
         <TabsContent value="controles"><CasinoControls /></TabsContent>
       </Tabs>
@@ -224,7 +224,7 @@ const GAME_DEFS: { id: string; label: string; emoji: string }[] = [
   { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
   { id: 'wordle', label: 'Wordle', emoji: '🔠' },
   { id: 'sudoku', label: 'Sudoku', emoji: '🔢' },
-  { id: 'mots-croises', label: 'Mots croisés', emoji: '📝' },
+  { id: 'mots-fleches', label: 'Mots fléchés', emoji: '📝' },
   { id: 'pendu', label: 'Pendu', emoji: '🪢' },
   { id: 'puissance4', label: 'Puissance 4', emoji: '🔴' },
   { id: 'echecs', label: 'Échecs', emoji: '♟️' },
@@ -255,7 +255,7 @@ function CasinoStats() {
       let dcMap: Record<string, string> = {};
       if (contentIds.length) {
         const { data: dc } = await supabase.from('daily_content').select('id,type').in('id', contentIds);
-        (dc || []).forEach((c: any) => { dcMap[c.id] = c.type === 'mots_croisés' ? 'mots-croises' : c.type; });
+        (dc || []).forEach((c: any) => { dcMap[c.id] = c.type === 'mots_croisés' ? 'mots-fleches' : c.type; });
       }
 
       // solde_history for blackjack + DC totals
@@ -378,7 +378,7 @@ const CONTROL_GAMES: { id: string; label: string; emoji: string; gameTypes?: str
   { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
   { id: 'wordle', label: 'Wordle', emoji: '🔠' },
   { id: 'sudoku', label: 'Sudoku', emoji: '🔢' },
-  { id: 'mots-croises', label: 'Mots croisés', emoji: '📝' },
+  { id: 'mots-fleches', label: 'Mots fléchés', emoji: '📝' },
   { id: 'duels', label: 'Duels', emoji: '⚔️', gameTypes: ['pendu', 'puissance4', 'echecs'] },
   { id: 'pari-externe', label: 'Pari externe', emoji: '🤝' },
 ];
