@@ -144,16 +144,23 @@ export default function BlackjackPage() {
   const finishGame = async (result: Outcome, payout: number) => {
     setOutcome(result);
     setPhase('fin');
-    setReplayLockUntil(Date.now() + 3000);
+    setReplayLockUntil(Date.now() + 5000);
     if (payout > 0 && user) {
-      const newBal = baselineBalance.current - mise + payout;
+      // Apply 5% rake on net winnings only (not on returned stake / push)
+      let finalPayout = payout;
+      const netGain = payout - mise;
+      if (netGain > 0) {
+        const rake = Math.round(netGain * 0.05);
+        finalPayout = payout - rake;
+      }
+      const newBal = baselineBalance.current - mise + finalPayout;
       await supabase.from('profiles').update({ balance: newBal }).eq('user_id', user.id);
       const reasonMap: Record<string, string> = {
         blackjack: 'Gain Blackjack (BJ naturel)',
         gagne: 'Gain Blackjack',
         egalite: 'Égalité Blackjack — remboursement',
       };
-      await supabase.from('solde_history').insert({ user_id: user.id, delta_dc: payout, reason: reasonMap[result || 'gagne'] });
+      await supabase.from('solde_history').insert({ user_id: user.id, delta_dc: finalPayout, reason: reasonMap[result || 'gagne'] });
       await refreshProfile();
     }
   };
@@ -172,25 +179,25 @@ export default function BlackjackPage() {
 
     setPlayer([]); setDealer([]); setRevealedDealer(1); setOutcome(null);
     setPhase('shuffle');
-    await sleep(1500);
+    await sleep(1800);
 
     // Distribution une carte à la fois (1s entre chaque)
     const p1 = drawCard();
     setPlayer([p1]);
-    await sleep(1000);
+    await sleep(1400);
     const d1 = drawCard();
     setDealer([d1]);
-    await sleep(1000);
+    await sleep(1400);
     const p2 = drawCard();
     const fullPlayer = [p1, p2];
     setPlayer(fullPlayer);
-    await sleep(1000);
+    await sleep(1400);
 
     setBusy(false);
 
     if (handDetail(fullPlayer).total === 21) {
-      // Blackjack naturel : x1.5 de profit → payout = 2.5x mise
-      const payout = Math.floor(mise * 2.5);
+      // Blackjack naturel 6:5 → profit = mise * 6/5, payout = mise + profit
+      const payout = mise + Math.floor(mise * 6 / 5);
       await finishGame('blackjack', payout);
     } else {
       setPhase('joueur');
@@ -200,10 +207,10 @@ export default function BlackjackPage() {
   const hit = async () => {
     if (phase !== 'joueur' || drawing) return;
     setDrawing(true);
-    await sleep(800);
+    await sleep(1400);
     const next = [...player, drawCard()];
     setPlayer(next);
-    await sleep(1000);
+    await sleep(1400);
     setDrawing(false);
     if (handDetail(next).total > 21) {
       // Bust
@@ -221,7 +228,7 @@ export default function BlackjackPage() {
       setDealer(d);
     }
     setRevealedDealer(d.length);
-    await sleep(1000);
+    await sleep(1500);
 
     // Dealer hits soft 17 (H17)
     while (true) {
@@ -231,7 +238,7 @@ export default function BlackjackPage() {
       d = [...d, drawCard()];
       setDealer(d);
       setRevealedDealer(d.length);
-      await sleep(1000);
+      await sleep(1500);
     }
 
     const dt = handDetail(d).total;
@@ -273,7 +280,7 @@ export default function BlackjackPage() {
             <Button onClick={() => setMise(Math.min(balance, mise + 50))} variant="outline">+50</Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Min 10 DC. Blackjack naturel paie x1.5. Victoire normale paie x1. Égalité = remboursement. Aucun rake.
+            Min 10 DC. Blackjack naturel paie 6:5. Victoire normale paie 1:1. Égalité = remboursement. Rake de 5% sur les gains nets.
           </p>
           <Button onClick={startGame} disabled={busy || mise < 10 || mise > balance} className="w-full" size="lg">
             {busy ? 'Mélange…' : 'Distribuer les cartes'}
@@ -353,8 +360,8 @@ export default function BlackjackPage() {
                   {outcome === 'blackjack' ? '🎰' : outcome === 'gagne' ? '🏆' : outcome === 'egalite' ? '🤝' : '💸'}
                 </p>
                 <h2 className="text-2xl font-display">
-                  {outcome === 'blackjack' ? `BLACKJACK ! +${Math.floor(mise * 1.5)} DC` :
-                   outcome === 'gagne' ? `Tu gagnes +${mise} DC !` :
+                  {outcome === 'blackjack' ? `BLACKJACK ! +${Math.floor(Math.floor(mise * 6 / 5) * 0.95)} DC` :
+                   outcome === 'gagne' ? `Tu gagnes +${Math.floor(mise * 0.95)} DC !` :
                    outcome === 'egalite' ? `Égalité — mise remboursée` :
                    playerInfo.total > 21 ? `Tu dépasses 21 ! -${mise} DC` : `Le croupier gagne — -${mise} DC`}
                 </h2>
@@ -366,6 +373,10 @@ export default function BlackjackPage() {
           </AnimatePresence>
         </div>
       )}
+
+      <p className="text-center text-[11px] text-muted-foreground mt-8 italic">
+        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
+      </p>
     </div>
   );
 }
