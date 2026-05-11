@@ -31,3 +31,10 @@ export function CasinoSuspendedScreen({ label }: { label: string }) {
     </div>
   );
 }
+
+export function CasinoGate({ gameId, label, children }: { gameId: string; label: string; children: React.ReactNode }) {
+  const { suspended, loading } = useCasinoSuspended(gameId);
+  if (loading) return null;
+  if (suspended) return <CasinoSuspendedScreen label={label} />;
+  return <>{children}</>;
+}
