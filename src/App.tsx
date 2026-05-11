@@ -29,7 +29,7 @@ const BlackjackPage = lazy(() => import("./pages/BlackjackPage"));
 const WordlePage = lazy(() => import("./pages/WordlePage"));
 const SudokuPage = lazy(() => import("./pages/SudokuPage"));
 const PariExternePage = lazy(() => import("./pages/PariExternePage"));
-const MotsCroisesPage = lazy(() => import("./pages/MotsCroisesPage"));
+const MotsFlechesPage = lazy(() => import("./pages/MotsFlechesPage"));
 const DuelsPage = lazy(() => import("./pages/DuelsPage"));
 const PenduPage = lazy(() => import("./pages/PenduPage"));
 const Puissance4Page = lazy(() => import("./pages/Puissance4Page"));
@@ -163,7 +163,8 @@ function AppRoutes() {
           <Route path="/jeux/wordle" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="wordle" label="Wordle"><WordlePage /></CasinoGate></>} />
           <Route path="/jeux/sudoku" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="sudoku" label="Sudoku"><SudokuPage /></CasinoGate></>} />
           <Route path="/jeux/pari-externe" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="pari-externe" label="Pari externe"><PariExternePage /></CasinoGate></>} />
-          <Route path="/jeux/mots-croises" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="mots-croises" label="Mots croisés"><MotsCroisesPage /></CasinoGate></>} />
+          <Route path="/jeux/mots-fleches" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="mots-fleches" label="Mots fléchés"><MotsFlechesPage /></CasinoGate></>} />
+          <Route path="/jeux/mots-croises" element={<Navigate to="/jeux/mots-fleches" replace />} />
           <Route path="/jeux/duels" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="duels" label="Duels"><ErrorBoundary label="DuelsPage"><DuelsPage /></ErrorBoundary></CasinoGate></>} />
           <Route path="/jeux/pendu/:sessionId" element={<><Navbar /><ResolutionNotifier /><PenduPage /></>} />
           <Route path="/jeux/puissance4/:sessionId" element={<><Navbar /><ResolutionNotifier /><Puissance4Page /></>} />
