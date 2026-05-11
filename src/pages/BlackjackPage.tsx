@@ -377,13 +377,14 @@ export default function BlackjackPage() {
     for (const h of finalHands) {
       const pt = handDetail(h.cards).total;
       if (h.status === 'blackjack') {
-        // Blackjack naturel 6:5 → mise + profit floor(mise*6/5)
-        payout += h.bet + Math.floor(h.bet * 6 / 5);
+        // Blackjack naturel : profit 1.5x → retour total 2.5x la mise
+        payout += h.bet + Math.floor(h.bet * 3 / 2);
         handResults.push('blackjack');
       } else if (h.status === 'bust' || pt > 21) {
         handResults.push('perdu');
       } else if (dt > 21 || pt > dt) {
-        payout += h.bet * 2;
+        // Victoire normale : profit 1.5x → retour total 2.5x la mise
+        payout += h.bet + Math.floor(h.bet * 3 / 2);
         handResults.push('gagne');
       } else if (pt === dt) {
         payout += h.bet; // remboursement
@@ -398,13 +399,8 @@ export default function BlackjackPage() {
 
   const finalizeGame = async (payout: number) => {
     if (!user) return;
-    // Calcul du gain net : payout - total débité
-    const net = payout - totalDebited.current;
-    let finalPayout = payout;
-    if (net > 0) {
-      const rake = Math.round(net * 0.05);
-      finalPayout = payout - rake;
-    }
+    // Pas de rake sur le Blackjack : on reverse le payout brut
+    const finalPayout = payout;
     const finalNet = finalPayout - totalDebited.current;
     setTotalPayout(finalPayout);
     setNetGain(finalNet);
