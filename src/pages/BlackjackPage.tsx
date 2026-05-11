@@ -12,8 +12,8 @@ import { ArrowLeft, Coins } from 'lucide-react';
 type Suit = '♠' | '♥' | '♦' | '♣';
 type CardT = { rank: string; suit: Suit; value: number };
 type Phase = 'mise' | 'shuffle' | 'joueur' | 'croupier' | 'fin';
-type HandStatus = 'playing' | 'stand' | 'bust' | 'blackjack' | 'doubled';
-type HandResult = 'gagne' | 'perdu' | 'egalite' | 'blackjack';
+type HandStatus = 'playing' | 'stand' | 'bust' | 'blackjack' | 'doubled' | 'surrender';
+type HandResult = 'gagne' | 'perdu' | 'egalite' | 'blackjack' | 'surrender';
 type Hand = { cards: CardT[]; bet: number; status: HandStatus };
 
 const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
