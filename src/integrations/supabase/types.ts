@@ -269,27 +269,39 @@ export type Database = {
       }
       daily_scores: {
         Row: {
+          amount_earned: number
           content_id: string | null
           finished_at: string
+          game_type: string
           id: string
+          played_on: string
           rank: number | null
           rewarded: boolean
+          score: Json | null
           user_id: string
         }
         Insert: {
+          amount_earned?: number
           content_id?: string | null
           finished_at?: string
+          game_type: string
           id?: string
+          played_on: string
           rank?: number | null
           rewarded?: boolean
+          score?: Json | null
           user_id: string
         }
         Update: {
+          amount_earned?: number
           content_id?: string | null
           finished_at?: string
+          game_type?: string
           id?: string
+          played_on?: string
           rank?: number | null
           rewarded?: boolean
+          score?: Json | null
           user_id?: string
         }
         Relationships: [
@@ -1242,6 +1254,7 @@ export type Database = {
         Returns: boolean
       }
       join_challenge: { Args: { p_code: string }; Returns: Json }
+      normalize_daily_game_type: { Args: { p_type: string }; Returns: string }
       place_sondage_vote: {
         Args: {
           p_bet_amount: number
@@ -1294,6 +1307,15 @@ export type Database = {
       }
       retract_wager: {
         Args: { p_user_id: string; p_wager_id: string }
+        Returns: Json
+      }
+      submit_game_result: {
+        Args: {
+          p_completed?: boolean
+          p_game_type: string
+          p_score?: Json
+          p_user_id: string
+        }
         Returns: Json
       }
     }

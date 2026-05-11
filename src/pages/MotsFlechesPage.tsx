@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Coins, Trophy, Check, ArrowRight, ArrowDown, CornerDownRight, CornerRightDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,7 @@ type Cell =
 type FocusDir = 'H' | 'V';
 
 export default function MotsFlechesPage() {
+  const GAME_TYPE = 'mots_fleches';
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -32,8 +33,6 @@ export default function MotsFlechesPage() {
   const grille: Cell[][] = (content?.data?.grille || []) as Cell[][];
   const rows = grille.length;
   const cols = grille[0]?.length || 0;
-  const rewards: number[] = content?.data?.rewards || [];
-
   const isLetter = useCallback((r: number, c: number) => {
     return grille[r]?.[c]?.type === 'lettre';
   }, [grille]);
@@ -50,17 +49,17 @@ export default function MotsFlechesPage() {
       setVerified(g.map((row) => row.map(() => false)));
       if (user) {
         const { data: existing } = await supabase.from('daily_scores')
-          .select('*').eq('content_id', dc.id).eq('user_id', user.id).maybeSingle();
+          .select('*').eq('game_type', GAME_TYPE).eq('played_on', todayStr()).eq('user_id', user.id).maybeSingle();
         if (existing) setAlreadyPlayed(true);
       }
-      await loadScores(dc.id);
+      await loadScores();
       setLoading(false);
     })();
   }, [user]);
 
-  const loadScores = async (contentId: string) => {
+  const loadScores = async () => {
     const { data } = await supabase.from('daily_scores').select('*')
-      .eq('content_id', contentId).order('finished_at', { ascending: true }).limit(20);
+      .eq('game_type', GAME_TYPE).eq('played_on', todayStr()).order('finished_at', { ascending: true }).limit(20);
     const rows = data || [];
     const ids = Array.from(new Set(rows.map((r: any) => r.user_id)));
     let map: Record<string, any> = {};
@@ -154,18 +153,28 @@ export default function MotsFlechesPage() {
     if (!allGood) { toast.error('Certaines cases sont incorrectes'); return; }
     setFinished(true);
     if (user && content) {
-      const { data: claim } = await supabase.rpc('claim_daily_rank' as any, {
-        p_content_id: content.id, p_completed: true,
+      const { data: claim } = await supabase.rpc('submit_game_result' as any, {
+        p_user_id: user.id,
+        p_game_type: GAME_TYPE,
+        p_score: {
+          filled_cells: grid.flat().filter(Boolean).length,
+          total_letter_cells: grille.flat().filter((cell) => cell.type === 'lettre').length,
+        },
+        p_completed: true,
       });
       const c: any = claim || {};
-      const rank = c.rank as number | null;
-      const reward = (c.reward as number) || 0;
-      if (reward > 0) await refreshProfile();
-      if (rank) {
-        const ord = rank === 1 ? '1ère' : `${rank}ème`;
-        toast.success(`Bravo ! Tu as fini ${ord} aujourd'hui.${reward > 0 ? ` Tu gagnes ${reward} DC.` : ''}`);
+      if (c.error) {
+        toast.error(c.error);
+        return;
       }
-      await loadScores(content.id);
+      const rank = c.rank as number | null;
+      const amountEarned = Number(c.amount_earned ?? 0);
+      if (amountEarned > 0) await refreshProfile();
+      if (rank) {
+        const ord = rank === 1 ? '1er' : `${rank}ème`;
+        toast.success(`Bravo ! Tu as fini ${ord} aujourd'hui.${amountEarned > 0 ? ` Tu gagnes ${amountEarned} DC.` : ' Tu ne gagnes pas de DC.'}`);
+      }
+      await loadScores();
       setAlreadyPlayed(true);
     }
   };
@@ -318,11 +327,9 @@ export default function MotsFlechesPage() {
           <div className="mb-5 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
             <Coins className="w-4 h-4 text-primary" />
             <span><b>1er</b> : 500 DC</span>
-            <span><b>2e</b> : 300 DC</span>
-            <span><b>3e</b> : 200 DC</span>
-            <span><b>4e</b> : 100 DC</span>
-            <span><b>5e</b> : 50 DC</span>
-            <span><b>6e+</b> : 10 DC</span>
+            <span><b>2e</b> : 250 DC</span>
+            <span><b>3e</b> : 100 DC</span>
+            <span><b>4e+</b> : 0 DC</span>
           </div>
 
           {/* Leaderboard */}

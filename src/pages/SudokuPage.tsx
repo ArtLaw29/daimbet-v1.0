@@ -11,13 +11,13 @@ import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 export default function SudokuPage() {
+  const GAME_TYPE = 'sudoku';
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState<any>(null);
   const [puzzle, setPuzzle] = useState<number[]>([]);
   const [solution, setSolution] = useState<number[]>([]);
-  const [rewards, setRewards] = useState<number[]>([]);
   const [grid, setGrid] = useState<number[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [errors, setErrors] = useState<Set<number>>(new Set());
@@ -37,23 +37,23 @@ export default function SudokuPage() {
       const p = (data.puzzle || []).map((v: any) => Number(v) || 0);
       const s = (data.solution || []).map((v: any) => Number(v) || 0);
       setPuzzle(p); setSolution(s); setGrid([...p]);
-      setRewards(Array.isArray(data.rewards) ? data.rewards : []);
       if (user) {
         const { data: existing } = await supabase.from('daily_scores').select('*')
-          .eq('content_id', dc.id).eq('user_id', user.id).maybeSingle();
+          .eq('game_type', GAME_TYPE).eq('played_on', todayStr()).eq('user_id', user.id).maybeSingle();
         if (existing) setAlreadyPlayed(true);
       }
-      await loadScores(dc.id);
+      await loadScores();
       setLoading(false);
       startRef.current = Date.now();
     })();
   }, [user]);
 
-  const loadScores = async (contentId: string) => {
+  const loadScores = async () => {
     const { data } = await supabase
       .from('daily_scores')
       .select('*')
-      .eq('content_id', contentId)
+      .eq('game_type', GAME_TYPE)
+      .eq('played_on', todayStr())
       .order('finished_at', { ascending: true })
       .limit(20);
     const rows = data || [];
@@ -103,19 +103,29 @@ export default function SudokuPage() {
     }
     setFinished(true);
     if (user && content) {
-      const { data: claim } = await supabase.rpc('claim_daily_rank' as any, {
-        p_content_id: content.id, p_completed: true,
+      const { data: claim } = await supabase.rpc('submit_game_result' as any, {
+        p_user_id: user.id,
+        p_game_type: GAME_TYPE,
+        p_score: {
+          duration_seconds: seconds,
+          errors_count: errors.size,
+        },
+        p_completed: true,
       });
       const c: any = claim || {};
+      if (c.error) {
+        toast.error(c.error);
+        return;
+      }
       const rank = c.rank as number | null;
-      const reward = (c.reward as number) || 0;
-      if (reward > 0) await refreshProfile();
+      const amountEarned = Number(c.amount_earned ?? 0);
+      if (amountEarned > 0) await refreshProfile();
       if (rank) {
-        const ord = rank === 1 ? '1ère' : `${rank}ème`;
-        toast.success(`Bravo ! Tu as fini ${ord} en ${fmt(seconds)}.${reward > 0 ? ` Tu gagnes ${reward} DC.` : ''}`);
+        const ord = rank === 1 ? '1er' : `${rank}ème`;
+        toast.success(`Bravo ! Tu as fini ${ord} aujourd'hui en ${fmt(seconds)}.${amountEarned > 0 ? ` Tu gagnes ${amountEarned} DC.` : ' Tu ne gagnes pas de DC.'}`);
       }
       setAlreadyPlayed(true);
-      await loadScores(content.id);
+      await loadScores();
     }
   };
 
@@ -207,11 +217,9 @@ export default function SudokuPage() {
           <div className="mt-6 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
             <Coins className="w-4 h-4 text-primary" />
             <span><b>1er</b> : 500 DC</span>
-            <span><b>2e</b> : 300 DC</span>
-            <span><b>3e</b> : 200 DC</span>
-            <span><b>4e</b> : 100 DC</span>
-            <span><b>5e</b> : 50 DC</span>
-            <span><b>6e+</b> : 10 DC</span>
+            <span><b>2e</b> : 250 DC</span>
+            <span><b>3e</b> : 100 DC</span>
+            <span><b>4e+</b> : 0 DC</span>
           </div>
 
           <div className="mt-8">
