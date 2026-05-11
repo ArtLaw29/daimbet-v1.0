@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Swords, KeyRound } from 'lucide-react';
+import { ArrowLeft, Copy, Swords, KeyRound, Beer, Coins, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -16,6 +16,9 @@ const GAMES = [
   { id: 'puissance4', label: '🔴 Puissance 4', route: 'puissance4' },
   { id: 'echecs', label: '♟️ Échecs', route: 'echecs' },
 ];
+
+const GAME_EMOJI: Record<string, string> = { pendu: '🪢', puissance4: '🔴', echecs: '♟️' };
+const GAME_LABEL: Record<string, string> = { pendu: 'Pendu', puissance4: 'Puissance 4', echecs: 'Échecs' };
 
 const CHESS_MODES = [
   { id: 'blitz', label: 'Blitz · 5 min' },
@@ -58,6 +61,15 @@ export default function DuelsPage() {
     const d = data as any;
     await refreshProfile();
     toast.success('Défi rejoint !');
+    navigate(`/jeux/${d.game_type}/${d.session_id}`);
+  };
+
+  const joinByCode = async (code: string) => {
+    const { data, error } = await supabase.rpc('join_challenge', { p_code: code });
+    if (error || (data as any)?.error) return toast.error((data as any)?.error || error?.message);
+    const d = data as any;
+    await refreshProfile();
+    toast.success('Défi relevé !');
     navigate(`/jeux/${d.game_type}/${d.session_id}`);
   };
 
@@ -117,6 +129,8 @@ export default function DuelsPage() {
           <Button onClick={join} disabled={joining} className="w-full">Rejoindre</Button>
         </div>
       </Card>
+
+      <Saloon onJoin={joinByCode} />
 
       <Dialog open={!!generatedCode} onOpenChange={(o) => !o && setGeneratedCode(null)}>
         <DialogContent>
