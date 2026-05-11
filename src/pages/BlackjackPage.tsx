@@ -31,10 +31,14 @@ function drawCard(): CardT {
 }
 
 function handDetail(cards: CardT[]) {
+  // L'As vaut 11 par défaut, ajusté à 1 si le total dépasse 21.
   const hard = cards.reduce((a, c) => a + (c.rank === 'A' ? 1 : c.value), 0);
   const hasAce = cards.some(c => c.rank === 'A');
   const soft = hasAce && hard + 10 <= 21;
-  return { total: soft ? hard + 10 : hard, soft, hard };
+  const total = soft ? hard + 10 : hard;
+  // Blackjack naturel : exactement 2 cartes totalisant 21 (As + 10/J/Q/K).
+  const isBlackjack = cards.length === 2 && total === 21;
+  return { total, soft, hard, isBlackjack };
 }
 
 function scoreLabel(cards: CardT[]): string {
@@ -189,8 +193,8 @@ export default function BlackjackPage() {
     const d2 = drawCard();
     const dealerCards = [d1, d2];
     setDealer(dealerCards); // revealedDealer reste à 1 → carte cachée
-    const playerBJ = handDetail([p1, p2]).total === 21;
-    const dealerBJ = handDetail(dealerCards).total === 21;
+    const playerBJ = handDetail([p1, p2]).isBlackjack;
+    const dealerBJ = handDetail(dealerCards).isBlackjack;
 
     if (playerBJ || dealerBJ) {
       const status: HandStatus = playerBJ ? 'blackjack' : 'stand';
