@@ -144,16 +144,23 @@ export default function BlackjackPage() {
   const finishGame = async (result: Outcome, payout: number) => {
     setOutcome(result);
     setPhase('fin');
-    setReplayLockUntil(Date.now() + 3000);
+    setReplayLockUntil(Date.now() + 5000);
     if (payout > 0 && user) {
-      const newBal = baselineBalance.current - mise + payout;
+      // Apply 5% rake on net winnings only (not on returned stake / push)
+      let finalPayout = payout;
+      const netGain = payout - mise;
+      if (netGain > 0) {
+        const rake = Math.round(netGain * 0.05);
+        finalPayout = payout - rake;
+      }
+      const newBal = baselineBalance.current - mise + finalPayout;
       await supabase.from('profiles').update({ balance: newBal }).eq('user_id', user.id);
       const reasonMap: Record<string, string> = {
         blackjack: 'Gain Blackjack (BJ naturel)',
         gagne: 'Gain Blackjack',
         egalite: 'Égalité Blackjack — remboursement',
       };
-      await supabase.from('solde_history').insert({ user_id: user.id, delta_dc: payout, reason: reasonMap[result || 'gagne'] });
+      await supabase.from('solde_history').insert({ user_id: user.id, delta_dc: finalPayout, reason: reasonMap[result || 'gagne'] });
       await refreshProfile();
     }
   };
@@ -189,8 +196,8 @@ export default function BlackjackPage() {
     setBusy(false);
 
     if (handDetail(fullPlayer).total === 21) {
-      // Blackjack naturel : x1.5 de profit → payout = 2.5x mise
-      const payout = Math.floor(mise * 2.5);
+      // Blackjack naturel 6:5 → profit = mise * 6/5, payout = mise + profit
+      const payout = mise + Math.floor(mise * 6 / 5);
       await finishGame('blackjack', payout);
     } else {
       setPhase('joueur');
@@ -200,10 +207,10 @@ export default function BlackjackPage() {
   const hit = async () => {
     if (phase !== 'joueur' || drawing) return;
     setDrawing(true);
-    await sleep(800);
+    await sleep(1400);
     const next = [...player, drawCard()];
     setPlayer(next);
-    await sleep(1000);
+    await sleep(1400);
     setDrawing(false);
     if (handDetail(next).total > 21) {
       // Bust
@@ -221,7 +228,7 @@ export default function BlackjackPage() {
       setDealer(d);
     }
     setRevealedDealer(d.length);
-    await sleep(1000);
+    await sleep(1500);
 
     // Dealer hits soft 17 (H17)
     while (true) {
@@ -231,7 +238,7 @@ export default function BlackjackPage() {
       d = [...d, drawCard()];
       setDealer(d);
       setRevealedDealer(d.length);
-      await sleep(1000);
+      await sleep(1500);
     }
 
     const dt = handDetail(d).total;
