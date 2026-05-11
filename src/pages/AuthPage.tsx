@@ -172,14 +172,14 @@ export default function AuthPage() {
             <Button
               variant={mode === 'connexion' ? 'default' : 'outline'}
               className="flex-1"
-              onClick={() => { setMode('connexion'); setSelectedName(''); }}
+              onClick={() => { setMode('connexion'); setDisplayName(''); }}
             >
               Connexion
             </Button>
             <Button
               variant={mode === 'inscription' ? 'default' : 'outline'}
               className="flex-1"
-              onClick={() => { setMode('inscription'); setSelectedName(''); }}
+              onClick={() => { setMode('inscription'); setDisplayName(''); }}
             >
               Inscription
             </Button>
@@ -218,28 +218,15 @@ export default function AuthPage() {
           {mode === 'inscription' && (
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signup-name">Ton prénom</Label>
-                <select
-                  id="signup-name" value={selectedName}
-                  onChange={(e) => setSelectedName(e.target.value)} required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Choisis ton prénom…</option>
-                  {PROMO_NAMES.map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-                {selectedName && (
-                  <div className="flex items-center gap-2 text-sm mt-1">
-                    {checkingName ? (
-                      <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> <span className="text-muted-foreground">Vérification…</span></>
-                    ) : nameAvailable === true ? (
-                      <><CheckCircle className="w-4 h-4 text-primary" /> <span className="text-primary">Prénom disponible ✓</span></>
-                    ) : nameAvailable === false ? (
-                      <><XCircle className="w-4 h-4 text-destructive" /> <span className="text-destructive">Ce prénom est déjà utilisé. Si c'est le tien, contacte Jordaim Belfort.</span></>
-                    ) : null}
-                  </div>
-                )}
+                <Label htmlFor="signup-name">Ton prénom (facultatif)</Label>
+                <Input
+                  id="signup-name" type="text" value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Ex : Anaïs"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Si tu laisses vide, on utilisera le début de ton email.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -247,17 +234,8 @@ export default function AuthPage() {
                 <Input
                   id="signup-email" type="email" value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="prénom.nom@essec.edu" required
+                  placeholder="ton.email@essec.edu" required
                 />
-                {email && emailValid === false && (
-                  <p className="text-xs text-destructive mt-1">Format requis : prénom.nom@essec.edu</p>
-                )}
-                {email && emailValid === true && emailPrenomMatch === false && (
-                  <p className="text-xs text-destructive mt-1">L'email doit commencer par ton prénom ({extractBasePrenom(selectedName)}).</p>
-                )}
-                {email && emailValid === true && emailPrenomMatch === true && (
-                  <p className="text-xs text-primary mt-1">✓ Email valide</p>
-                )}
               </div>
 
               <div className="space-y-2">
