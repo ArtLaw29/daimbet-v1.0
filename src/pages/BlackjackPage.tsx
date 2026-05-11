@@ -531,14 +531,16 @@ export default function BlackjackPage() {
                   {h.status === 'bust' && <p className="text-xs text-destructive mt-2 font-semibold">Bust !</p>}
                   {h.status === 'doubled' && <p className="text-xs text-primary mt-2 font-semibold">Doublé</p>}
                   {h.status === 'blackjack' && <p className="text-xs text-primary mt-2 font-semibold">Blackjack !</p>}
+                  {h.status === 'surrender' && <p className="text-xs text-muted-foreground mt-2 font-semibold">Abandonné</p>}
                   {result && (
                     <p className={`text-xs mt-2 font-semibold ${
                       result === 'gagne' || result === 'blackjack' ? 'text-primary' :
-                      result === 'egalite' ? 'text-muted-foreground' : 'text-destructive'
+                      result === 'egalite' || result === 'surrender' ? 'text-muted-foreground' : 'text-destructive'
                     }`}>
                       {result === 'blackjack' ? '🎰 Blackjack' :
                        result === 'gagne' ? '🏆 Gagnée' :
-                       result === 'egalite' ? '🤝 Égalité' : '💸 Perdue'}
+                       result === 'egalite' ? '🤝 Égalité' :
+                       result === 'surrender' ? '🏳️ Abandon (50% rendu)' : '💸 Perdue'}
                     </p>
                   )}
                 </Card>
@@ -548,7 +550,7 @@ export default function BlackjackPage() {
 
           {phase === 'joueur' && activeHand && (
             <>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <Button onClick={hit} disabled={drawing} size="lg">
                   {drawing ? '…' : 'Tirer'}
                 </Button>
@@ -559,6 +561,11 @@ export default function BlackjackPage() {
                 <Button onClick={split} disabled={drawing || !canSplit()} variant="secondary" size="lg">
                   Séparer
                 </Button>
+                {canSurrender() && (
+                  <Button onClick={surrender} disabled={drawing} variant="destructive" size="lg">
+                    Abandonner
+                  </Button>
+                )}
               </div>
               {activeHand.cards.some(c => c.rank === 'A') && (
                 <p className="text-[11px] text-muted-foreground">As : 1 ou 11 pts selon ton intérêt.</p>
