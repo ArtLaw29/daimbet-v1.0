@@ -64,9 +64,9 @@ export default function DuelsPage() {
     navigate(`/jeux/${d.game_type}/${d.session_id}`);
   };
 
-  const joinByCode = async (code: string) => {
+  const joinByCode = async (code: string): Promise<void> => {
     const { data, error } = await supabase.rpc('join_challenge', { p_code: code });
-    if (error || (data as any)?.error) return toast.error((data as any)?.error || error?.message);
+    if (error || (data as any)?.error) { toast.error((data as any)?.error || error?.message); return; }
     const d = data as any;
     await refreshProfile();
     toast.success('Défi relevé !');
