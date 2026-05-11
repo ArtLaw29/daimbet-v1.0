@@ -13,7 +13,7 @@ import { Check, X, Trash2 } from 'lucide-react';
 type DailyType = 'wordle' | 'sudoku' | 'mots_croisés';
 
 const TYPE_LABELS: Record<DailyType, string> = {
-  wordle: '🔠 Wordle',
+  wordle: '🔠 Mot du jour',
   sudoku: '🔢 Sudoku',
   mots_croisés: '📝 Mots fléchés',
 };
@@ -123,13 +123,13 @@ function WordleEditor() {
       const { error } = await supabase.from('daily_content').insert({ type: 'wordle', scheduled_date: date, status: 'actif', data: payload, reveal_at: reveal } as any);
       if (error) return toast.error(error.message);
     }
-    toast.success('Wordle enregistré ✅');
+    toast.success('Mot du jour enregistré ✅');
     await reload();
   };
 
   const remove = async () => {
     if (!existing) return;
-    if (!confirm('Supprimer ce Wordle ?')) return;
+    if (!confirm('Supprimer ce Mot du jour ?')) return;
     await supabase.from('daily_content').delete().eq('id', existing.id);
     toast.success('Supprimé');
     await reload();
@@ -222,7 +222,7 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
 // ───────── Casino stats (7 derniers jours) ─────────
 const GAME_DEFS: { id: string; label: string; emoji: string }[] = [
   { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
-  { id: 'wordle', label: 'Wordle', emoji: '🔠' },
+  { id: 'wordle', label: 'Mot du jour', emoji: '🔠' },
   { id: 'sudoku', label: 'Sudoku', emoji: '🔢' },
   { id: 'mots-fleches', label: 'Mots fléchés', emoji: '📝' },
   { id: 'pendu', label: 'Pendu', emoji: '🪢' },
@@ -376,7 +376,7 @@ function CasinoStats() {
 // ───────── Casino controls : reset + suspend ─────────
 const CONTROL_GAMES: { id: string; label: string; emoji: string; gameTypes?: string[] }[] = [
   { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
-  { id: 'wordle', label: 'Wordle', emoji: '🔠' },
+  { id: 'wordle', label: 'Mot du jour', emoji: '🔠' },
   { id: 'sudoku', label: 'Sudoku', emoji: '🔢' },
   { id: 'mots-fleches', label: 'Mots fléchés', emoji: '📝' },
   { id: 'duels', label: 'Duels', emoji: '⚔️', gameTypes: ['pendu', 'puissance4', 'echecs'] },
