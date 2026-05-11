@@ -7,9 +7,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { motion } from 'framer-motion';
-import { PROMO_NAMES, isValidSchoolEmail } from '@/lib/pari-mutuel';
-import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react';
-import RulesScreen from '@/components/RulesScreen';
+import { Loader2, Mail } from 'lucide-react';
 
 const EMOJI_POOL = [
   '🦌', '🐻', '🦊', '🐺', '🦁', '🐯', '🐮', '🐷', '🐸', '🐵',
@@ -29,10 +27,6 @@ function getEmojiForName(name: string): string {
   return EMOJI_POOL[Math.abs(hash) % EMOJI_POOL.length];
 }
 
-function extractBasePrenom(name: string): string {
-  return name.replace(/\s+[A-Z]\.$/, '').toLowerCase();
-}
-
 export default function AuthPage() {
   const location = useLocation();
   const initialMode = location.pathname === '/inscription' ? 'inscription' : 'connexion';
@@ -40,7 +34,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [selectedName, setSelectedName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
@@ -49,17 +43,8 @@ export default function AuthPage() {
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const [signupDone, setSignupDone] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
-  const [showRules, setShowRules] = useState(false);
-
-  const [takenNames, setTakenNames] = useState<Set<string>>(new Set());
-  const [checkingName, setCheckingName] = useState(false);
-  const [nameAvailable, setNameAvailable] = useState<boolean | null>(null);
-  const [emailValid, setEmailValid] = useState<boolean | null>(null);
-  const [emailPrenomMatch, setEmailPrenomMatch] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetchTakenNames();
-    // Auto-open forgot panel if ?forgot=1 in URL
     const params = new URLSearchParams(location.search);
     if (params.get('forgot') === '1') {
       setMode('connexion');
@@ -73,37 +58,6 @@ export default function AuthPage() {
     const t = setTimeout(() => setForgotCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [forgotCooldown]);
-
-  const fetchTakenNames = async () => {
-    const { data } = await (supabase as any).from('profiles_public').select('display_name');
-    if (data) {
-      setTakenNames(new Set(data.map(p => p.display_name)));
-    }
-  };
-
-  useEffect(() => {
-    if (!selectedName || mode !== 'inscription') { setNameAvailable(null); return; }
-    setCheckingName(true);
-    const timer = setTimeout(() => {
-      setNameAvailable(!takenNames.has(selectedName));
-      setCheckingName(false);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [selectedName, takenNames, mode]);
-
-  useEffect(() => {
-    if (!email || mode !== 'inscription') { setEmailValid(null); setEmailPrenomMatch(null); return; }
-    const valid = isValidSchoolEmail(email);
-    setEmailValid(valid);
-    if (valid && selectedName) {
-      const basePrenom = extractBasePrenom(selectedName);
-      const emailPrefix = email.split('@')[0].split('.')[0].toLowerCase();
-      const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-      setEmailPrenomMatch(normalize(emailPrefix) === normalize(basePrenom));
-    } else {
-      setEmailPrenomMatch(null);
-    }
-  }, [email, selectedName, mode]);
 
   // ─── CONNEXION ───
   const handleLogin = async (e: React.FormEvent) => {
@@ -127,45 +81,22 @@ export default function AuthPage() {
 
   // ─── INSCRIPTION ───
   const canSignup = () => {
-    return (
-      selectedName && email && password && confirmPassword &&
-      nameAvailable === true && emailValid === true && emailPrenomMatch === true &&
-      password === confirmPassword && password.length >= 6
-    );
+    return !!email && !!password && password === confirmPassword && password.length >= 6;
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSignup()) return;
-    // Show rules screen instead of immediately creating account
-    setShowRules(true);
-  };
-
-  const performSignup = async () => {
     setLoading(true);
 
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('display_name', selectedName)
-      .maybeSingle();
-
-    if (existingProfile) {
-      toast.error('Ce prénom est déjà utilisé. Si c\'est le tien, contacte Jordaim Belfort.');
-      setNameAvailable(false);
-      setTakenNames(prev => new Set([...prev, selectedName]));
-      setLoading(false);
-      setShowRules(false);
-      return;
-    }
-
-    const emoji = getEmojiForName(selectedName);
+    const finalName = displayName.trim() || email.split('@')[0];
+    const emoji = getEmojiForName(finalName);
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { display_name: selectedName, emoji, rules_accepted: true },
+        data: { display_name: finalName, emoji, rules_accepted: true },
         emailRedirectTo: `${window.location.origin}/welcome`,
       },
     });
@@ -173,29 +104,15 @@ export default function AuthPage() {
     if (error) {
       toast.error(error.message);
       setLoading(false);
-      setShowRules(false);
       return;
     }
 
     setSignupEmail(email);
     setSignupDone(true);
-    setShowRules(false);
     setLoading(false);
   };
 
   const isFormValid = canSignup();
-
-  // ─── RULES STEP (during signup) ───
-  if (showRules) {
-    return (
-      <RulesScreen
-        acceptLabel="J'accepte et je crée mon compte"
-        onAccept={performSignup}
-        onBack={() => setShowRules(false)}
-        loading={loading}
-      />
-    );
-  }
 
   // ─── POST-SIGNUP: Email sent confirmation ───
   if (signupDone) {
