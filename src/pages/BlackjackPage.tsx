@@ -179,19 +179,19 @@ export default function BlackjackPage() {
 
     setPlayer([]); setDealer([]); setRevealedDealer(1); setOutcome(null);
     setPhase('shuffle');
-    await sleep(1500);
+    await sleep(1800);
 
     // Distribution une carte à la fois (1s entre chaque)
     const p1 = drawCard();
     setPlayer([p1]);
-    await sleep(1000);
+    await sleep(1400);
     const d1 = drawCard();
     setDealer([d1]);
-    await sleep(1000);
+    await sleep(1400);
     const p2 = drawCard();
     const fullPlayer = [p1, p2];
     setPlayer(fullPlayer);
-    await sleep(1000);
+    await sleep(1400);
 
     setBusy(false);
 
@@ -360,8 +360,8 @@ export default function BlackjackPage() {
                   {outcome === 'blackjack' ? '🎰' : outcome === 'gagne' ? '🏆' : outcome === 'egalite' ? '🤝' : '💸'}
                 </p>
                 <h2 className="text-2xl font-display">
-                  {outcome === 'blackjack' ? `BLACKJACK ! +${Math.floor(mise * 1.5)} DC` :
-                   outcome === 'gagne' ? `Tu gagnes +${mise} DC !` :
+                  {outcome === 'blackjack' ? `BLACKJACK ! +${Math.floor(Math.floor(mise * 6 / 5) * 0.95)} DC` :
+                   outcome === 'gagne' ? `Tu gagnes +${Math.floor(mise * 0.95)} DC !` :
                    outcome === 'egalite' ? `Égalité — mise remboursée` :
                    playerInfo.total > 21 ? `Tu dépasses 21 ! -${mise} DC` : `Le croupier gagne — -${mise} DC`}
                 </h2>
@@ -373,6 +373,10 @@ export default function BlackjackPage() {
           </AnimatePresence>
         </div>
       )}
+
+      <p className="text-center text-[11px] text-muted-foreground mt-8 italic">
+        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
+      </p>
     </div>
   );
 }
