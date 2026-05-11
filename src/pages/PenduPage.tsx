@@ -96,18 +96,24 @@ export default function PenduPage() {
 
   const submitWord = async () => {
     const w = wordInput.trim().toUpperCase();
-    if (w.length < 4 || w.length > 12 || !/^[A-Z]+$/.test(w)) return toast.error('Mot de 4 à 12 lettres (A-Z)');
+    if (w.length < 4 || w.length > 12 || !/^[A-ZÀ-ÖØ-Þ]+$/.test(w)) return toast.error('Mot de 4 à 12 lettres');
     await updateState({ word: w, phase: 'playing' });
   };
+
+  // Accent-insensitive comparison helper
+  const norm = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
   const guessLetter = async (l: string) => {
     if (phase !== 'playing' || !isP1 === false || isP1) return; // Only J2 guesses
     if (guessed.includes(l) || wrong.includes(l)) return;
     // Letters at position 0 and word.length-1 stay masked, so we only consider middle letters for the win check
     const middle = word.slice(1, -1);
-    if (word.includes(l)) {
+    const nl = norm(l);
+    if (norm(word).includes(nl)) {
       const newGuessed = [...guessed, l];
-      const allFound = middle.split('').every((c) => newGuessed.includes(c));
+      const guessedNorm = newGuessed.map(norm);
+      const allFound = middle.split('').every((c) => guessedNorm.includes(norm(c)));
       await updateState({ guessed_letters: newGuessed });
       if (allFound) {
         await supabase.rpc('finish_duel', { p_session_id: sessionId, p_winner_id: user!.id });
@@ -161,7 +167,7 @@ export default function PenduPage() {
   const display = phase === 'playing'
     ? word.split('').map((c, i) => {
         if (i === 0 || i === word.length - 1) return '_';
-        return guessed.includes(c) ? c : '_';
+        return guessed.some((g) => norm(g) === norm(c)) ? c : '_';
       }).join(' ')
     : '';
 
