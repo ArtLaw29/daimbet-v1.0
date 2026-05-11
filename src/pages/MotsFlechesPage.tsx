@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Coins, Trophy, Check } from 'lucide-react';
+import { ArrowLeft, Coins, Trophy, Check, ArrowRight, ArrowDown, CornerDownRight, CornerRightDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -8,10 +8,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
 
-type Cell = { lettre: string; numero: number | null } | null;
-type Direction = 'H' | 'V';
+type Direction = 'right' | 'down' | 'right-down' | 'down-right';
+type Cell =
+  | { type: 'lettre'; correct: string }
+  | { type: 'definition'; text: string; direction: Direction }
+  | { type: 'vide' };
+type FocusDir = 'H' | 'V';
 
-export default function MotsCroisesPage() {
+export default function MotsFlechesPage() {
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -19,21 +23,19 @@ export default function MotsCroisesPage() {
   const [grid, setGrid] = useState<string[][]>([]);
   const [verified, setVerified] = useState<boolean[][]>([]);
   const [cursor, setCursor] = useState<{ r: number; c: number } | null>(null);
-  const [dir, setDir] = useState<Direction>('H');
+  const [dir, setDir] = useState<FocusDir>('H');
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [finished, setFinished] = useState(false);
   const [scores, setScores] = useState<any[]>([]);
 
   const grille: Cell[][] = (content?.data?.grille || []) as Cell[][];
-  const blackSet = useMemo(() => {
-    const s = new Set<string>();
-    (content?.data?.cases_noires || []).forEach((p: number[]) => s.add(`${p[0]},${p[1]}`));
-    return s;
-  }, [content]);
-  const isBlack = (r: number, c: number) => blackSet.has(`${r},${c}`);
   const rows = grille.length;
   const cols = grille[0]?.length || 0;
   const rewards: number[] = content?.data?.rewards || [];
+
+  const isLetter = useCallback((r: number, c: number) => {
+    return grille[r]?.[c]?.type === 'lettre';
+  }, [grille]);
 
   useEffect(() => {
     (async () => {
@@ -43,8 +45,8 @@ export default function MotsCroisesPage() {
       if (!dc) { setLoading(false); return; }
       setContent(dc);
       const g = (dc.data as any).grille as Cell[][];
-      setGrid(g.map((row: Cell[]) => row.map(() => '')));
-      setVerified(g.map((row: Cell[]) => row.map(() => false)));
+      setGrid(g.map((row) => row.map(() => '')));
+      setVerified(g.map((row) => row.map(() => false)));
       if (user) {
         const { data: existing } = await supabase.from('daily_scores')
           .select('*').eq('content_id', dc.id).eq('user_id', user.id).maybeSingle();
@@ -71,22 +73,22 @@ export default function MotsCroisesPage() {
 
   const advance = useCallback((r: number, c: number) => {
     if (dir === 'H') {
-      for (let cc = c + 1; cc < cols; cc++) if (!isBlack(r, cc)) { setCursor({ r, c: cc }); return; }
+      for (let cc = c + 1; cc < cols; cc++) if (isLetter(r, cc)) { setCursor({ r, c: cc }); return; }
     } else {
-      for (let rr = r + 1; rr < rows; rr++) if (!isBlack(rr, c)) { setCursor({ r: rr, c }); return; }
+      for (let rr = r + 1; rr < rows; rr++) if (isLetter(rr, c)) { setCursor({ r: rr, c }); return; }
     }
-  }, [dir, cols, rows, blackSet]);
+  }, [dir, cols, rows, isLetter]);
 
   const retreat = useCallback((r: number, c: number) => {
     if (dir === 'H') {
-      for (let cc = c - 1; cc >= 0; cc--) if (!isBlack(r, cc)) { setCursor({ r, c: cc }); return; }
+      for (let cc = c - 1; cc >= 0; cc--) if (isLetter(r, cc)) { setCursor({ r, c: cc }); return; }
     } else {
-      for (let rr = r - 1; rr >= 0; rr--) if (!isBlack(rr, c)) { setCursor({ r: rr, c }); return; }
+      for (let rr = r - 1; rr >= 0; rr--) if (isLetter(rr, c)) { setCursor({ r: rr, c }); return; }
     }
-  }, [dir, blackSet]);
+  }, [dir, isLetter]);
 
   const onCellClick = (r: number, c: number) => {
-    if (isBlack(r, c) || alreadyPlayed || finished) return;
+    if (!isLetter(r, c) || alreadyPlayed || finished) return;
     if (cursor && cursor.r === r && cursor.c === c) {
       setDir((d) => (d === 'H' ? 'V' : 'H'));
     } else setCursor({ r, c });
@@ -121,26 +123,32 @@ export default function MotsCroisesPage() {
       else if (e.key === 'Backspace') backspace();
       else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         const { r, c } = cursor;
-        const next = { ArrowRight: [r, c + 1], ArrowLeft: [r, c - 1], ArrowDown: [r + 1, c], ArrowUp: [r - 1, c] }[e.key]!;
-        if (next[0] >= 0 && next[0] < rows && next[1] >= 0 && next[1] < cols && !isBlack(next[0], next[1])) {
-          setCursor({ r: next[0], c: next[1] });
+        const dx = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] }[e.key]!;
+        let nr = r + dx[0], nc = c + dx[1];
+        // Skip non-letter cells
+        while (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !isLetter(nr, nc)) {
+          nr += dx[0]; nc += dx[1];
+        }
+        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && isLetter(nr, nc)) {
+          setCursor({ r: nr, c: nc });
           setDir(e.key === 'ArrowRight' || e.key === 'ArrowLeft' ? 'H' : 'V');
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [cursor, setLetter, backspace, alreadyPlayed, finished, rows, cols, blackSet]);
+  }, [cursor, setLetter, backspace, alreadyPlayed, finished, rows, cols, isLetter]);
 
   const verify = async () => {
     const nv: boolean[][] = grid.map((row, r) => row.map((l, c) => {
-      if (isBlack(r, c)) return false;
-      return l.toUpperCase() === (grille[r]?.[c]?.lettre || '').toUpperCase();
+      const cell = grille[r]?.[c];
+      if (!cell || cell.type !== 'lettre') return false;
+      return l.toUpperCase() === cell.correct.toUpperCase();
     }));
     setVerified(nv);
     let allGood = true;
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      if (!isBlack(r, c) && !nv[r][c]) { allGood = false; break; }
+      if (isLetter(r, c) && !nv[r][c]) { allGood = false; break; }
     }
     if (!allGood) { toast.error('Certaines cases sont incorrectes'); return; }
     setFinished(true);
@@ -156,7 +164,7 @@ export default function MotsCroisesPage() {
         const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', user.id).single();
         await supabase.from('profiles').update({ balance: (prof?.balance || 0) + reward }).eq('user_id', user.id);
         await supabase.from('solde_history').insert({
-          user_id: user.id, delta_dc: reward, reason: `Mots croisés du jour — ${rank}e place`,
+          user_id: user.id, delta_dc: reward, reason: `Mots fléchés du jour — ${rank}e place`,
         });
         await refreshProfile();
         toast.success(`🏆 ${rank}e place ! +${reward} DC`);
@@ -172,13 +180,23 @@ export default function MotsCroisesPage() {
 
   if (loading) return <div className="p-8 text-center text-muted-foreground">Chargement…</div>;
 
+  const renderArrow = (direction: Direction) => {
+    const cls = "w-3 h-3 absolute text-primary";
+    switch (direction) {
+      case 'right': return <ArrowRight className={`${cls} bottom-0.5 right-0.5`} />;
+      case 'down': return <ArrowDown className={`${cls} bottom-0.5 right-0.5`} />;
+      case 'right-down': return <CornerRightDown className={`${cls} bottom-0.5 right-0.5`} />;
+      case 'down-right': return <CornerDownRight className={`${cls} bottom-0.5 right-0.5`} />;
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 pb-20 md:pb-6 max-w-2xl">
       <button onClick={() => navigate('/jeux')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm">
         <ArrowLeft className="w-4 h-4" /> Retour aux jeux
       </button>
       <div className="text-center mb-5">
-        <h1 className="text-4xl font-display gold-text">📝 Mots croisés du jour</h1>
+        <h1 className="text-4xl font-display gold-text">📝 Mots fléchés du jour</h1>
       </div>
 
       {!content ? (
@@ -207,54 +225,44 @@ export default function MotsCroisesPage() {
           </div>
 
           {/* Grid */}
-          <div className="flex justify-center mb-5">
+          <div className="flex justify-center mb-5 overflow-x-auto">
             <div className="inline-block bg-foreground/10 p-1 rounded">
               {grille.map((row, r) => (
                 <div key={r} className="flex">
-                  {row.map((_cell, c) => {
-                    const black = isBlack(r, c);
-                    const cell = grille[r][c];
-                    const num = cell?.numero;
+                  {row.map((cell, c) => {
                     const val = grid[r]?.[c] || '';
                     const isSel = cursor?.r === r && cursor?.c === c;
                     const ok = verified[r]?.[c];
+                    if (cell.type === 'vide') {
+                      return <div key={c} className="w-11 h-11 m-[1px] bg-foreground" />;
+                    }
+                    if (cell.type === 'definition') {
+                      return (
+                        <div key={c}
+                          className="relative w-11 h-11 m-[1px] bg-secondary border border-border p-0.5 overflow-hidden select-none">
+                          <span className="text-[8px] leading-[1.05] block text-foreground/90 break-words pr-2.5">
+                            {cell.text}
+                          </span>
+                          {renderArrow(cell.direction)}
+                        </div>
+                      );
+                    }
+                    // lettre
                     return (
                       <div key={c}
                         onClick={() => onCellClick(r, c)}
-                        className={`relative w-9 h-9 m-[1px] flex items-center justify-center text-sm font-bold uppercase select-none ${
-                          black ? 'bg-foreground' :
+                        className={`relative w-11 h-11 m-[1px] flex items-center justify-center text-base font-bold uppercase select-none ${
                           ok ? 'bg-success/30 border border-success cursor-pointer' :
                           isSel ? 'bg-primary/20 border-2 border-primary cursor-pointer' :
                           'bg-card border border-border cursor-pointer hover:bg-secondary'
                         }`}>
-                        {!black && num && <span className="absolute top-0 left-0.5 text-[8px] text-muted-foreground leading-none">{num}</span>}
-                        {!black && val}
+                        {val}
                       </div>
                     );
                   })}
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Definitions */}
-          <div className="grid md:grid-cols-2 gap-3 mb-5">
-            <Card className="p-3">
-              <h3 className="font-display text-sm mb-2">Horizontalement →</h3>
-              <ul className="space-y-1 text-xs">
-                {(content.data.definitions_horizontales || []).map((d: any) => (
-                  <li key={d.numero}><b>{d.numero}.</b> {d.definition}</li>
-                ))}
-              </ul>
-            </Card>
-            <Card className="p-3">
-              <h3 className="font-display text-sm mb-2">Verticalement ↓</h3>
-              <ul className="space-y-1 text-xs">
-                {(content.data.definitions_verticales || []).map((d: any) => (
-                  <li key={d.numero}><b>{d.numero}.</b> {d.definition}</li>
-                ))}
-              </ul>
-            </Card>
           </div>
 
           {/* Verify */}
