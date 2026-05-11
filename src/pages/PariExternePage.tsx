@@ -18,6 +18,7 @@ type Bet = {
   result_player1: string | null;
   result_player2: string | null;
   created_at: string;
+  motif: string | null;
 };
 
 type Profile = { user_id: string; display_name: string; emoji: string | null };
@@ -45,6 +46,7 @@ export default function PariExternePage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [opponentId, setOpponentId] = useState('__none__');
   const [mise, setMise] = useState<number>(50);
+  const [motif, setMotif] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
@@ -86,16 +88,20 @@ export default function PariExternePage() {
   const createBet = async () => {
     if (opponentId === '__none__') return toast.error('Choisis un adversaire');
     if (!mise || mise < 1) return toast.error('Mise minimum : 1 DC');
+    const motifTrim = motif.trim();
+    if (!motifTrim) return toast.error('Motif obligatoire (ex : « Match de tennis demain »)');
     setSubmitting(true);
     const { data, error } = await supabase.rpc('create_external_bet', {
       p_opponent_id: opponentId,
       p_mise: Math.floor(mise),
-    });
+      p_motif: motifTrim,
+    } as any);
     setSubmitting(false);
     if (error || (data as any)?.error) return toast.error((data as any)?.error || error?.message || 'Erreur');
     toast.success('Défi envoyé ! 🤝');
     setOpponentId('__none__');
     setMise(50);
+    setMotif('');
     await refreshProfile();
     await load();
   };
@@ -159,6 +165,15 @@ export default function PariExternePage() {
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Mise (DC)</label>
             <Input type="number" min={1} value={mise} onChange={(e) => setMise(Number(e.target.value))} />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Motif du pari *</label>
+            <Input
+              value={motif}
+              onChange={(e) => setMotif(e.target.value)}
+              placeholder="Ex : Match de tennis demain, partie de billard ce soir…"
+              maxLength={140}
+            />
           </div>
           <Button onClick={createBet} disabled={submitting} className="w-full">
             <Coins className="w-4 h-4 mr-2" /> Envoyer le défi
