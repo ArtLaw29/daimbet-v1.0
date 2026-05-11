@@ -147,3 +147,113 @@ export default function DuelsPage() {
     </div>
   );
 }
+// ───────── Saloon : défis ouverts en temps réel ─────────
+type Challenge = {
+  id: string;
+  code: string;
+  game_type: string;
+  mise: number;
+  status: string;
+  creator_id: string;
+  expires_at: string | null;
+  created_at: string;
+};
+
+function Saloon({ onJoin }: { onJoin: (code: string) => Promise<void> }) {
+  const { user } = useAuth();
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [names, setNames] = useState<Record<string, { display_name: string; emoji: string | null }>>({});
+  const [now, setNow] = useState(Date.now());
+  const [joining, setJoining] = useState<string | null>(null);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from('challenges')
+      .select('*')
+      .eq('status', 'ouvert')
+      .order('created_at', { ascending: false });
+    const rows = (data || []) as Challenge[];
+    const filtered = rows.filter(c => c.creator_id !== user?.id && (!c.expires_at || new Date(c.expires_at).getTime() > Date.now()));
+    setChallenges(filtered);
+    const ids = Array.from(new Set(filtered.map(c => c.creator_id)));
+    if (ids.length) {
+      const { data: profs } = await supabase
+        .from('profiles_public' as any)
+        .select('user_id, display_name, emoji')
+        .in('user_id', ids);
+      const m: Record<string, any> = {};
+      (profs || []).forEach((p: any) => { m[p.user_id] = p; });
+      setNames(m);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel('saloon-challenges')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'challenges' }, () => load())
+      .subscribe();
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => { supabase.removeChannel(ch); clearInterval(t); };
+  }, [user?.id]);
+
+  const handleJoin = async (c: Challenge) => {
+    setJoining(c.id);
+    await onJoin(c.code);
+    setJoining(null);
+  };
+
+  const formatLeft = (expires: string | null) => {
+    if (!expires) return '∞';
+    const ms = new Date(expires).getTime() - now;
+    if (ms <= 0) return 'expiré';
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}m${s.toString().padStart(2, '0')}s`;
+  };
+
+  return (
+    <Card className="p-5 mb-5 border-primary/30">
+      <h2 className="font-display text-xl mb-3 flex items-center gap-2">
+        <Beer className="w-5 h-5 text-primary" /> Le Saloon
+        <span className="text-xs font-normal text-muted-foreground">· défis ouverts</span>
+      </h2>
+      {challenges.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">
+          🌵 Aucun défi en attente pour l'instant.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {challenges.map(c => {
+            const name = names[c.creator_id];
+            const display = name ? `${name.emoji || '🦌'} ${name.display_name}` : '?';
+            return (
+              <div key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-card/50 hover:border-primary/40 transition-all animate-fade-in">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <span className="text-lg">{GAME_EMOJI[c.game_type] || '🎮'}</span>
+                    <span className="truncate">{GAME_LABEL[c.game_type] || c.game_type}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                    par {display}
+                  </div>
+                  <div className="flex items-center gap-3 text-[11px] mt-1">
+                    <span className="flex items-center gap-1 text-primary font-semibold">
+                      <Coins className="w-3 h-3" /> {c.mise} DC
+                    </span>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Clock className="w-3 h-3" /> {formatLeft(c.expires_at)}
+                    </span>
+                  </div>
+                </div>
+                <Button size="sm" onClick={() => handleJoin(c)} disabled={joining === c.id}>
+                  {joining === c.id ? '…' : 'Relever'}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
