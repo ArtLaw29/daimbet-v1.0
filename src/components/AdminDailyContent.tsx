@@ -18,6 +18,8 @@ const TYPE_LABELS: Record<DailyType, string> = {
   mots_croisés: '📝 Mots croisés',
 };
 
+type TabKey = DailyType | 'stats' | 'controles';
+
 function next7Days() {
   const out: string[] = [];
   for (let i = 0; i < 7; i++) {
@@ -52,18 +54,22 @@ function CalendarStrip({ items, selected, onSelect }: { items: any[]; selected: 
 }
 
 export default function AdminDailyContent() {
-  const [tab, setTab] = useState<DailyType>('wordle');
+  const [tab, setTab] = useState<TabKey>('wordle');
   return (
     <div>
-      <Tabs value={tab} onValueChange={(v) => setTab(v as DailyType)}>
-        <TabsList className="grid grid-cols-3 mb-4">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+        <TabsList className="grid grid-cols-5 mb-4 h-auto">
           {(Object.keys(TYPE_LABELS) as DailyType[]).map((t) => (
             <TabsTrigger key={t} value={t} className="text-xs">{TYPE_LABELS[t]}</TabsTrigger>
           ))}
+          <TabsTrigger value="stats" className="text-xs">📊 Stats</TabsTrigger>
+          <TabsTrigger value="controles" className="text-xs">⚙️ Contrôles</TabsTrigger>
         </TabsList>
         <TabsContent value="wordle"><WordleEditor /></TabsContent>
         <TabsContent value="sudoku"><JsonEditor type="sudoku" placeholder='{"puzzle":[0,0,0,...,81 valeurs],"solution":[...,81 valeurs],"rewards":[500,300,200,100,50]}' /></TabsContent>
         <TabsContent value="mots_croisés"><JsonEditor type="mots_croisés" placeholder='{"grille":[[{"lettre":"P","numero":1},...],...],"cases_noires":[[0,3],...],"definitions_horizontales":[{"numero":1,"definition":"..."}],"definitions_verticales":[...],"rewards":[500,300,200,100,50]}' /></TabsContent>
+        <TabsContent value="stats"><CasinoStats /></TabsContent>
+        <TabsContent value="controles"><CasinoControls /></TabsContent>
       </Tabs>
     </div>
   );
