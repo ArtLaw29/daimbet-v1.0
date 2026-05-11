@@ -219,3 +219,272 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
     </Card>
   );
 }
+// ───────── Casino stats (7 derniers jours) ─────────
+const GAME_DEFS: { id: string; label: string; emoji: string }[] = [
+  { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
+  { id: 'wordle', label: 'Wordle', emoji: '🔠' },
+  { id: 'sudoku', label: 'Sudoku', emoji: '🔢' },
+  { id: 'mots-croises', label: 'Mots croisés', emoji: '📝' },
+  { id: 'pendu', label: 'Pendu', emoji: '🪢' },
+  { id: 'puissance4', label: 'Puissance 4', emoji: '🔴' },
+  { id: 'echecs', label: 'Échecs', emoji: '♟️' },
+  { id: 'duels', label: 'Duels', emoji: '⚔️' },
+  { id: 'pari-externe', label: 'Pari externe', emoji: '🤝' },
+];
+
+function CasinoStats() {
+  const [loading, setLoading] = useState(true);
+  const [perGame, setPerGame] = useState<Record<string, { plays: number; players: number }>>({});
+  const [totals, setTotals] = useState({ misé: 0, distribué: 0 });
+  const [topPlayers, setTopPlayers] = useState<{ user_id: string; name: string; activity: number }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const since = new Date(Date.now() - 7 * 86400000).toISOString();
+
+      // games_sessions for pendu/puissance4/echecs (status=termine)
+      const { data: gs } = await supabase
+        .from('games_sessions').select('id,game_type,player1_id,player2_id,created_at,status')
+        .gte('created_at', since);
+
+      // daily_scores → joined with daily_content for type
+      const { data: ds } = await supabase
+        .from('daily_scores').select('user_id,content_id,finished_at').gte('finished_at', since);
+      const contentIds = Array.from(new Set((ds || []).map((s: any) => s.content_id).filter(Boolean)));
+      let dcMap: Record<string, string> = {};
+      if (contentIds.length) {
+        const { data: dc } = await supabase.from('daily_content').select('id,type').in('id', contentIds);
+        (dc || []).forEach((c: any) => { dcMap[c.id] = c.type === 'mots_croisés' ? 'mots-croises' : c.type; });
+      }
+
+      // solde_history for blackjack + DC totals
+      const { data: hist } = await supabase
+        .from('solde_history').select('user_id,delta_dc,reason,created_at').gte('created_at', since);
+
+      const stats: Record<string, { plays: number; players: Set<string> }> = {};
+      GAME_DEFS.forEach(g => { stats[g.id] = { plays: 0, players: new Set() }; });
+
+      (gs || []).forEach((s: any) => {
+        const id = s.game_type;
+        if (stats[id]) {
+          stats[id].plays += 1;
+          if (s.player1_id) stats[id].players.add(s.player1_id);
+          if (s.player2_id) stats[id].players.add(s.player2_id);
+          // also count under "duels"
+          stats['duels'].plays += 1;
+          if (s.player1_id) stats['duels'].players.add(s.player1_id);
+          if (s.player2_id) stats['duels'].players.add(s.player2_id);
+        }
+      });
+      (ds || []).forEach((r: any) => {
+        const id = dcMap[r.content_id];
+        if (id && stats[id]) {
+          stats[id].plays += 1;
+          stats[id].players.add(r.user_id);
+        }
+      });
+      // Blackjack from solde_history
+      (hist || []).forEach((h: any) => {
+        if (h.reason && /Blackjack/i.test(h.reason) && /Mise/i.test(h.reason)) {
+          stats['blackjack'].plays += 1;
+          stats['blackjack'].players.add(h.user_id);
+        }
+      });
+
+      const out: Record<string, { plays: number; players: number }> = {};
+      Object.entries(stats).forEach(([k, v]) => out[k] = { plays: v.plays, players: v.players.size });
+      setPerGame(out);
+
+      // DC totals
+      let misé = 0, distribué = 0;
+      (hist || []).forEach((h: any) => {
+        if (h.delta_dc < 0) misé += -h.delta_dc;
+        else distribué += h.delta_dc;
+      });
+      setTotals({ misé, distribué });
+
+      // Top players: aggregate plays across all games
+      const activity: Record<string, number> = {};
+      (gs || []).forEach((s: any) => {
+        if (s.player1_id) activity[s.player1_id] = (activity[s.player1_id] || 0) + 1;
+        if (s.player2_id) activity[s.player2_id] = (activity[s.player2_id] || 0) + 1;
+      });
+      (ds || []).forEach((r: any) => { activity[r.user_id] = (activity[r.user_id] || 0) + 1; });
+      (hist || []).forEach((h: any) => {
+        if (h.reason && /Blackjack/i.test(h.reason) && /Mise/i.test(h.reason))
+          activity[h.user_id] = (activity[h.user_id] || 0) + 1;
+      });
+      const topIds = Object.entries(activity).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const ids = topIds.map(([id]) => id);
+      let nameMap: Record<string, string> = {};
+      if (ids.length) {
+        const { data: ps } = await supabase.from('profiles').select('user_id,display_name,emoji').in('user_id', ids);
+        (ps || []).forEach((p: any) => { nameMap[p.user_id] = `${p.emoji || '🦌'} ${p.display_name}`; });
+      }
+      setTopPlayers(topIds.map(([id, c]) => ({ user_id: id, name: nameMap[id] || id.slice(0, 8), activity: c })));
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return <Card className="p-6 text-center text-muted-foreground">Chargement des statistiques…</Card>;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="p-4 text-center">
+          <p className="text-xs text-muted-foreground">DC misés (7j)</p>
+          <p className="text-2xl font-display gold-text">{totals.misé.toLocaleString('fr-FR')}</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-xs text-muted-foreground">DC distribués (7j)</p>
+          <p className="text-2xl font-display text-success">{totals.distribué.toLocaleString('fr-FR')}</p>
+        </Card>
+      </div>
+      <Card className="p-4">
+        <h3 className="font-display text-sm mb-3">Parties & joueurs uniques (7j)</h3>
+        <div className="space-y-2">
+          {GAME_DEFS.map(g => (
+            <div key={g.id} className="flex items-center justify-between text-sm border-b border-border/40 pb-1.5">
+              <span>{g.emoji} {g.label}</span>
+              <span className="text-muted-foreground">
+                <span className="text-foreground font-semibold">{perGame[g.id]?.plays || 0}</span> parties · {perGame[g.id]?.players || 0} joueurs
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card className="p-4">
+        <h3 className="font-display text-sm mb-3">🏆 Top 10 joueurs les plus actifs (7j)</h3>
+        {topPlayers.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Aucune activité.</p>
+        ) : (
+          <ol className="space-y-1.5">
+            {topPlayers.map((p, i) => (
+              <li key={p.user_id} className="flex justify-between text-sm">
+                <span><span className="text-muted-foreground">#{i + 1}</span> {p.name}</span>
+                <span className="text-primary font-semibold">{p.activity} parties</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ───────── Casino controls : reset + suspend ─────────
+const CONTROL_GAMES: { id: string; label: string; emoji: string; gameTypes?: string[] }[] = [
+  { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
+  { id: 'wordle', label: 'Wordle', emoji: '🔠' },
+  { id: 'sudoku', label: 'Sudoku', emoji: '🔢' },
+  { id: 'mots-croises', label: 'Mots croisés', emoji: '📝' },
+  { id: 'duels', label: 'Duels', emoji: '⚔️', gameTypes: ['pendu', 'puissance4', 'echecs'] },
+  { id: 'pari-externe', label: 'Pari externe', emoji: '🤝' },
+];
+
+function CasinoControls() {
+  const [suspended, setSuspended] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const keys = CONTROL_GAMES.map(g => `casino_suspend_${g.id}`);
+    const { data } = await supabase.from('platform_settings').select('key,value').in('key', keys);
+    const map: Record<string, boolean> = {};
+    (data || []).forEach((r: any) => { map[r.key.replace('casino_suspend_', '')] = r.value === 'true'; });
+    setSuspended(map);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const toggleSuspend = async (gameId: string) => {
+    const key = `casino_suspend_${gameId}`;
+    const newVal = !suspended[gameId];
+    const { data: existing } = await supabase.from('platform_settings').select('id').eq('key', key).maybeSingle();
+    if (existing) {
+      await supabase.from('platform_settings').update({ value: String(newVal) }).eq('key', key);
+    } else {
+      await supabase.from('platform_settings').insert({ key, value: String(newVal) });
+    }
+    toast.success(newVal ? 'Jeu suspendu' : 'Jeu réactivé');
+    setSuspended(s => ({ ...s, [gameId]: newVal }));
+  };
+
+  const reset = async (g: typeof CONTROL_GAMES[number]) => {
+    if (!confirm(`Annuler toutes les parties en cours de ${g.label} et rembourser les mises ?`)) return;
+    if (g.id === 'duels') {
+      const types = g.gameTypes!;
+      const { data: sessions } = await supabase.from('games_sessions').select('*').in('game_type', types).eq('status', 'en_cours');
+      let count = 0;
+      for (const s of sessions || []) {
+        // refund both players
+        if (s.player1_id && s.mise_player1 > 0) {
+          await supabase.rpc('admin_credit_balance' as any, { p_user_id: s.player1_id, p_delta: s.mise_player1, p_reason: `Remboursement annulation ${s.game_type}` }).then(() => {}, async () => {
+            // fallback : direct insert + balance update via SQL not possible from client → use solde_history + update
+            const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', s.player1_id).maybeSingle();
+            if (prof) {
+              await supabase.from('profiles').update({ balance: (prof.balance || 0) + s.mise_player1 }).eq('user_id', s.player1_id);
+              await supabase.from('solde_history').insert({ user_id: s.player1_id, delta_dc: s.mise_player1, reason: `Remboursement annulation ${s.game_type}` });
+            }
+          });
+        }
+        if (s.player2_id && s.mise_player2 > 0) {
+          const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', s.player2_id).maybeSingle();
+          if (prof) {
+            await supabase.from('profiles').update({ balance: (prof.balance || 0) + s.mise_player2 }).eq('user_id', s.player2_id);
+            await supabase.from('solde_history').insert({ user_id: s.player2_id, delta_dc: s.mise_player2, reason: `Remboursement annulation ${s.game_type}` });
+          }
+        }
+        await supabase.from('games_sessions').update({ status: 'annule' }).eq('id', s.id);
+        count++;
+      }
+      toast.success(`${count} partie(s) annulée(s) et mises remboursées`);
+    } else if (g.id === 'pari-externe') {
+      const { data: bets } = await supabase.from('external_bets').select('*').in('status', ['en_attente', 'accepte']);
+      let count = 0;
+      for (const b of bets || []) {
+        const players = [b.player1_id, b.player2_id].filter(Boolean) as string[];
+        for (const pid of players) {
+          if (b.status === 'accepte' || pid === b.player1_id) {
+            const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', pid).maybeSingle();
+            if (prof) {
+              await supabase.from('profiles').update({ balance: (prof.balance || 0) + b.mise }).eq('user_id', pid);
+              await supabase.from('solde_history').insert({ user_id: pid, delta_dc: b.mise, reason: 'Remboursement annulation pari externe' });
+            }
+          }
+        }
+        await supabase.from('external_bets').update({ status: 'annule' } as any).eq('id', b.id);
+        count++;
+      }
+      toast.success(`${count} pari(s) externes annulé(s) et remboursés`);
+    } else {
+      toast.info('Aucune session active à réinitialiser pour ce jeu (jeux solo).');
+    }
+  };
+
+  if (loading) return <Card className="p-6 text-center text-muted-foreground">Chargement…</Card>;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        <strong>Suspendre</strong> : empêche le lancement de nouvelles parties.
+        <br /><strong>Réinitialiser</strong> : annule les sessions en cours et rembourse les mises.
+      </p>
+      {CONTROL_GAMES.map(g => (
+        <Card key={g.id} className="p-3 flex items-center justify-between gap-2">
+          <div>
+            <p className="font-semibold text-sm">{g.emoji} {g.label}</p>
+            {suspended[g.id] && <Badge variant="destructive" className="text-[10px] mt-1">Suspendu</Badge>}
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => reset(g)}>Réinitialiser</Button>
+            <Button size="sm" variant={suspended[g.id] ? 'default' : 'destructive'} onClick={() => toggleSuspend(g.id)}>
+              {suspended[g.id] ? 'Réactiver' : 'Suspendre'}
+            </Button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
