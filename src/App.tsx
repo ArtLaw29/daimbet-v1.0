@@ -16,11 +16,9 @@ const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const EventsPage = lazy(() => import("./pages/EventsPage"));
 const BetDetailPage = lazy(() => import("./pages/BetDetailPage"));
-const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage"));
 const KissMarryPage = lazy(() => import("./pages/KissMarryPage"));
 const GamesPage = lazy(() => import("./pages/GamesPage"));
 const ProposalsPage = lazy(() => import("./pages/ProposalsPage"));
-const GazettePage = lazy(() => import("./pages/GazettePage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
@@ -36,6 +34,8 @@ const DuelsPage = lazy(() => import("./pages/DuelsPage"));
 const PenduPage = lazy(() => import("./pages/PenduPage"));
 const Puissance4Page = lazy(() => import("./pages/Puissance4Page"));
 const EchecsPage = lazy(() => import("./pages/EchecsPage"));
+const CommunautePage = lazy(() => import("./pages/CommunautePage"));
+const CasinoPage = lazy(() => import("./pages/CasinoPage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 import RulesScreen from "./components/RulesScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -149,12 +149,15 @@ function AppRoutes() {
         <Routes>
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/contact" element={<ContactPage />} />
-          <Route path="/" element={<><Navbar /><ResolutionNotifier /><EventsPage /></>} />
+          <Route path="/" element={<Navigate to="/paris" replace />} />
+          <Route path="/paris" element={<><Navbar /><ResolutionNotifier /><EventsPage /></>} />
           <Route path="/bet/:id" element={<><Navbar /><ResolutionNotifier /><BetDetailPage /></>} />
           <Route path="/connexion" element={<Navigate to="/" replace />} />
           <Route path="/inscription" element={<Navigate to="/" replace />} />
-          <Route path="/gazette" element={<><Navbar /><ResolutionNotifier /><GazettePage /></>} />
-          <Route path="/classement" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="classement"><LeaderboardPage /></GuardedRoute></>} />
+          <Route path="/communaute" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="classement"><CommunautePage /></GuardedRoute></>} />
+          <Route path="/gazette" element={<Navigate to="/communaute" replace state={{ tab: 'gazette' }} />} />
+          <Route path="/classement" element={<Navigate to="/communaute" replace state={{ tab: 'classement' }} />} />
+          <Route path="/casino" element={<><Navbar /><ResolutionNotifier /><CasinoPage /></>} />
           <Route path="/jeux" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="jeux"><GamesPage /></GuardedRoute></>} />
           <Route path="/jeux/blackjack" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="blackjack" label="Blackjack"><BlackjackPage /></CasinoGate></>} />
           <Route path="/jeux/wordle" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="wordle" label="Wordle"><WordlePage /></CasinoGate></>} />

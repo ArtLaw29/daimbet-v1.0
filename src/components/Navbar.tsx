@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavConfig } from '@/contexts/NavConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { Target, Newspaper, Trophy, Gamepad2, User, LogOut } from 'lucide-react';
+import { Target, Users, Gamepad2, Dice5, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ResumeGameBanner from '@/components/ResumeGameBanner';
 
@@ -18,10 +18,10 @@ interface NavTab {
 }
 
 const ALL_TABS: NavTab[] = [
-  { to: '/', label: 'Paris', shortLabel: 'Paris', emoji: '🎯', icon: Target },
-  { to: '/gazette', label: 'Gazette', shortLabel: 'Gazette', emoji: '📰', icon: Newspaper },
-  { to: '/classement', label: 'Classement', shortLabel: 'Class.', emoji: '🏆', icon: Trophy, configKey: 'classement' },
+  { to: '/paris', label: 'Paris', shortLabel: 'Paris', emoji: '🎯', icon: Target },
+  { to: '/communaute', label: 'Communauté', shortLabel: 'Commu.', emoji: '💬', icon: Users, configKey: 'classement' },
   { to: '/jeux', label: 'Jeux Promo', shortLabel: 'Jeux', emoji: '🎮', icon: Gamepad2, configKey: 'jeux' },
+  { to: '/casino', label: 'Casino', shortLabel: 'Casino', emoji: '🎰', icon: Dice5 },
   { to: '/profil', label: 'Profil', shortLabel: 'Profil', emoji: '👤', icon: User },
 ];
 
