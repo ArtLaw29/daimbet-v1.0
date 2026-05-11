@@ -11,7 +11,8 @@ import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
 type Direction = 'right' | 'down' | 'right-down' | 'down-right';
 type Cell =
   | { type: 'lettre'; correct: string }
-  | { type: 'definition'; text: string; direction: Direction }
+  | { type: 'definition'; text: string; direction: Direction; definitions?: Array<{ text: string; direction: Direction }> }
+  | { type: 'definition'; definitions: Array<{ text: string; direction: Direction }>; text?: string; direction?: Direction }
   | { type: 'vide' };
 type FocusDir = 'H' | 'V';
 
@@ -181,13 +182,32 @@ export default function MotsFlechesPage() {
   if (loading) return <div className="p-8 text-center text-muted-foreground">Chargement…</div>;
 
   const renderArrow = (direction: Direction) => {
-    const cls = "w-3 h-3 absolute text-primary";
+    const cls = "w-2.5 h-2.5 absolute text-white drop-shadow";
     switch (direction) {
-      case 'right': return <ArrowRight className={`${cls} top-1/2 -translate-y-1/2 -right-1.5 z-10 bg-card rounded-full p-[1px]`} />;
-      case 'down': return <ArrowDown className={`${cls} left-1/2 -translate-x-1/2 -bottom-1.5 z-10 bg-card rounded-full p-[1px]`} />;
-      case 'right-down': return <CornerRightDown className={`${cls} bottom-0.5 right-0.5`} />;
-      case 'down-right': return <CornerDownRight className={`${cls} bottom-0.5 right-0.5`} />;
+      case 'right': return <ArrowRight className={`${cls} top-1/2 -translate-y-1/2 right-0`} />;
+      case 'down': return <ArrowDown className={`${cls} left-1/2 -translate-x-1/2 bottom-0`} />;
+      case 'right-down': return <CornerRightDown className={`${cls} bottom-0 right-0`} />;
+      case 'down-right': return <CornerDownRight className={`${cls} bottom-0 right-0`} />;
     }
+  };
+
+  const defPaddingClass = (direction: Direction) => {
+    switch (direction) {
+      case 'right': return 'pr-3';
+      case 'down': return 'pb-3';
+      case 'right-down':
+      case 'down-right': return 'pr-3 pb-3';
+    }
+  };
+
+  const renderDefBlock = (text: string, direction: Direction, extraClass = '') => (
+    <div className={`relative flex-1 flex items-center justify-center overflow-hidden ${defPaddingClass(direction)} ${extraClass}`}>
+      <span className="text-[10px] leading-none font-bold uppercase text-center text-white break-words px-0.5">
+        {text}
+      </span>
+      {renderArrow(direction)}
+    </div>
+  );
   };
 
   return (
@@ -226,28 +246,35 @@ export default function MotsFlechesPage() {
 
           {/* Grid */}
           <div className="flex justify-center mb-5 overflow-x-auto">
-            <div className="inline-flex flex-col gap-px bg-foreground p-px rounded-sm">
+            <div className="inline-flex flex-col gap-[1px] bg-slate-800 p-[1px]">
               {grille.map((row, r) => (
-                <div key={r} className="flex gap-px">
+                <div key={r} className="flex gap-[1px]">
                   {row.map((cell, c) => {
                     const val = grid[r]?.[c] || '';
                     const isSel = cursor?.r === r && cursor?.c === c;
                     const ok = verified[r]?.[c];
                     if (cell.type === 'vide') {
-                      return <div key={c} className="w-11 h-11 bg-foreground" />;
+                      return <div key={c} className="w-11 h-11 bg-slate-800" />;
                     }
                     if (cell.type === 'definition') {
+                      const defs = (cell as any).definitions as Array<{text:string; direction:Direction}> | undefined;
+                      const list = defs && defs.length > 0
+                        ? defs
+                        : [{ text: cell.text!, direction: cell.direction! }];
+                      const stackVertical = list.length > 1
+                        && list.every(d => d.direction === 'down' || d.direction === 'right');
+                      // Default split: horizontal stack (top/bottom) for two defs
                       return (
-                        <div key={c}
-                          className="relative w-11 h-11 bg-secondary p-0.5 overflow-visible select-none">
-                          <span className={`text-[8px] leading-[1.05] block text-foreground/90 break-words ${
-                            cell.direction === 'right' ? 'pr-2' :
-                            cell.direction === 'down' ? 'pb-2' :
-                            'pr-2 pb-2'
-                          }`}>
-                            {cell.text}
-                          </span>
-                          {renderArrow(cell.direction)}
+                        <div key={c} className="relative w-11 h-11 bg-blue-700 select-none flex flex-col">
+                          {list.length === 1 ? (
+                            renderDefBlock(list[0].text, list[0].direction)
+                          ) : (
+                            list.map((d, i) => (
+                              <div key={i} className={`flex-1 flex ${i > 0 ? 'border-t border-slate-800' : ''}`}>
+                                {renderDefBlock(d.text, d.direction)}
+                              </div>
+                            ))
+                          )}
                         </div>
                       );
                     }
@@ -255,10 +282,10 @@ export default function MotsFlechesPage() {
                     return (
                       <div key={c}
                         onClick={() => onCellClick(r, c)}
-                        className={`relative w-11 h-11 flex items-center justify-center text-base font-bold uppercase select-none ${
-                          ok ? 'bg-success/30 cursor-pointer' :
-                          isSel ? 'bg-primary/20 ring-2 ring-primary ring-inset cursor-pointer' :
-                          'bg-card cursor-pointer hover:bg-secondary'
+                        className={`relative w-11 h-11 flex items-center justify-center text-base font-bold uppercase text-slate-900 select-none cursor-pointer ${
+                          ok ? 'bg-green-200' :
+                          isSel ? 'bg-yellow-200 ring-2 ring-primary ring-inset' :
+                          'bg-white hover:bg-slate-100'
                         }`}>
                         {val}
                       </div>
