@@ -261,15 +261,16 @@ export default function WordlePage() {
             </div>
           )}
 
-          {/* Rewards */}
-          {rewards.length > 0 && (
-            <div className="mt-6 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
-              <Coins className="w-4 h-4 text-primary" />
-              {rewards.map((r, i) => (
-                <span key={i}><b>{i + 1}{i === 0 ? 'er' : 'e'}</b> : {r} DC</span>
-              ))}
-            </div>
-          )}
+          {/* Rewards (course à la victoire) */}
+          <div className="mt-6 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
+            <Coins className="w-4 h-4 text-primary" />
+            <span><b>1er</b> : 500 DC</span>
+            <span><b>2e</b> : 300 DC</span>
+            <span><b>3e</b> : 200 DC</span>
+            <span><b>4e</b> : 100 DC</span>
+            <span><b>5e</b> : 50 DC</span>
+            <span><b>6e+</b> : 10 DC</span>
+          </div>
 
           {/* Leaderboard */}
           <div className="mt-8">
