@@ -280,7 +280,7 @@ export default function BlackjackPage() {
             <Button onClick={() => setMise(Math.min(balance, mise + 50))} variant="outline">+50</Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Min 10 DC. Blackjack naturel paie x1.5. Victoire normale paie x1. Égalité = remboursement. Aucun rake.
+            Min 10 DC. Blackjack naturel paie 6:5. Victoire normale paie 1:1. Égalité = remboursement. Rake de 5% sur les gains nets.
           </p>
           <Button onClick={startGame} disabled={busy || mise < 10 || mise > balance} className="w-full" size="lg">
             {busy ? 'Mélange…' : 'Distribuer les cartes'}
