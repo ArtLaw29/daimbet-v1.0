@@ -453,7 +453,7 @@ export default function BlackjackPage() {
           </div>
           <p className="text-xs text-muted-foreground">Mise max : 300 DC</p>
           <p className="text-xs text-muted-foreground">
-            Min 10 DC. Blackjack naturel paie 6:5. Victoire normale paie 1:1. Égalité = remboursement. Double et Split disponibles. Rake de 5% sur les gains nets.
+            Min 10 DC, max 300 DC. Gain : 1.5x la mise (retour total 2.5x). Frais : 0%. Égalité = remboursement. Double, Split et Late Surrender disponibles.
           </p>
           <Button onClick={startGame} disabled={busy || mise < 10 || mise > 300 || mise > balance} className="w-full" size="lg">
             {busy ? 'Mélange…' : 'Distribuer les cartes'}
