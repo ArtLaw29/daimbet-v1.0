@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Check, X, Trash2 } from 'lucide-react';
+import { Check, X, Trash2, Trophy } from 'lucide-react';
 
 type DailyType = 'wordle' | 'sudoku' | 'mots_croisés';
 
@@ -28,6 +28,50 @@ function next7Days() {
     out.push(d.toISOString().slice(0, 10));
   }
   return out;
+}
+
+function normalizeRewards(r: any): number[] {
+  const arr = Array.isArray(r) ? r : [];
+  const out: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const n = parseInt(String(arr[i] ?? [500, 300, 200, 100, 50][i]), 10);
+    out.push(isNaN(n) || n < 0 ? 0 : n);
+  }
+  return out;
+}
+
+const RANK_LABELS = ['1er', '2ème', '3ème', '4ème', '5ème'];
+
+function RewardsSettings({ value, onChange }: { value: number[]; onChange: (v: number[]) => void }) {
+  const rewards = normalizeRewards(value);
+  const update = (i: number, raw: string) => {
+    const n = Math.max(0, parseInt(raw, 10) || 0);
+    const next = [...rewards];
+    next[i] = n;
+    onChange(next);
+  };
+  return (
+    <div className="space-y-2 border border-border/60 rounded-md p-3 bg-muted/20">
+      <div className="flex items-center gap-2">
+        <Trophy className="w-4 h-4 text-primary" />
+        <Label className="text-sm font-display">Récompenses des Top 5 (DC)</Label>
+      </div>
+      <div className="grid grid-cols-5 gap-2">
+        {RANK_LABELS.map((label, i) => (
+          <div key={i}>
+            <Label className="text-[10px] text-muted-foreground">{label}</Label>
+            <Input
+              type="number"
+              min={0}
+              value={rewards[i]}
+              onChange={(e) => update(i, e.target.value)}
+              className="text-sm"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function CalendarStrip({ items, selected, onSelect }: { items: any[]; selected: string; onSelect: (d: string) => void }) {
@@ -98,23 +142,22 @@ function WordleEditor() {
   const { items, reload } = useDailyItems('wordle');
   const [date, setDate] = useState(next7Days()[0]);
   const [word, setWord] = useState('');
-  const [rewards, setRewards] = useState('500,300,200,100,50');
+  const [rewards, setRewards] = useState<number[]>([500, 300, 200, 100, 50]);
   const [revealAt, setRevealAt] = useState('09:30');
   const existing = items.find((it) => it.scheduled_date === date);
 
   useEffect(() => {
     if (existing) {
       setWord(String(existing.data?.word || ''));
-      setRewards(((existing.data?.rewards as number[]) || []).join(','));
+      setRewards(normalizeRewards(existing.data?.rewards));
       setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
-    } else { setWord(''); setRewards('500,300,200,100,50'); setRevealAt('09:30'); }
+    } else { setWord(''); setRewards([500, 300, 200, 100, 50]); setRevealAt('09:30'); }
   }, [date, existing?.id]);
 
   const save = async () => {
     const w = word.trim().toUpperCase();
     if (w.length !== 5 || !/^[A-Z]+$/.test(w)) return toast.error('Le mot doit faire exactement 5 lettres (A-Z)');
-    const rw = rewards.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-    const payload = { word: w, rewards: rw };
+    const payload = { word: w, rewards };
     const reveal = `${revealAt}:00`;
     if (existing) {
       const { error } = await supabase.from('daily_content').update({ data: payload, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
@@ -142,10 +185,7 @@ function WordleEditor() {
         <Label>Mot (5 lettres)</Label>
         <Input value={word} onChange={(e) => setWord(e.target.value.toUpperCase())} maxLength={5} className="uppercase font-mono text-lg tracking-widest" />
       </div>
-      <div>
-        <Label>Récompenses (DC, séparées par virgule)</Label>
-        <Input value={rewards} onChange={(e) => setRewards(e.target.value)} />
-      </div>
+      <RewardsSettings value={rewards} onChange={setRewards} />
       <div>
         <Label>Heure de dévoilement (Europe/Paris)</Label>
         <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
@@ -163,15 +203,20 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
   const { items, reload } = useDailyItems(type);
   const [date, setDate] = useState(next7Days()[0]);
   const [json, setJson] = useState('');
+  const [rewards, setRewards] = useState<number[]>([500, 300, 200, 100, 50]);
   const [revealAt, setRevealAt] = useState('09:30');
   const existing = items.find((it) => it.scheduled_date === date);
 
   useEffect(() => {
     if (existing) {
-      setJson(JSON.stringify(existing.data, null, 2));
+      const data: any = existing.data || {};
+      const { rewards: r, ...rest } = data;
+      setJson(JSON.stringify(rest, null, 2));
+      setRewards(normalizeRewards(r));
       setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
     } else {
       setJson('');
+      setRewards([500, 300, 200, 100, 50]);
       setRevealAt('09:30');
     }
   }, [date, existing?.id]);
@@ -180,6 +225,7 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
     let parsed: any;
     try { parsed = JSON.parse(json); }
     catch (e: any) { return toast.error('JSON invalide : ' + e.message); }
+    parsed = { ...parsed, rewards };
     const reveal = `${revealAt}:00`;
     if (existing) {
       const { error } = await supabase.from('daily_content').update({ data: parsed, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
@@ -207,6 +253,7 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
         <Label>Données JSON</Label>
         <Textarea value={json} onChange={(e) => setJson(e.target.value)} placeholder={placeholder} rows={12} className="font-mono text-xs" />
       </div>
+      <RewardsSettings value={rewards} onChange={setRewards} />
       <div>
         <Label>Heure de dévoilement (Europe/Paris)</Label>
         <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
