@@ -185,10 +185,18 @@ export default function BlackjackPage() {
 
     setBusy(false);
 
-    if (handDetail([p1, p2]).total === 21) {
-      const bjHand: Hand[] = [{ ...initial[0], status: 'blackjack' }];
-      setHands(bjHand);
-      await resolveDealerAndFinish(bjHand);
+    // Pré-tirage de la carte cachée du croupier (peek pour détecter un BJ naturel)
+    const d2 = drawCard();
+    const dealerCards = [d1, d2];
+    setDealer(dealerCards); // revealedDealer reste à 1 → carte cachée
+    const playerBJ = handDetail([p1, p2]).total === 21;
+    const dealerBJ = handDetail(dealerCards).total === 21;
+
+    if (playerBJ || dealerBJ) {
+      const status: HandStatus = playerBJ ? 'blackjack' : 'stand';
+      const finalHand: Hand[] = [{ ...initial[0], status }];
+      setHands(finalHand);
+      await resolveDealerAndFinish(finalHand);
     } else {
       setPhase('joueur');
       setActiveIdx(0);
