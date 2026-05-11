@@ -183,8 +183,8 @@ export default function MotsFlechesPage() {
   const renderArrow = (direction: Direction) => {
     const cls = "w-3 h-3 absolute text-primary";
     switch (direction) {
-      case 'right': return <ArrowRight className={`${cls} bottom-0.5 right-0.5`} />;
-      case 'down': return <ArrowDown className={`${cls} bottom-0.5 right-0.5`} />;
+      case 'right': return <ArrowRight className={`${cls} top-1/2 -translate-y-1/2 -right-1.5 z-10 bg-card rounded-full p-[1px]`} />;
+      case 'down': return <ArrowDown className={`${cls} left-1/2 -translate-x-1/2 -bottom-1.5 z-10 bg-card rounded-full p-[1px]`} />;
       case 'right-down': return <CornerRightDown className={`${cls} bottom-0.5 right-0.5`} />;
       case 'down-right': return <CornerDownRight className={`${cls} bottom-0.5 right-0.5`} />;
     }
@@ -226,21 +226,25 @@ export default function MotsFlechesPage() {
 
           {/* Grid */}
           <div className="flex justify-center mb-5 overflow-x-auto">
-            <div className="inline-block bg-foreground/10 p-1 rounded">
+            <div className="inline-flex flex-col gap-px bg-foreground p-px rounded-sm">
               {grille.map((row, r) => (
-                <div key={r} className="flex">
+                <div key={r} className="flex gap-px">
                   {row.map((cell, c) => {
                     const val = grid[r]?.[c] || '';
                     const isSel = cursor?.r === r && cursor?.c === c;
                     const ok = verified[r]?.[c];
                     if (cell.type === 'vide') {
-                      return <div key={c} className="w-11 h-11 m-[1px] bg-foreground" />;
+                      return <div key={c} className="w-11 h-11 bg-foreground" />;
                     }
                     if (cell.type === 'definition') {
                       return (
                         <div key={c}
-                          className="relative w-11 h-11 m-[1px] bg-secondary border border-border p-0.5 overflow-hidden select-none">
-                          <span className="text-[8px] leading-[1.05] block text-foreground/90 break-words pr-2.5">
+                          className="relative w-11 h-11 bg-secondary p-0.5 overflow-visible select-none">
+                          <span className={`text-[8px] leading-[1.05] block text-foreground/90 break-words ${
+                            cell.direction === 'right' ? 'pr-2' :
+                            cell.direction === 'down' ? 'pb-2' :
+                            'pr-2 pb-2'
+                          }`}>
                             {cell.text}
                           </span>
                           {renderArrow(cell.direction)}
@@ -251,10 +255,10 @@ export default function MotsFlechesPage() {
                     return (
                       <div key={c}
                         onClick={() => onCellClick(r, c)}
-                        className={`relative w-11 h-11 m-[1px] flex items-center justify-center text-base font-bold uppercase select-none ${
-                          ok ? 'bg-success/30 border border-success cursor-pointer' :
-                          isSel ? 'bg-primary/20 border-2 border-primary cursor-pointer' :
-                          'bg-card border border-border cursor-pointer hover:bg-secondary'
+                        className={`relative w-11 h-11 flex items-center justify-center text-base font-bold uppercase select-none ${
+                          ok ? 'bg-success/30 cursor-pointer' :
+                          isSel ? 'bg-primary/20 ring-2 ring-primary ring-inset cursor-pointer' :
+                          'bg-card cursor-pointer hover:bg-secondary'
                         }`}>
                         {val}
                       </div>
