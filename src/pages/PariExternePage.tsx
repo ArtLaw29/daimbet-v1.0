@@ -210,6 +210,11 @@ export default function PariExternePage() {
                   </div>
                   <span className={`text-xs font-semibold ${status.color}`}>{status.label}</span>
                 </div>
+                {bet.motif && (
+                  <p className="text-xs text-foreground bg-secondary/50 rounded px-2 py-1.5 mb-2 italic">
+                    « {bet.motif} »
+                  </p>
+                )}
 
                 {/* J2 invite */}
                 {bet.status === 'en_attente' && !isP1 && (
