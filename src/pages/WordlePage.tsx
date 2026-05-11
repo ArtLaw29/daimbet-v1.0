@@ -185,7 +185,7 @@ export default function WordlePage() {
         <ArrowLeft className="w-4 h-4" /> Retour aux jeux
       </button>
       <div className="text-center mb-6">
-        <h1 className="text-4xl font-display gold-text">🔠 Wordle du jour</h1>
+        <h1 className="text-4xl font-display gold-text">🔠 Mot du jour</h1>
         <p className="text-sm text-muted-foreground mt-1">6 essais pour trouver le mot de 5 lettres</p>
       </div>
 
