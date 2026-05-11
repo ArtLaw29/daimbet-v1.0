@@ -1139,6 +1139,10 @@ export type Database = {
     }
     Functions: {
       auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
+      claim_daily_rank: {
+        Args: { p_completed: boolean; p_content_id: string }
+        Returns: Json
+      }
       create_challenge: {
         Args: { p_config?: Json; p_game_type: string; p_mise: number }
         Returns: Json
