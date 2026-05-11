@@ -297,6 +297,33 @@ export default function BlackjackPage() {
     return true;
   };
 
+  const canSurrender = () => {
+    // Late surrender : seulement sur la main initiale (avant toute action), main unique
+    if (hands.length !== 1) return false;
+    const h = hands[activeIdx];
+    if (!h || h.status !== 'playing') return false;
+    if (h.cards.length !== 2) return false;
+    return true;
+  };
+
+  const surrender = async () => {
+    if (phase !== 'joueur' || drawing) return;
+    if (!canSurrender()) return;
+    if (!user) return;
+    const cur = hands[activeIdx];
+    setDrawing(true);
+    const refund = Math.floor(cur.bet / 2);
+    const updated = hands.map((h, i) => i === activeIdx ? { ...h, status: 'surrender' as HandStatus } : h);
+    setHands(updated);
+    setResults(['surrender']);
+    setPhase('croupier');
+    // Révéler la carte cachée du croupier
+    setRevealedDealer(dealer.length);
+    await sleep(800);
+    await finalizeGame(refund);
+    setDrawing(false);
+  };
+
   const split = async () => {
     if (phase !== 'joueur' || drawing) return;
     if (!canSplit()) return;
