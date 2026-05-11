@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Plus, Trash2, Play, Square, Archive } from 'lucide-react';
+import AdminGlobalReport from './AdminGlobalReport';
 
 const GAME_TYPES = [
   { value: 'sondage', label: '🗳️ Sondage' },
@@ -104,6 +105,7 @@ export default function AdminGameSessions() {
 
   return (
     <div className="space-y-6">
+      <AdminGlobalReport />
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-display">Sessions de jeux</h2>
         <Button size="sm" className="gold-gradient" onClick={() => setShowCreate(!showCreate)}>
