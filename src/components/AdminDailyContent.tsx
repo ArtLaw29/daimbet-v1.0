@@ -30,6 +30,50 @@ function next7Days() {
   return out;
 }
 
+function normalizeRewards(r: any): number[] {
+  const arr = Array.isArray(r) ? r : [];
+  const out: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const n = parseInt(String(arr[i] ?? [500, 300, 200, 100, 50][i]), 10);
+    out.push(isNaN(n) || n < 0 ? 0 : n);
+  }
+  return out;
+}
+
+const RANK_LABELS = ['1er', '2ème', '3ème', '4ème', '5ème'];
+
+function RewardsSettings({ value, onChange }: { value: number[]; onChange: (v: number[]) => void }) {
+  const rewards = normalizeRewards(value);
+  const update = (i: number, raw: string) => {
+    const n = Math.max(0, parseInt(raw, 10) || 0);
+    const next = [...rewards];
+    next[i] = n;
+    onChange(next);
+  };
+  return (
+    <div className="space-y-2 border border-border/60 rounded-md p-3 bg-muted/20">
+      <div className="flex items-center gap-2">
+        <Trophy className="w-4 h-4 text-primary" />
+        <Label className="text-sm font-display">Récompenses des Top 5 (DC)</Label>
+      </div>
+      <div className="grid grid-cols-5 gap-2">
+        {RANK_LABELS.map((label, i) => (
+          <div key={i}>
+            <Label className="text-[10px] text-muted-foreground">{label}</Label>
+            <Input
+              type="number"
+              min={0}
+              value={rewards[i]}
+              onChange={(e) => update(i, e.target.value)}
+              className="text-sm"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CalendarStrip({ items, selected, onSelect }: { items: any[]; selected: string; onSelect: (d: string) => void }) {
   const days = next7Days();
   return (
