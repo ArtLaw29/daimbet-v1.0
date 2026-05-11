@@ -154,23 +154,16 @@ export default function MotsFlechesPage() {
     if (!allGood) { toast.error('Certaines cases sont incorrectes'); return; }
     setFinished(true);
     if (user && content) {
-      const { data: ranking } = await supabase.from('daily_scores').select('id')
-        .eq('content_id', content.id).order('finished_at', { ascending: true });
-      const rank = (ranking?.length || 0) + 1;
-      const reward = rewards[rank - 1] || 0;
-      await supabase.from('daily_scores').insert({
-        user_id: user.id, content_id: content.id, rank, rewarded: reward > 0,
+      const { data: claim } = await supabase.rpc('claim_daily_rank' as any, {
+        p_content_id: content.id, p_completed: true,
       });
-      if (reward > 0) {
-        const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', user.id).single();
-        await supabase.from('profiles').update({ balance: (prof?.balance || 0) + reward }).eq('user_id', user.id);
-        await supabase.from('solde_history').insert({
-          user_id: user.id, delta_dc: reward, reason: `Mots fléchés du jour — ${rank}e place`,
-        });
-        await refreshProfile();
-        toast.success(`🏆 ${rank}e place ! +${reward} DC`);
-      } else {
-        toast.success(`🎉 Grille complétée ! ${rank}e place`);
+      const c: any = claim || {};
+      const rank = c.rank as number | null;
+      const reward = (c.reward as number) || 0;
+      if (reward > 0) await refreshProfile();
+      if (rank) {
+        const ord = rank === 1 ? '1ère' : `${rank}ème`;
+        toast.success(`Bravo ! Tu as fini ${ord} aujourd'hui.${reward > 0 ? ` Tu gagnes ${reward} DC.` : ''}`);
       }
       await loadScores(content.id);
       setAlreadyPlayed(true);
@@ -321,15 +314,16 @@ export default function MotsFlechesPage() {
             </div>
           )}
 
-          {/* Rewards */}
-          {rewards.length > 0 && (
-            <div className="mb-5 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
-              <Coins className="w-4 h-4 text-primary" />
-              {rewards.map((r, i) => (
-                <span key={i}><b>{i + 1}{i === 0 ? 'er' : 'e'}</b> : {r} DC</span>
-              ))}
-            </div>
-          )}
+          {/* Rewards (course à la victoire) */}
+          <div className="mb-5 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
+            <Coins className="w-4 h-4 text-primary" />
+            <span><b>1er</b> : 500 DC</span>
+            <span><b>2e</b> : 300 DC</span>
+            <span><b>3e</b> : 200 DC</span>
+            <span><b>4e</b> : 100 DC</span>
+            <span><b>5e</b> : 50 DC</span>
+            <span><b>6e+</b> : 10 DC</span>
+          </div>
 
           {/* Leaderboard */}
           <h2 className="text-xl font-display flex items-center gap-2 mb-3"><Trophy className="w-5 h-5 text-primary" /> Classement du jour</h2>
