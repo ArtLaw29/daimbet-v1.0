@@ -149,8 +149,9 @@ export default function Puissance4Page() {
         <p className="text-center text-sm mb-3 font-semibold">{isMyTurn ? '🎯 À toi de jouer' : '⏳ Tour de l\'adversaire'}</p>
       )}
 
-      <div className="bg-blue-900/40 p-2 rounded-lg inline-block mx-auto block">
-        <div className="grid grid-cols-7 gap-1">
+      <div className="flex justify-center items-center w-full">
+        <div className="bg-blue-900/40 p-2 rounded-lg inline-block">
+          <div className="grid grid-cols-7 gap-1">
           {Array.from({ length: COLS }).map((_, c) => (
             <button key={c} onClick={() => playColumn(c)} disabled={!isMyTurn || isFinished}
               className="text-xs text-blue-200 hover:text-white disabled:opacity-30 h-5">▼</button>
@@ -161,6 +162,7 @@ export default function Puissance4Page() {
               {cell === 2 && <div className="w-8 h-8 rounded-full bg-yellow-400" />}
             </div>
           )))}
+          </div>
         </div>
       </div>
 
