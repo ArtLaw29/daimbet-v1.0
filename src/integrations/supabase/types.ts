@@ -384,6 +384,7 @@ export type Database = {
           created_at: string
           id: string
           mise: number
+          motif: string | null
           player1_id: string
           player2_id: string | null
           result_player1: string | null
@@ -394,6 +395,7 @@ export type Database = {
           created_at?: string
           id?: string
           mise?: number
+          motif?: string | null
           player1_id: string
           player2_id?: string | null
           result_player1?: string | null
@@ -404,6 +406,7 @@ export type Database = {
           created_at?: string
           id?: string
           mise?: number
+          motif?: string | null
           player1_id?: string
           player2_id?: string | null
           result_player1?: string | null
@@ -1140,10 +1143,12 @@ export type Database = {
         Args: { p_config?: Json; p_game_type: string; p_mise: number }
         Returns: Json
       }
-      create_external_bet: {
-        Args: { p_mise: number; p_opponent_id: string }
-        Returns: Json
-      }
+      create_external_bet:
+        | { Args: { p_mise: number; p_opponent_id: string }; Returns: Json }
+        | {
+            Args: { p_mise: number; p_motif?: string; p_opponent_id: string }
+            Returns: Json
+          }
       declare_external_result: {
         Args: { p_bet_id: string; p_result: string }
         Returns: Json

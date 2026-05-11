@@ -79,7 +79,7 @@ export default function GamesPage() {
   return (
     <div className="container mx-auto px-4 py-6 pb-20 md:pb-6">
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-display gold-text">🎮 Jeux</h1>
+        <h1 className="text-3xl font-display gold-text">🎮 Jeux Promo</h1>
         <p className="text-sm text-muted-foreground mt-1">Tous les jeux de la promo</p>
       </div>
 
@@ -157,10 +157,10 @@ export default function GamesPage() {
         </>
       )}
 
-      {/* ─── Jeux DC : nouveaux jeux casino & contenus quotidiens ─── */}
+      {/* ─── Casino : jeux DC & contenus quotidiens ─── */}
       <div className="mt-12 pt-8 border-t border-border">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-display gold-text">🎰 Jeux DC</h2>
+          <h2 className="text-2xl font-display gold-text">🎰 Casino</h2>
           <p className="text-xs text-muted-foreground mt-1">Mise tes DAIMcoins, défie tes potes, ou tente le contenu du jour</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">

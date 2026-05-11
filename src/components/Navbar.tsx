@@ -21,7 +21,7 @@ const ALL_TABS: NavTab[] = [
   { to: '/', label: 'Paris', shortLabel: 'Paris', emoji: '🎯', icon: Target },
   { to: '/gazette', label: 'Gazette', shortLabel: 'Gazette', emoji: '📰', icon: Newspaper },
   { to: '/classement', label: 'Classement', shortLabel: 'Class.', emoji: '🏆', icon: Trophy, configKey: 'classement' },
-  { to: '/jeux', label: 'Jeux', shortLabel: 'Jeux', emoji: '🎮', icon: Gamepad2, configKey: 'jeux' },
+  { to: '/jeux', label: 'Jeux Promo', shortLabel: 'Jeux', emoji: '🎮', icon: Gamepad2, configKey: 'jeux' },
   { to: '/profil', label: 'Profil', shortLabel: 'Profil', emoji: '👤', icon: User },
 ];
 

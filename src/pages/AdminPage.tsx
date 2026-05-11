@@ -64,8 +64,8 @@ const CATEGORY_OPTIONS: { value: BetCategory; label: string }[] = [
 const ADMIN_SECTIONS = [
   { id: 'dashboard', label: 'Tableau de bord', emoji: '📊' },
   { id: 'paris', label: 'Paris', emoji: '🎯' },
-  { id: 'jeux', label: 'Jeux', emoji: '🎮' },
-  { id: 'jeux_dc', label: 'Jeux DC quotidiens', emoji: '🎰' },
+  { id: 'jeux', label: 'Jeux Promo', emoji: '🎮' },
+  { id: 'jeux_dc', label: 'Casino', emoji: '🎰' },
   { id: 'gouvernements', label: 'Gouvernements', emoji: '🏛️' },
   { id: 'gazette', label: 'Gazette', emoji: '📰' },
   { id: 'users', label: 'Utilisateurs', emoji: '👥' },
