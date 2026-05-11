@@ -121,6 +121,8 @@ export default function DuelsPage() {
         </div>
       </Card>
 
+      <Saloon onJoin={joinByCode} />
+
       <Card className="p-5">
         <h2 className="font-display text-xl mb-3 flex items-center gap-2"><KeyRound className="w-5 h-5 text-primary" /> Rejoindre un défi</h2>
         <div className="space-y-3">
@@ -129,8 +131,6 @@ export default function DuelsPage() {
           <Button onClick={join} disabled={joining} className="w-full">Rejoindre</Button>
         </div>
       </Card>
-
-      <Saloon onJoin={joinByCode} />
 
       <Dialog open={!!generatedCode} onOpenChange={(o) => !o && setGeneratedCode(null)}>
         <DialogContent>
