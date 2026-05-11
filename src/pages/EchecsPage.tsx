@@ -104,7 +104,7 @@ export default function EchecsPage() {
     else toast.error(`💀 ${msg}`);
   };
 
-  const onPieceDrop = ({ sourceSquare, targetSquare }: any): boolean => {
+  const onPieceDrop = (sourceSquare: string, targetSquare: string): boolean => {
     if (!isMyTurn || session.status === 'termine' || !targetSquare) return false;
     const c = new Chess(fen);
     let move;
@@ -179,13 +179,11 @@ export default function EchecsPage() {
 
       <div className="rounded-lg overflow-hidden">
         <Chessboard
-          options={{
-            position: fen,
-            onPieceDrop,
-            boardOrientation: myColor === 'w' ? 'white' : 'black',
-            allowDragging: !isFinished && isMyTurn,
-            id: `echecs-${sessionId}`,
-          } as any}
+          position={fen}
+          onPieceDrop={onPieceDrop}
+          boardOrientation={myColor === 'w' ? 'white' : 'black'}
+          arePiecesDraggable={!isFinished && isMyTurn}
+          id={`echecs-${sessionId}`}
         />
       </div>
 
