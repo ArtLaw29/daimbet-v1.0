@@ -159,15 +159,20 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
   const { items, reload } = useDailyItems(type);
   const [date, setDate] = useState(next7Days()[0]);
   const [json, setJson] = useState('');
+  const [rewards, setRewards] = useState<number[]>([500, 300, 200, 100, 50]);
   const [revealAt, setRevealAt] = useState('09:30');
   const existing = items.find((it) => it.scheduled_date === date);
 
   useEffect(() => {
     if (existing) {
-      setJson(JSON.stringify(existing.data, null, 2));
+      const data: any = existing.data || {};
+      const { rewards: r, ...rest } = data;
+      setJson(JSON.stringify(rest, null, 2));
+      setRewards(normalizeRewards(r));
       setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
     } else {
       setJson('');
+      setRewards([500, 300, 200, 100, 50]);
       setRevealAt('09:30');
     }
   }, [date, existing?.id]);
@@ -176,6 +181,7 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
     let parsed: any;
     try { parsed = JSON.parse(json); }
     catch (e: any) { return toast.error('JSON invalide : ' + e.message); }
+    parsed = { ...parsed, rewards };
     const reveal = `${revealAt}:00`;
     if (existing) {
       const { error } = await supabase.from('daily_content').update({ data: parsed, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
@@ -203,6 +209,7 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
         <Label>Données JSON</Label>
         <Textarea value={json} onChange={(e) => setJson(e.target.value)} placeholder={placeholder} rows={12} className="font-mono text-xs" />
       </div>
+      <RewardsSettings value={rewards} onChange={setRewards} />
       <div>
         <Label>Heure de dévoilement (Europe/Paris)</Label>
         <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
