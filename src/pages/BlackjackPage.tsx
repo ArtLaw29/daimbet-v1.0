@@ -12,7 +12,9 @@ import { ArrowLeft, Coins } from 'lucide-react';
 type Suit = '♠' | '♥' | '♦' | '♣';
 type CardT = { rank: string; suit: Suit; value: number };
 type Phase = 'mise' | 'shuffle' | 'joueur' | 'croupier' | 'fin';
-type Outcome = 'gagne' | 'perdu' | 'egalite' | 'blackjack' | null;
+type HandStatus = 'playing' | 'stand' | 'bust' | 'blackjack' | 'doubled';
+type HandResult = 'gagne' | 'perdu' | 'egalite' | 'blackjack';
+type Hand = { cards: CardT[]; bet: number; status: HandStatus };
 
 const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
 const RANKS = [
@@ -28,7 +30,6 @@ function drawCard(): CardT {
   return { rank: r.r, suit: s, value: r.v };
 }
 
-// Returns {total, soft} where soft means there is an Ace counted as 11
 function handDetail(cards: CardT[]) {
   const hard = cards.reduce((a, c) => a + (c.rank === 'A' ? 1 : c.value), 0);
   const hasAce = cards.some(c => c.rank === 'A');
@@ -118,22 +119,24 @@ export default function BlackjackPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [mise, setMise] = useState<number>(50);
   const [phase, setPhase] = useState<Phase>('mise');
-  const [player, setPlayer] = useState<CardT[]>([]);
+  const [hands, setHands] = useState<Hand[]>([]);
+  const [activeIdx, setActiveIdx] = useState<number>(0);
   const [dealer, setDealer] = useState<CardT[]>([]);
-  const [revealedDealer, setRevealedDealer] = useState(1); // nombre de cartes croupier visibles
-  const [outcome, setOutcome] = useState<Outcome>(null);
+  const [revealedDealer, setRevealedDealer] = useState(1);
+  const [results, setResults] = useState<HandResult[]>([]);
+  const [totalPayout, setTotalPayout] = useState<number>(0);
+  const [netGain, setNetGain] = useState<number>(0);
   const [busy, setBusy] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [replayLockUntil, setReplayLockUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
   const baselineBalance = useRef(0);
+  const totalDebited = useRef(0);
 
   const balance = profile?.balance ?? 0;
-  const playerInfo = handDetail(player);
   const dealerVisible = dealer.slice(0, revealedDealer);
   const dealerInfo = handDetail(dealerVisible);
 
-  // Tick for replay countdown
   useEffect(() => {
     if (phase !== 'fin') return;
     const t = setInterval(() => setNow(Date.now()), 250);
@@ -141,66 +144,82 @@ export default function BlackjackPage() {
   }, [phase]);
   const replayWait = Math.max(0, Math.ceil((replayLockUntil - now) / 1000));
 
-  const finishGame = async (result: Outcome, payout: number) => {
-    setOutcome(result);
-    setPhase('fin');
-    setReplayLockUntil(Date.now() + 5000);
-    if (payout > 0 && user) {
-      // Apply 5% rake on net winnings only (not on returned stake / push)
-      let finalPayout = payout;
-      const netGain = payout - mise;
-      if (netGain > 0) {
-        const rake = Math.round(netGain * 0.05);
-        finalPayout = payout - rake;
-      }
-      const newBal = baselineBalance.current - mise + finalPayout;
-      await supabase.from('profiles').update({ balance: newBal }).eq('user_id', user.id);
-      const reasonMap: Record<string, string> = {
-        blackjack: 'Gain Blackjack (BJ naturel)',
-        gagne: 'Gain Blackjack',
-        egalite: 'Égalité Blackjack — remboursement',
-      };
-      await supabase.from('solde_history').insert({ user_id: user.id, delta_dc: finalPayout, reason: reasonMap[result || 'gagne'] });
-      await refreshProfile();
-    }
+  // ───────── Solde / mise (Supabase) ─────────
+  const debit = async (amount: number, reason: string) => {
+    if (!user) return false;
+    const newBal = baselineBalance.current - totalDebited.current - amount;
+    const { error } = await supabase.from('profiles').update({ balance: newBal }).eq('user_id', user.id);
+    if (error) { toast.error('Erreur de débit'); return false; }
+    await supabase.from('solde_history').insert({ user_id: user.id, delta_dc: -amount, reason });
+    totalDebited.current += amount;
+    await refreshProfile();
+    return true;
   };
 
+  // ───────── Démarrage ─────────
   const startGame = async () => {
     if (!user) return;
     if (mise < 10) { toast.error('Mise minimum : 10 DC'); return; }
     if (mise > balance) { toast.error('Pas assez de DAIMcoins !'); return; }
     setBusy(true);
     baselineBalance.current = balance;
-    // Débit
-    const { error } = await supabase.from('profiles').update({ balance: balance - mise }).eq('user_id', user.id);
-    if (error) { toast.error('Erreur'); setBusy(false); return; }
-    await supabase.from('solde_history').insert({ user_id: user.id, delta_dc: -mise, reason: 'Mise Blackjack' });
-    await refreshProfile();
+    totalDebited.current = 0;
+    const ok = await debit(mise, 'Mise Blackjack');
+    if (!ok) { setBusy(false); return; }
 
-    setPlayer([]); setDealer([]); setRevealedDealer(1); setOutcome(null);
+    setHands([]); setDealer([]); setRevealedDealer(1); setResults([]); setActiveIdx(0); setTotalPayout(0); setNetGain(0);
     setPhase('shuffle');
     await sleep(1800);
 
-    // Distribution une carte à la fois (1s entre chaque)
     const p1 = drawCard();
-    setPlayer([p1]);
+    setHands([{ cards: [p1], bet: mise, status: 'playing' }]);
     await sleep(1400);
     const d1 = drawCard();
     setDealer([d1]);
     await sleep(1400);
     const p2 = drawCard();
-    const fullPlayer = [p1, p2];
-    setPlayer(fullPlayer);
+    const initial: Hand[] = [{ cards: [p1, p2], bet: mise, status: 'playing' }];
+    setHands(initial);
     await sleep(1400);
 
     setBusy(false);
 
-    if (handDetail(fullPlayer).total === 21) {
-      // Blackjack naturel 6:5 → profit = mise * 6/5, payout = mise + profit
-      const payout = mise + Math.floor(mise * 6 / 5);
-      await finishGame('blackjack', payout);
+    if (handDetail([p1, p2]).total === 21) {
+      const bjHand: Hand[] = [{ ...initial[0], status: 'blackjack' }];
+      setHands(bjHand);
+      await resolveDealerAndFinish(bjHand);
     } else {
       setPhase('joueur');
+      setActiveIdx(0);
+    }
+  };
+
+  // ───────── Actions joueur ─────────
+  const updateHand = (idx: number, patch: Partial<Hand>) => {
+    setHands(prev => prev.map((h, i) => i === idx ? { ...h, ...patch } : h));
+  };
+
+  const advanceOrDealer = async (updated: Hand[]) => {
+    const nextIdx = updated.findIndex((h, i) => i > activeIdx && h.status === 'playing');
+    if (nextIdx >= 0) {
+      // Si la prochaine main n'a qu'une carte (post-split), compléter
+      if (updated[nextIdx].cards.length === 1) {
+        await sleep(800);
+        const completed = [...updated];
+        completed[nextIdx] = { ...completed[nextIdx], cards: [...completed[nextIdx].cards, drawCard()] };
+        setHands(completed);
+        await sleep(1200);
+        // Vérifier blackjack post-split (compté comme 21 normal, pas BJ naturel)
+        if (handDetail(completed[nextIdx].cards).total === 21) {
+          completed[nextIdx] = { ...completed[nextIdx], status: 'stand' };
+          setHands(completed);
+          await advanceOrDealer(completed);
+          return;
+        }
+      }
+      setActiveIdx(nextIdx);
+    } else {
+      await resolveDealerAndFinish(updated);
     }
   };
 
@@ -208,20 +227,94 @@ export default function BlackjackPage() {
     if (phase !== 'joueur' || drawing) return;
     setDrawing(true);
     await sleep(1400);
-    const next = [...player, drawCard()];
-    setPlayer(next);
-    await sleep(1400);
+    const cur = hands[activeIdx];
+    const newCards = [...cur.cards, drawCard()];
+    const updated = hands.map((h, i) => i === activeIdx ? { ...h, cards: newCards } : h);
+    setHands(updated);
+    await sleep(1200);
     setDrawing(false);
-    if (handDetail(next).total > 21) {
-      // Bust
-      await finishGame('perdu', 0);
+    const total = handDetail(newCards).total;
+    if (total > 21) {
+      const busted = updated.map((h, i) => i === activeIdx ? { ...h, status: 'bust' as HandStatus } : h);
+      setHands(busted);
+      await advanceOrDealer(busted);
+    } else if (total === 21) {
+      const stood = updated.map((h, i) => i === activeIdx ? { ...h, status: 'stand' as HandStatus } : h);
+      setHands(stood);
+      await advanceOrDealer(stood);
     }
   };
 
   const stand = async () => {
-    if (phase !== 'joueur') return;
+    if (phase !== 'joueur' || drawing) return;
+    const updated = hands.map((h, i) => i === activeIdx ? { ...h, status: 'stand' as HandStatus } : h);
+    setHands(updated);
+    await advanceOrDealer(updated);
+  };
+
+  const canDouble = () => {
+    const h = hands[activeIdx];
+    if (!h || h.status !== 'playing') return false;
+    if (h.cards.length !== 2) return false;
+    if (balance < h.bet) return false;
+    return true;
+  };
+
+  const doubleDown = async () => {
+    if (phase !== 'joueur' || drawing) return;
+    if (!canDouble()) return;
+    const cur = hands[activeIdx];
+    setDrawing(true);
+    const ok = await debit(cur.bet, 'Mise Blackjack (Double)');
+    if (!ok) { setDrawing(false); return; }
+    await sleep(1000);
+    const newCards = [...cur.cards, drawCard()];
+    const total = handDetail(newCards).total;
+    const newStatus: HandStatus = total > 21 ? 'bust' : 'doubled';
+    const updated = hands.map((h, i) => i === activeIdx ? { ...h, cards: newCards, bet: h.bet * 2, status: newStatus } : h);
+    setHands(updated);
+    await sleep(1200);
+    setDrawing(false);
+    await advanceOrDealer(updated);
+  };
+
+  const canSplit = () => {
+    if (hands.length !== 1) return false; // un seul split autorisé
+    const h = hands[activeIdx];
+    if (!h || h.status !== 'playing') return false;
+    if (h.cards.length !== 2) return false;
+    if (h.cards[0].value !== h.cards[1].value) return false;
+    if (balance < h.bet) return false;
+    return true;
+  };
+
+  const split = async () => {
+    if (phase !== 'joueur' || drawing) return;
+    if (!canSplit()) return;
+    const cur = hands[activeIdx];
+    setDrawing(true);
+    const ok = await debit(cur.bet, 'Mise Blackjack (Split)');
+    if (!ok) { setDrawing(false); return; }
+    // Créer 2 mains, distribuer une carte à la première immédiatement
+    const handA: Hand = { cards: [cur.cards[0], drawCard()], bet: cur.bet, status: 'playing' };
+    const handB: Hand = { cards: [cur.cards[1]], bet: cur.bet, status: 'playing' };
+    setHands([handA, handB]);
+    setActiveIdx(0);
+    await sleep(1400);
+    setDrawing(false);
+    // Si la main A est déjà 21, stand auto et avancer
+    if (handDetail(handA.cards).total === 21) {
+      const updated: Hand[] = [{ ...handA, status: 'stand' }, handB];
+      setHands(updated);
+      await advanceOrDealer(updated);
+    }
+  };
+
+  // ───────── Tour du croupier + résolution ─────────
+  const resolveDealerAndFinish = async (finalHands: Hand[]) => {
     setPhase('croupier');
-    // Reveal hidden dealer card (déjà dealer[1] si présent, sinon en tirera)
+    // Si toutes les mains sont bust, pas besoin de tirer le croupier
+    const allBust = finalHands.every(h => h.status === 'bust');
     let d = [...dealer];
     if (d.length < 2) {
       d = [...d, drawCard()];
@@ -230,31 +323,78 @@ export default function BlackjackPage() {
     setRevealedDealer(d.length);
     await sleep(1500);
 
-    // Dealer hits soft 17 (H17)
-    while (true) {
-      const info = handDetail(d);
-      const mustHit = info.total < 17 || (info.total === 17 && info.soft);
-      if (!mustHit) break;
-      d = [...d, drawCard()];
-      setDealer(d);
-      setRevealedDealer(d.length);
-      await sleep(1500);
+    if (!allBust) {
+      while (true) {
+        const info = handDetail(d);
+        const mustHit = info.total < 17 || (info.total === 17 && info.soft);
+        if (!mustHit) break;
+        d = [...d, drawCard()];
+        setDealer(d);
+        setRevealedDealer(d.length);
+        await sleep(1500);
+      }
     }
 
     const dt = handDetail(d).total;
-    const pt = handDetail(player).total;
-    let result: Outcome;
+    const handResults: HandResult[] = [];
     let payout = 0;
-    if (dt > 21 || pt > dt) { result = 'gagne'; payout = mise * 2; }     // mise + gain x1
-    else if (pt === dt) { result = 'egalite'; payout = mise; }            // remboursement
-    else { result = 'perdu'; payout = 0; }
-    await finishGame(result, payout);
+    for (const h of finalHands) {
+      const pt = handDetail(h.cards).total;
+      if (h.status === 'blackjack') {
+        // Blackjack naturel 6:5 → mise + profit floor(mise*6/5)
+        payout += h.bet + Math.floor(h.bet * 6 / 5);
+        handResults.push('blackjack');
+      } else if (h.status === 'bust' || pt > 21) {
+        handResults.push('perdu');
+      } else if (dt > 21 || pt > dt) {
+        payout += h.bet * 2;
+        handResults.push('gagne');
+      } else if (pt === dt) {
+        payout += h.bet; // remboursement
+        handResults.push('egalite');
+      } else {
+        handResults.push('perdu');
+      }
+    }
+    setResults(handResults);
+    await finalizeGame(payout);
+  };
+
+  const finalizeGame = async (payout: number) => {
+    if (!user) return;
+    // Calcul du gain net : payout - total débité
+    const net = payout - totalDebited.current;
+    let finalPayout = payout;
+    if (net > 0) {
+      const rake = Math.round(net * 0.05);
+      finalPayout = payout - rake;
+    }
+    const finalNet = finalPayout - totalDebited.current;
+    setTotalPayout(finalPayout);
+    setNetGain(finalNet);
+    if (finalPayout > 0) {
+      const newBal = baselineBalance.current - totalDebited.current + finalPayout;
+      await supabase.from('profiles').update({ balance: newBal }).eq('user_id', user.id);
+      await supabase.from('solde_history').insert({
+        user_id: user.id,
+        delta_dc: finalPayout,
+        reason: finalNet > 0 ? 'Gain Blackjack' : 'Égalité Blackjack — remboursement',
+      });
+      await refreshProfile();
+    }
+    setReplayLockUntil(Date.now() + 5000);
+    setPhase('fin');
   };
 
   const replay = () => {
     if (replayWait > 0) return;
-    setPlayer([]); setDealer([]); setRevealedDealer(1); setOutcome(null); setPhase('mise');
+    setHands([]); setDealer([]); setRevealedDealer(1); setResults([]); setActiveIdx(0);
+    setTotalPayout(0); setNetGain(0); totalDebited.current = 0;
+    setPhase('mise');
   };
+
+  // ───────── Rendu ─────────
+  const activeHand = hands[activeIdx];
 
   return (
     <div className="container mx-auto px-4 py-6 pb-20 md:pb-6 max-w-2xl">
@@ -280,7 +420,7 @@ export default function BlackjackPage() {
             <Button onClick={() => setMise(Math.min(balance, mise + 50))} variant="outline">+50</Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Min 10 DC. Blackjack naturel paie 6:5. Victoire normale paie 1:1. Égalité = remboursement. Rake de 5% sur les gains nets.
+            Min 10 DC. Blackjack naturel paie 6:5. Victoire normale paie 1:1. Égalité = remboursement. Double et Split disponibles. Rake de 5% sur les gains nets.
           </p>
           <Button onClick={startGame} disabled={busy || mise < 10 || mise > balance} className="w-full" size="lg">
             {busy ? 'Mélange…' : 'Distribuer les cartes'}
@@ -318,53 +458,100 @@ export default function BlackjackPage() {
             </div>
           </Card>
 
-          <Card className="p-5 border-primary/30">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-display text-xl gold-text">Toi</h3>
-              <span className={`text-sm font-semibold ${playerInfo.total > 21 ? 'text-destructive' : ''}`}>
-                {scoreLabel(player)} pts
-              </span>
-            </div>
-            <div className="flex gap-2 flex-wrap min-h-[7rem]">
-              <AnimatePresence>
-                {player.map((c, i) => (
-                  <PlayingCard key={`p-${i}`} card={c} />
-                ))}
-              </AnimatePresence>
-            </div>
-            {player.some(c => c.rank === 'A') && phase === 'joueur' && (
-              <p className="text-[11px] text-muted-foreground mt-2">As : 1 ou 11 pts selon ton intérêt.</p>
-            )}
-          </Card>
+          <div className={`grid gap-4 ${hands.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+            {hands.map((h, i) => {
+              const info = handDetail(h.cards);
+              const isActive = phase === 'joueur' && i === activeIdx;
+              const result = phase === 'fin' ? results[i] : null;
+              const borderClass = isActive
+                ? 'border-primary ring-2 ring-primary shadow-[0_0_20px_hsl(var(--primary)/0.5)]'
+                : result === 'gagne' || result === 'blackjack'
+                  ? 'border-primary/60'
+                  : result === 'perdu'
+                    ? 'border-destructive/60'
+                    : 'border-border';
+              return (
+                <Card key={i} className={`p-5 transition-all ${borderClass}`}>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-display text-xl gold-text">
+                      {hands.length > 1 ? `Main ${i + 1}` : 'Toi'}
+                      {isActive && <span className="ml-2 text-xs text-primary">● en cours</span>}
+                    </h3>
+                    <div className="text-right">
+                      <div className={`text-sm font-semibold ${info.total > 21 ? 'text-destructive' : ''}`}>
+                        {scoreLabel(h.cards)} pts
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">Mise: {h.bet} DC</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-wrap min-h-[7rem]">
+                    <AnimatePresence>
+                      {h.cards.map((c, j) => (
+                        <PlayingCard key={`p-${i}-${j}`} card={c} />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                  {h.status === 'bust' && <p className="text-xs text-destructive mt-2 font-semibold">Bust !</p>}
+                  {h.status === 'doubled' && <p className="text-xs text-primary mt-2 font-semibold">Doublé</p>}
+                  {h.status === 'blackjack' && <p className="text-xs text-primary mt-2 font-semibold">Blackjack !</p>}
+                  {result && (
+                    <p className={`text-xs mt-2 font-semibold ${
+                      result === 'gagne' || result === 'blackjack' ? 'text-primary' :
+                      result === 'egalite' ? 'text-muted-foreground' : 'text-destructive'
+                    }`}>
+                      {result === 'blackjack' ? '🎰 Blackjack' :
+                       result === 'gagne' ? '🏆 Gagnée' :
+                       result === 'egalite' ? '🤝 Égalité' : '💸 Perdue'}
+                    </p>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
 
-          {phase === 'joueur' && (
-            <div className="flex gap-3">
-              <Button onClick={hit} disabled={drawing} className="flex-1" size="lg">
-                {drawing ? 'Tirage…' : 'Tirer une carte'}
-              </Button>
-              <Button onClick={stand} disabled={drawing} variant="outline" className="flex-1" size="lg">Stop</Button>
-            </div>
+          {phase === 'joueur' && activeHand && (
+            <>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Button onClick={hit} disabled={drawing} size="lg">
+                  {drawing ? '…' : 'Tirer'}
+                </Button>
+                <Button onClick={stand} disabled={drawing} variant="outline" size="lg">Stop</Button>
+                <Button onClick={doubleDown} disabled={drawing || !canDouble()} variant="secondary" size="lg">
+                  Doubler
+                </Button>
+                <Button onClick={split} disabled={drawing || !canSplit()} variant="secondary" size="lg">
+                  Séparer
+                </Button>
+              </div>
+              {activeHand.cards.some(c => c.rank === 'A') && (
+                <p className="text-[11px] text-muted-foreground">As : 1 ou 11 pts selon ton intérêt.</p>
+              )}
+            </>
           )}
 
           <AnimatePresence>
-            {phase === 'fin' && outcome && (
+            {phase === 'fin' && (
               <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                 className="text-center p-6 rounded-xl border-2"
                 style={{
-                  borderColor: outcome === 'perdu' ? 'hsl(var(--destructive))' :
-                    outcome === 'egalite' ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary))',
-                  background: outcome === 'perdu' ? 'hsl(var(--destructive) / 0.1)' :
-                    outcome === 'egalite' ? 'hsl(var(--muted) / 0.3)' : 'hsl(var(--primary) / 0.1)',
+                  borderColor: netGain > 0 ? 'hsl(var(--primary))' :
+                    netGain === 0 ? 'hsl(var(--muted-foreground))' : 'hsl(var(--destructive))',
+                  background: netGain > 0 ? 'hsl(var(--primary) / 0.1)' :
+                    netGain === 0 ? 'hsl(var(--muted) / 0.3)' : 'hsl(var(--destructive) / 0.1)',
                 }}>
                 <p className="text-5xl mb-2">
-                  {outcome === 'blackjack' ? '🎰' : outcome === 'gagne' ? '🏆' : outcome === 'egalite' ? '🤝' : '💸'}
+                  {netGain > 0 ? '🏆' : netGain === 0 ? '🤝' : '💸'}
                 </p>
                 <h2 className="text-2xl font-display">
-                  {outcome === 'blackjack' ? `BLACKJACK ! +${Math.floor(Math.floor(mise * 6 / 5) * 0.95)} DC` :
-                   outcome === 'gagne' ? `Tu gagnes +${Math.floor(mise * 0.95)} DC !` :
-                   outcome === 'egalite' ? `Égalité — mise remboursée` :
-                   playerInfo.total > 21 ? `Tu dépasses 21 ! -${mise} DC` : `Le croupier gagne — -${mise} DC`}
+                  {netGain > 0 ? `Tu gagnes +${netGain} DC !` :
+                   netGain === 0 ? 'Égalité — mise remboursée' :
+                   `Tu perds ${netGain} DC`}
                 </h2>
+                {hands.length > 1 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total misé : {totalDebited.current} DC — Rendu : {totalPayout} DC
+                  </p>
+                )}
                 <Button onClick={replay} disabled={replayWait > 0} className="mt-4" size="lg">
                   {replayWait > 0 ? `Rejouer (${replayWait}s)` : 'Rejouer'}
                 </Button>
@@ -375,7 +562,7 @@ export default function BlackjackPage() {
       )}
 
       <p className="text-center text-[11px] text-muted-foreground mt-8 italic">
-        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
+        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — Double / Split autorisés — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
       </p>
     </div>
   );
