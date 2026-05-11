@@ -160,6 +160,7 @@ export default function BlackjackPage() {
   const startGame = async () => {
     if (!user) return;
     if (mise < 10) { toast.error('Mise minimum : 10 DC'); return; }
+    if (mise > 300) { toast.error('La mise maximale est de 300 DC'); return; }
     if (mise > balance) { toast.error('Pas assez de DAIMcoins !'); return; }
     setBusy(true);
     baselineBalance.current = balance;
@@ -414,15 +415,16 @@ export default function BlackjackPage() {
         <Card className="p-6 space-y-4">
           <h2 className="text-xl font-display">Place ta mise</h2>
           <div className="flex gap-2">
-            <Input type="number" min={10} max={balance} value={mise}
+            <Input type="number" min={10} max={300} value={mise}
               onChange={(e) => setMise(Math.max(0, parseInt(e.target.value) || 0))} />
-            <Button onClick={() => setMise(Math.min(balance, mise + 10))} variant="outline">+10</Button>
-            <Button onClick={() => setMise(Math.min(balance, mise + 50))} variant="outline">+50</Button>
+            <Button onClick={() => setMise(Math.min(300, balance, mise + 10))} variant="outline">+10</Button>
+            <Button onClick={() => setMise(Math.min(300, balance, mise + 50))} variant="outline">+50</Button>
           </div>
+          <p className="text-xs text-muted-foreground">Mise max : 300 DC</p>
           <p className="text-xs text-muted-foreground">
             Min 10 DC. Blackjack naturel paie 6:5. Victoire normale paie 1:1. Égalité = remboursement. Double et Split disponibles. Rake de 5% sur les gains nets.
           </p>
-          <Button onClick={startGame} disabled={busy || mise < 10 || mise > balance} className="w-full" size="lg">
+          <Button onClick={startGame} disabled={busy || mise < 10 || mise > 300 || mise > balance} className="w-full" size="lg">
             {busy ? 'Mélange…' : 'Distribuer les cartes'}
           </Button>
         </Card>
