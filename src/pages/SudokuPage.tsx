@@ -103,23 +103,16 @@ export default function SudokuPage() {
     }
     setFinished(true);
     if (user && content) {
-      const { data: ranking } = await supabase.from('daily_scores').select('id')
-        .eq('content_id', content.id).order('finished_at', { ascending: true });
-      const rank = (ranking?.length || 0) + 1;
-      const reward = rewards[rank - 1] || 0;
-      await supabase.from('daily_scores').insert({
-        user_id: user.id, content_id: content.id, rank, rewarded: reward > 0,
+      const { data: claim } = await supabase.rpc('claim_daily_rank' as any, {
+        p_content_id: content.id, p_completed: true,
       });
-      if (reward > 0) {
-        const { data: prof } = await supabase.from('profiles').select('balance').eq('user_id', user.id).single();
-        await supabase.from('profiles').update({ balance: (prof?.balance || 0) + reward }).eq('user_id', user.id);
-        await supabase.from('solde_history').insert({
-          user_id: user.id, delta_dc: reward, reason: `Sudoku du jour — ${rank}e place`,
-        });
-        await refreshProfile();
-        toast.success(`🏆 ${rank}e place en ${fmt(seconds)} ! +${reward} DC`);
-      } else {
-        toast.success(`🎉 Terminé en ${fmt(seconds)} — ${rank}e place`);
+      const c: any = claim || {};
+      const rank = c.rank as number | null;
+      const reward = (c.reward as number) || 0;
+      if (reward > 0) await refreshProfile();
+      if (rank) {
+        const ord = rank === 1 ? '1ère' : `${rank}ème`;
+        toast.success(`Bravo ! Tu as fini ${ord} en ${fmt(seconds)}.${reward > 0 ? ` Tu gagnes ${reward} DC.` : ''}`);
       }
       setAlreadyPlayed(true);
       await loadScores(content.id);
