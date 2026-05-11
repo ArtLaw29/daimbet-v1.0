@@ -11,22 +11,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useBeforeUnloadGame } from '@/hooks/useBeforeUnloadGame';
 
 const KB_ROWS = ['AZERTYUIOP', 'QSDFGHJKLM', 'WXCVBN'];
-const MAX_ERRORS = 7;
+const MAX_ERRORS = 10;
 const INACTIVITY_MS = 5 * 60 * 1000;
 
 function HangmanSVG({ errors }: { errors: number }) {
+  const stroke = "hsl(var(--foreground))";
+  const sw = 3;
   return (
     <svg viewBox="0 0 200 220" className="w-40 h-44 mx-auto">
-      <line x1="20" y1="210" x2="120" y2="210" stroke="hsl(var(--foreground))" strokeWidth="3" />
-      <line x1="50" y1="210" x2="50" y2="20" stroke="hsl(var(--foreground))" strokeWidth="3" />
-      <line x1="50" y1="20" x2="130" y2="20" stroke="hsl(var(--foreground))" strokeWidth="3" />
-      {errors >= 1 && <line x1="130" y1="20" x2="130" y2="50" stroke="hsl(var(--foreground))" strokeWidth="3" />}
-      {errors >= 2 && <circle cx="130" cy="65" r="15" stroke="hsl(var(--foreground))" strokeWidth="3" fill="none" />}
-      {errors >= 3 && <line x1="130" y1="80" x2="130" y2="140" stroke="hsl(var(--foreground))" strokeWidth="3" />}
-      {errors >= 4 && <line x1="130" y1="95" x2="105" y2="120" stroke="hsl(var(--foreground))" strokeWidth="3" />}
-      {errors >= 5 && <line x1="130" y1="95" x2="155" y2="120" stroke="hsl(var(--foreground))" strokeWidth="3" />}
-      {errors >= 6 && <line x1="130" y1="140" x2="110" y2="170" stroke="hsl(var(--foreground))" strokeWidth="3" />}
-      {errors >= 7 && <line x1="130" y1="140" x2="150" y2="170" stroke="hsl(var(--foreground))" strokeWidth="3" />}
+      {/* 1: socle */}
+      {errors >= 1 && <line x1="20" y1="210" x2="120" y2="210" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 2: poteau vertical */}
+      {errors >= 2 && <line x1="50" y1="210" x2="50" y2="20" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 3: barre horizontale haut */}
+      {errors >= 3 && <line x1="50" y1="20" x2="130" y2="20" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 4: corde */}
+      {errors >= 4 && <line x1="130" y1="20" x2="130" y2="50" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 5: tête */}
+      {errors >= 5 && <circle cx="130" cy="65" r="15" stroke={stroke} strokeWidth={sw} fill="none" />}
+      {/* 6: corps */}
+      {errors >= 6 && <line x1="130" y1="80" x2="130" y2="140" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 7: bras gauche */}
+      {errors >= 7 && <line x1="130" y1="95" x2="105" y2="120" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 8: bras droit */}
+      {errors >= 8 && <line x1="130" y1="95" x2="155" y2="120" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 9: jambe gauche */}
+      {errors >= 9 && <line x1="130" y1="140" x2="110" y2="170" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
+      {/* 10: jambe droite — défaite */}
+      {errors >= 10 && <line x1="130" y1="140" x2="150" y2="170" stroke={stroke} strokeWidth={sw} strokeLinecap="round" />}
     </svg>
   );
 }
@@ -198,7 +210,7 @@ export default function PenduPage() {
           <HangmanSVG errors={errors} />
           <p className="text-3xl font-mono tracking-widest text-center my-4 gold-text">{display}</p>
           <p className="text-xs text-center text-muted-foreground mb-4">
-            Erreurs : {errors}/{MAX_ERRORS} · Lettres ratées : {wrong.join(' ') || '—'}
+            {Math.max(0, MAX_ERRORS - errors)} essais restants · Lettres ratées : {wrong.join(' ') || '—'}
           </p>
           {!isP1 ? (
             <div className="space-y-1.5">
