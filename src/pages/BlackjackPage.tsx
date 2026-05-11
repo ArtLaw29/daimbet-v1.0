@@ -12,8 +12,8 @@ import { ArrowLeft, Coins } from 'lucide-react';
 type Suit = '♠' | '♥' | '♦' | '♣';
 type CardT = { rank: string; suit: Suit; value: number };
 type Phase = 'mise' | 'shuffle' | 'joueur' | 'croupier' | 'fin';
-type HandStatus = 'playing' | 'stand' | 'bust' | 'blackjack' | 'doubled';
-type HandResult = 'gagne' | 'perdu' | 'egalite' | 'blackjack';
+type HandStatus = 'playing' | 'stand' | 'bust' | 'blackjack' | 'doubled' | 'surrender';
+type HandResult = 'gagne' | 'perdu' | 'egalite' | 'blackjack' | 'surrender';
 type Hand = { cards: CardT[]; bet: number; status: HandStatus };
 
 const SUITS: Suit[] = ['♠', '♥', '♦', '♣'];
@@ -185,10 +185,18 @@ export default function BlackjackPage() {
 
     setBusy(false);
 
-    if (handDetail([p1, p2]).total === 21) {
-      const bjHand: Hand[] = [{ ...initial[0], status: 'blackjack' }];
-      setHands(bjHand);
-      await resolveDealerAndFinish(bjHand);
+    // Pré-tirage de la carte cachée du croupier (peek pour détecter un BJ naturel)
+    const d2 = drawCard();
+    const dealerCards = [d1, d2];
+    setDealer(dealerCards); // revealedDealer reste à 1 → carte cachée
+    const playerBJ = handDetail([p1, p2]).total === 21;
+    const dealerBJ = handDetail(dealerCards).total === 21;
+
+    if (playerBJ || dealerBJ) {
+      const status: HandStatus = playerBJ ? 'blackjack' : 'stand';
+      const finalHand: Hand[] = [{ ...initial[0], status }];
+      setHands(finalHand);
+      await resolveDealerAndFinish(finalHand);
     } else {
       setPhase('joueur');
       setActiveIdx(0);
@@ -287,6 +295,33 @@ export default function BlackjackPage() {
     if (h.cards[0].value !== h.cards[1].value) return false;
     if (balance < h.bet) return false;
     return true;
+  };
+
+  const canSurrender = () => {
+    // Late surrender : seulement sur la main initiale (avant toute action), main unique
+    if (hands.length !== 1) return false;
+    const h = hands[activeIdx];
+    if (!h || h.status !== 'playing') return false;
+    if (h.cards.length !== 2) return false;
+    return true;
+  };
+
+  const surrender = async () => {
+    if (phase !== 'joueur' || drawing) return;
+    if (!canSurrender()) return;
+    if (!user) return;
+    const cur = hands[activeIdx];
+    setDrawing(true);
+    const refund = Math.floor(cur.bet / 2);
+    const updated = hands.map((h, i) => i === activeIdx ? { ...h, status: 'surrender' as HandStatus } : h);
+    setHands(updated);
+    setResults(['surrender']);
+    setPhase('croupier');
+    // Révéler la carte cachée du croupier
+    setRevealedDealer(dealer.length);
+    await sleep(800);
+    await finalizeGame(refund);
+    setDrawing(false);
   };
 
   const split = async () => {
@@ -496,14 +531,16 @@ export default function BlackjackPage() {
                   {h.status === 'bust' && <p className="text-xs text-destructive mt-2 font-semibold">Bust !</p>}
                   {h.status === 'doubled' && <p className="text-xs text-primary mt-2 font-semibold">Doublé</p>}
                   {h.status === 'blackjack' && <p className="text-xs text-primary mt-2 font-semibold">Blackjack !</p>}
+                  {h.status === 'surrender' && <p className="text-xs text-muted-foreground mt-2 font-semibold">Abandonné</p>}
                   {result && (
                     <p className={`text-xs mt-2 font-semibold ${
                       result === 'gagne' || result === 'blackjack' ? 'text-primary' :
-                      result === 'egalite' ? 'text-muted-foreground' : 'text-destructive'
+                      result === 'egalite' || result === 'surrender' ? 'text-muted-foreground' : 'text-destructive'
                     }`}>
                       {result === 'blackjack' ? '🎰 Blackjack' :
                        result === 'gagne' ? '🏆 Gagnée' :
-                       result === 'egalite' ? '🤝 Égalité' : '💸 Perdue'}
+                       result === 'egalite' ? '🤝 Égalité' :
+                       result === 'surrender' ? '🏳️ Abandon (50% rendu)' : '💸 Perdue'}
                     </p>
                   )}
                 </Card>
@@ -513,7 +550,7 @@ export default function BlackjackPage() {
 
           {phase === 'joueur' && activeHand && (
             <>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <Button onClick={hit} disabled={drawing} size="lg">
                   {drawing ? '…' : 'Tirer'}
                 </Button>
@@ -524,6 +561,11 @@ export default function BlackjackPage() {
                 <Button onClick={split} disabled={drawing || !canSplit()} variant="secondary" size="lg">
                   Séparer
                 </Button>
+                {canSurrender() && (
+                  <Button onClick={surrender} disabled={drawing} variant="destructive" size="lg">
+                    Abandonner
+                  </Button>
+                )}
               </div>
               {activeHand.cards.some(c => c.rank === 'A') && (
                 <p className="text-[11px] text-muted-foreground">As : 1 ou 11 pts selon ton intérêt.</p>
@@ -564,7 +606,7 @@ export default function BlackjackPage() {
       )}
 
       <p className="text-center text-[11px] text-muted-foreground mt-8 italic">
-        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — Double / Split autorisés — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
+        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — Double / Split / DAS / Late Surrender autorisés — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
       </p>
     </div>
   );
