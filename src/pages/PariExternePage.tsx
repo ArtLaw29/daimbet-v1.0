@@ -1,3 +1,4 @@
+import { useCasinoSuspended, CasinoSuspendedScreen } from '@/hooks/useCasinoSuspended';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Coins, Swords, Trophy, AlertTriangle, Check, X } from 'lucide-react';
@@ -38,6 +39,8 @@ const RESULT_LABELS: Record<string, string> = {
 };
 
 export default function PariExternePage() {
+  const __casino = useCasinoSuspended('pari-externe');
+  if (__casino.suspended) return <CasinoSuspendedScreen label="Pari externe" />;
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);

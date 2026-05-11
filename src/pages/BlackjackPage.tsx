@@ -1,3 +1,4 @@
+import { useCasinoSuspended, CasinoSuspendedScreen } from '@/hooks/useCasinoSuspended';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +39,8 @@ function handTotal(cards: Card[]): number {
 }
 
 export default function BlackjackPage() {
+  const __casino = useCasinoSuspended('blackjack');
+  if (__casino.suspended) return <CasinoSuspendedScreen label="Blackjack" />;
   const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const [mise, setMise] = useState<number>(50);

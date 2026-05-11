@@ -1,3 +1,4 @@
+import { useCasinoSuspended, CasinoSuspendedScreen } from '@/hooks/useCasinoSuspended';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Coins, Trophy, Timer } from 'lucide-react';
@@ -11,6 +12,8 @@ import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 export default function SudokuPage() {
+  const __casino = useCasinoSuspended('sudoku');
+  if (__casino.suspended) return <CasinoSuspendedScreen label="Sudoku" />;
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);

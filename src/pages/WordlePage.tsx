@@ -1,3 +1,4 @@
+import { useCasinoSuspended, CasinoSuspendedScreen } from '@/hooks/useCasinoSuspended';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -33,6 +34,8 @@ function evaluate(guess: string, target: string): LetterState[] {
 }
 
 export default function WordlePage() {
+  const __casino = useCasinoSuspended('wordle');
+  if (__casino.suspended) return <CasinoSuspendedScreen label="Wordle" />;
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);

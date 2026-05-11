@@ -1,3 +1,4 @@
+import { useCasinoSuspended, CasinoSuspendedScreen } from '@/hooks/useCasinoSuspended';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Swords, KeyRound } from 'lucide-react';
@@ -24,6 +25,8 @@ const CHESS_MODES = [
 ];
 
 export default function DuelsPage() {
+  const __casino = useCasinoSuspended('duels');
+  if (__casino.suspended) return <CasinoSuspendedScreen label="Duels" />;
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [game, setGame] = useState('pendu');
