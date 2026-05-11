@@ -1,4 +1,3 @@
-import { useCasinoSuspended, CasinoSuspendedScreen } from '@/hooks/useCasinoSuspended';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Coins, Trophy, Check } from 'lucide-react';
@@ -13,8 +12,6 @@ type Cell = { lettre: string; numero: number | null } | null;
 type Direction = 'H' | 'V';
 
 export default function MotsCroisesPage() {
-  const __casino = useCasinoSuspended('mots-croises');
-  if (__casino.suspended) return <CasinoSuspendedScreen label="Mots croisés" />;
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
