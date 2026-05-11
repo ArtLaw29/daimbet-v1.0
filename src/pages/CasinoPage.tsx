@@ -3,7 +3,7 @@ import { Lock } from 'lucide-react';
 
 const DC_GAMES = [
   { id: 'blackjack', emoji: '🃏', label: 'Blackjack', subtitle: 'Bats le croupier', route: '/jeux/blackjack', available: true },
-  { id: 'wordle', emoji: '🔠', label: 'Wordle du jour', subtitle: 'Défi quotidien', route: '/jeux/wordle', available: true },
+  { id: 'wordle', emoji: '🔠', label: 'Mot du jour', subtitle: 'Défi quotidien', route: '/jeux/wordle', available: true },
   { id: 'sudoku', emoji: '🔢', label: 'Sudoku Race', subtitle: 'Le plus rapide gagne', route: '/jeux/sudoku', available: true },
   { id: 'mots-fleches', emoji: '📝', label: 'Mots fléchés', subtitle: 'Grille du jour', route: '/jeux/mots-fleches', available: true },
   { id: 'duels', emoji: '⚔️', label: 'Duels', subtitle: 'Pendu, P4, Échecs', route: '/jeux/duels', available: true },
