@@ -160,7 +160,7 @@ function AppRoutes() {
           <Route path="/casino" element={<><Navbar /><ResolutionNotifier /><CasinoPage /></>} />
           <Route path="/jeux" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="jeux"><GamesPage /></GuardedRoute></>} />
           <Route path="/jeux/blackjack" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="blackjack" label="Blackjack"><BlackjackPage /></CasinoGate></>} />
-          <Route path="/jeux/wordle" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="wordle" label="Wordle"><WordlePage /></CasinoGate></>} />
+          <Route path="/jeux/wordle" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="wordle" label="Mot du jour"><WordlePage /></CasinoGate></>} />
           <Route path="/jeux/sudoku" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="sudoku" label="Sudoku"><SudokuPage /></CasinoGate></>} />
           <Route path="/jeux/pari-externe" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="pari-externe" label="Pari externe"><PariExternePage /></CasinoGate></>} />
           <Route path="/jeux/mots-fleches" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="mots-fleches" label="Mots fléchés"><MotsFlechesPage /></CasinoGate></>} />
