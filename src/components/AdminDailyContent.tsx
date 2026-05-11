@@ -98,23 +98,22 @@ function WordleEditor() {
   const { items, reload } = useDailyItems('wordle');
   const [date, setDate] = useState(next7Days()[0]);
   const [word, setWord] = useState('');
-  const [rewards, setRewards] = useState('500,300,200,100,50');
+  const [rewards, setRewards] = useState<number[]>([500, 300, 200, 100, 50]);
   const [revealAt, setRevealAt] = useState('09:30');
   const existing = items.find((it) => it.scheduled_date === date);
 
   useEffect(() => {
     if (existing) {
       setWord(String(existing.data?.word || ''));
-      setRewards(((existing.data?.rewards as number[]) || []).join(','));
+      setRewards(normalizeRewards(existing.data?.rewards));
       setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
-    } else { setWord(''); setRewards('500,300,200,100,50'); setRevealAt('09:30'); }
+    } else { setWord(''); setRewards([500, 300, 200, 100, 50]); setRevealAt('09:30'); }
   }, [date, existing?.id]);
 
   const save = async () => {
     const w = word.trim().toUpperCase();
     if (w.length !== 5 || !/^[A-Z]+$/.test(w)) return toast.error('Le mot doit faire exactement 5 lettres (A-Z)');
-    const rw = rewards.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-    const payload = { word: w, rewards: rw };
+    const payload = { word: w, rewards };
     const reveal = `${revealAt}:00`;
     if (existing) {
       const { error } = await supabase.from('daily_content').update({ data: payload, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
@@ -142,10 +141,7 @@ function WordleEditor() {
         <Label>Mot (5 lettres)</Label>
         <Input value={word} onChange={(e) => setWord(e.target.value.toUpperCase())} maxLength={5} className="uppercase font-mono text-lg tracking-widest" />
       </div>
-      <div>
-        <Label>Récompenses (DC, séparées par virgule)</Label>
-        <Input value={rewards} onChange={(e) => setRewards(e.target.value)} />
-      </div>
+      <RewardsSettings value={rewards} onChange={setRewards} />
       <div>
         <Label>Heure de dévoilement (Europe/Paris)</Label>
         <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
