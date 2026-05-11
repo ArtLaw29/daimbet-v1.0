@@ -606,7 +606,7 @@ export default function BlackjackPage() {
       )}
 
       <p className="text-center text-[11px] text-muted-foreground mt-8 italic">
-        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — Double / Split autorisés — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
+        Règles de la maison : 6:5 Blackjack — Dealer hits Soft 17 — Double / Split / DAS / Late Surrender autorisés — 5% Rake on wins — Sabot 8 jeux (CSM, remélange continu)
       </p>
     </div>
   );
