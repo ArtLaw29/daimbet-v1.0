@@ -290,6 +290,11 @@ export default function WordlePage() {
                       Histoire, géographie, arts, sports… Teste ta culture générale.
                     </div>
                   )}
+                  {v.elite && (
+                    <Badge variant="outline" className="mt-2 text-[9px] px-1.5 py-0 border-primary/60 text-primary">
+                      <Trophy className="w-2.5 h-2.5 mr-0.5" /> Top 5 récompensé
+                    </Badge>
+                  )}
                   <div className="mt-2 flex items-center gap-1 text-xs">
                     {noWord ? (
                       <><Lock className="w-3 h-3" /> <span className="text-muted-foreground">À venir</span></>
