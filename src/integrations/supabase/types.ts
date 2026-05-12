@@ -772,6 +772,7 @@ export type Database = {
           has_accepted_charter: boolean
           id: string
           is_suspended: boolean
+          last_read_gazette: string | null
           rules_accepted: boolean
           rules_accepted_at: string | null
           updated_at: string
@@ -788,6 +789,7 @@ export type Database = {
           has_accepted_charter?: boolean
           id?: string
           is_suspended?: boolean
+          last_read_gazette?: string | null
           rules_accepted?: boolean
           rules_accepted_at?: string | null
           updated_at?: string
@@ -804,6 +806,7 @@ export type Database = {
           has_accepted_charter?: boolean
           id?: string
           is_suspended?: boolean
+          last_read_gazette?: string | null
           rules_accepted?: boolean
           rules_accepted_at?: string | null
           updated_at?: string
