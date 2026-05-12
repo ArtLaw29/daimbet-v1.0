@@ -143,16 +143,22 @@ export default function WordlePage() {
     setGuesses(newGuesses);
     setCurrent('');
     if (guess === target) {
-      setFinished('won');
       if (user) {
         setSubmitting(true);
-        const { data: claim } = await supabase.rpc('submit_wordle_variant' as any, {
+        const { data: claim, error: rpcErr } = await supabase.rpc('submit_wordle_variant' as any, {
           p_variant: activeVariant,
           p_score: { won: true, attempts: newGuesses.length, duration_ms: Date.now() - startedAt },
           p_completed: true,
         });
         const c: any = claim || {};
-        if (c.error) { toast.error(c.error); setSubmitting(false); return; }
+        if (rpcErr || c.error) {
+          toast.error(c.error || rpcErr?.message || 'Erreur réseau — réessaie');
+          // Do NOT mark as finished so the user can retry the submit
+          setGuesses(guesses); // revert the guess so they can try again
+          setSubmitting(false);
+          return;
+        }
+        setFinished('won');
         const rank = c.rank as number | null;
         const amount = Number(c.amount_earned ?? 0);
         if (amount > 0) await refreshProfile();
@@ -169,6 +175,8 @@ export default function WordlePage() {
         }
         setCompleted((m) => ({ ...m, [activeVariant]: { rank, amount } }));
         setSubmitting(false);
+      } else {
+        setFinished('won');
       }
     } else if (newGuesses.length >= ROWS) {
       setFinished('lost');
