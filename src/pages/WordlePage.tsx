@@ -133,6 +133,40 @@ export default function WordlePage() {
     } catch {}
   }, [guesses, finished, activeVariant, today]);
 
+  // Recovery: if local state says "won" but the server has no record yet
+  // (e.g. the user refreshed during the previous claim), retry the claim.
+  useEffect(() => {
+    if (!activeVariant || !user || !target) return;
+    if (finished !== 'won') return;
+    if (completed[activeVariant]) return;
+    if (submitting) return;
+    if (guesses.length === 0 || guesses[guesses.length - 1] !== target) return;
+    let cancelled = false;
+    (async () => {
+      setSubmitting(true);
+      const { data: claim, error: rpcErr } = await supabase.rpc('submit_wordle_variant' as any, {
+        p_variant: activeVariant,
+        p_score: { won: true, attempts: guesses.length, recovered: true },
+        p_completed: true,
+      });
+      if (cancelled) return;
+      const c: any = claim || {};
+      if (rpcErr || c.error) {
+        setSubmitting(false);
+        return;
+      }
+      const rank = c.rank as number | null;
+      const amount = Number(c.amount_earned ?? 0);
+      if (amount > 0) await refreshProfile();
+      if (!c.already && rank) {
+        toast.success(`Bonus récupéré ! ${rank === 1 ? '1er' : rank + 'ème'}${amount > 0 ? ` · +${amount} DC` : ''}`);
+      }
+      setCompleted((m) => ({ ...m, [activeVariant]: { rank, amount } }));
+      setSubmitting(false);
+    })();
+    return () => { cancelled = true; };
+  }, [activeVariant, user, target, finished, completed, submitting, guesses, refreshProfile]);
+
   const alreadyDone = activeVariant ? !!completed[activeVariant] : false;
 
   const submitGuess = useCallback(async () => {
