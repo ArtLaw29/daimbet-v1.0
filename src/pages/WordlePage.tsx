@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Coins, Trophy, Crown, CheckCircle2, Lock } from 'lucide-react';
+import { ArrowLeft, Coins, Trophy, Crown, CheckCircle2, Lock, Library } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -285,6 +285,11 @@ export default function WordlePage() {
                   <div className="text-3xl mb-1">{v.emoji}</div>
                   <div className="font-display text-base">{v.label}</div>
                   <div className="text-[11px] text-muted-foreground">{v.difficulty}</div>
+                  {v.elite && (
+                    <div className="text-[10px] text-muted-foreground/80 italic mt-1 leading-snug">
+                      Histoire, géographie, arts, sports… Teste ta culture générale.
+                    </div>
+                  )}
                   <div className="mt-2 flex items-center gap-1 text-xs">
                     {noWord ? (
                       <><Lock className="w-3 h-3" /> <span className="text-muted-foreground">À venir</span></>
@@ -332,6 +337,15 @@ export default function WordlePage() {
         </div>
         <p className="text-xs text-muted-foreground">6 essais · mot de {COLS} lettres</p>
       </div>
+
+      {variantMeta.elite && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+          <Library className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <span className="font-display tracking-wide">
+            Ce mot est tiré de la culture générale&nbsp;: histoire, géographie, arts, sports, etc. Il peut s'agir d'un nom propre ou d'un événement marquant.
+          </span>
+        </div>
+      )}
 
       {alreadyDone && completed[activeVariant!]?.rank !== null && (
         <Card className="p-3 mb-3 text-center border-success bg-success/10">
