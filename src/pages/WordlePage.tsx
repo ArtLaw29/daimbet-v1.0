@@ -195,6 +195,7 @@ export default function WordlePage() {
         setFinished('won');
         const rank = c.rank as number | null;
         const amount = Number(c.amount_earned ?? 0);
+        const rewardApplied = !c.already;
         if (amount > 0) await refreshProfile();
         if (rank) {
           const ord = rank === 1 ? '1er' : `${rank}ème`;
@@ -204,7 +205,11 @@ export default function WordlePage() {
               { duration: 6000 }
             );
           } else {
-            toast.success(`Bravo ! ${ord} sur ce défi.${amount > 0 ? ` +${amount} DC` : ''}`);
+            toast.success(
+              rewardApplied
+                ? `+${amount} DC remportés ! ${ord} sur ce défi.`
+                : `Bravo ! ${ord} sur ce défi.${amount > 0 ? ` +${amount} DC déjà crédités` : ''}`
+            );
           }
         }
         setCompleted((m) => ({ ...m, [activeVariant]: { rank, amount } }));
