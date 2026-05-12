@@ -7,6 +7,7 @@ import daimcoinLogo from '@/assets/daimcoin-logo.png';
 import { Target, Users, Gamepad2, Dice5, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ResumeGameBanner from '@/components/ResumeGameBanner';
+import { useUnreadGazette } from '@/hooks/useUnreadGazette';
 
 interface NavTab {
   to: string;
@@ -33,6 +34,7 @@ export default function Navbar() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [liveBalance, setLiveBalance] = useState(profile?.balance ?? 0);
   const [hasUnreadTicket, setHasUnreadTicket] = useState(false);
+  const { hasUnreadGazette } = useUnreadGazette();
 
   // Calculate rank
   useEffect(() => {
@@ -135,6 +137,7 @@ export default function Navbar() {
           <nav className="hidden md:flex items-center gap-1" aria-label="Navigation principale">
             {visibleNavTabs.map((tab) => {
               const showDot = tab.to === '/profil' && hasUnreadTicket;
+              const showGazetteDot = tab.to === '/communaute' && hasUnreadGazette;
               return (
                 <Link
                   key={tab.to}
@@ -149,6 +152,9 @@ export default function Navbar() {
                   {tab.label}
                   {showDot && (
                     <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-destructive rounded-full ring-2 ring-background" aria-label="Nouveau message admin" />
+                  )}
+                  {showGazetteDot && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-destructive rounded-full ring-2 ring-background" aria-label="Nouveau message dans la Gazette" />
                   )}
                 </Link>
               );
@@ -189,6 +195,7 @@ export default function Navbar() {
           {visibleNavTabs.map((tab) => {
             const isActive = location.pathname === tab.to;
             const showDot = tab.to === '/profil' && hasUnreadTicket;
+            const showGazetteDot = tab.to === '/communaute' && hasUnreadGazette;
             return (
               <Link
                 key={tab.to}
@@ -204,6 +211,9 @@ export default function Navbar() {
                 </span>
                 {showDot && (
                   <span className="absolute top-0.5 right-2 w-2.5 h-2.5 bg-destructive rounded-full ring-2 ring-background" aria-label="Nouveau message admin" />
+                )}
+                {showGazetteDot && (
+                  <span className="absolute top-0.5 right-2 w-2 h-2 bg-destructive rounded-full ring-2 ring-background" aria-label="Nouveau message dans la Gazette" />
                 )}
               </Link>
             );
