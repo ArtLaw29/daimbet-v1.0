@@ -158,7 +158,14 @@ export default function WordlePage() {
         if (amount > 0) await refreshProfile();
         if (rank) {
           const ord = rank === 1 ? '1er' : `${rank}ème`;
-          toast.success(`Bravo ! ${ord} sur ce défi.${amount > 0 ? ` +${amount} DC` : ''}`);
+          if (activeVariant === 'culture' && amount === 0) {
+            toast.success(
+              `Bravo pour ta culture ! ${ord} sur le Défi Culture. Les récompenses sont épuisées pour aujourd'hui (limité au Top 5). Gain : 0 DC.`,
+              { duration: 6000 }
+            );
+          } else {
+            toast.success(`Bravo ! ${ord} sur ce défi.${amount > 0 ? ` +${amount} DC` : ''}`);
+          }
         }
         setCompleted((m) => ({ ...m, [activeVariant]: { rank, amount } }));
         setSubmitting(false);
