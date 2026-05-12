@@ -279,6 +279,7 @@ export type Database = {
           rewarded: boolean
           score: Json | null
           user_id: string
+          variant: string | null
         }
         Insert: {
           amount_earned?: number
@@ -291,6 +292,7 @@ export type Database = {
           rewarded?: boolean
           score?: Json | null
           user_id: string
+          variant?: string | null
         }
         Update: {
           amount_earned?: number
@@ -303,6 +305,7 @@ export type Database = {
           rewarded?: boolean
           score?: Json | null
           user_id?: string
+          variant?: string | null
         }
         Relationships: [
           {
@@ -1316,6 +1319,10 @@ export type Database = {
           p_score?: Json
           p_user_id: string
         }
+        Returns: Json
+      }
+      submit_wordle_variant: {
+        Args: { p_completed?: boolean; p_score?: Json; p_variant: string }
         Returns: Json
       }
     }
