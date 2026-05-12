@@ -58,6 +58,8 @@ export default function WordlePage() {
   const [finished, setFinished] = useState<'won' | 'lost' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [startedAt, setStartedAt] = useState<number>(Date.now());
+  const [retrying, setRetrying] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
   const today = todayStr();
 
@@ -87,6 +89,18 @@ export default function WordlePage() {
       setLoading(false);
     })();
   }, [user, today]);
+
+  // Public leaderboard for the active variant
+  const loadLeaderboard = useCallback(async () => {
+    if (!activeVariant) return;
+    const { data } = await supabase.rpc('get_wordle_leaderboard' as any, {
+      p_variant: activeVariant,
+      p_date: today,
+    });
+    setLeaderboard(Array.isArray(data) ? data : []);
+  }, [activeVariant, today]);
+
+  useEffect(() => { loadLeaderboard(); }, [loadLeaderboard, completed]);
 
   const target = useMemo(() => {
     if (!content || !activeVariant) return '';
@@ -169,6 +183,31 @@ export default function WordlePage() {
     if (k === 'BACK') { setCurrent(c => c.slice(0, -1)); return; }
     if (current.length < target.length && /^[A-Z]$/.test(k)) setCurrent(c => c + k);
   }, [activeVariant, target, current, finished, alreadyDone, submitGuess]);
+
+  const handleRetry = useCallback(async () => {
+    if (!activeVariant || retrying) return;
+    setRetrying(true);
+    const { data, error } = await supabase.rpc('wordle_retry' as any, { p_variant: activeVariant });
+    const r: any = data || {};
+    if (error || r.error) {
+      toast.error(r.error || error?.message || 'Erreur');
+      setRetrying(false);
+      return;
+    }
+    toast.success('Nouvelle tentative ! -50 DC');
+    await refreshProfile();
+    setCompleted((m) => {
+      const n = { ...m };
+      delete n[activeVariant];
+      return n;
+    });
+    setGuesses([]);
+    setCurrent('');
+    setFinished(null);
+    setStartedAt(Date.now());
+    try { localStorage.removeItem(lsKey(today, activeVariant)); } catch {}
+    setRetrying(false);
+  }, [activeVariant, retrying, refreshProfile, today]);
 
   useEffect(() => {
     if (!activeVariant) return;
@@ -345,7 +384,19 @@ export default function WordlePage() {
       {finished === 'lost' && (
         <Card className="p-4 mb-4 text-center border-destructive bg-destructive/10">
           <p className="text-3xl mb-1">💀</p>
-          <p className="font-display text-lg">Perdu ! Le mot était : <span className="gold-text">{target}</span></p>
+          <p className="font-display text-lg">Perdu ! Le mot reste secret…</p>
+          <p className="text-xs text-muted-foreground mt-1">Tu peux retenter ta chance pour 50 DC.</p>
+          <Button onClick={handleRetry} disabled={retrying} className="mt-3" variant="default">
+            <Coins className="w-4 h-4 mr-1" /> Nouvelle tentative · 50 DC
+          </Button>
+        </Card>
+      )}
+      {alreadyDone && completed[activeVariant!]?.rank === null && finished !== 'lost' && (
+        <Card className="p-3 mb-4 text-center border-primary/40">
+          <p className="text-sm mb-2">Tu as raté ce défi. Une seconde chance ?</p>
+          <Button onClick={handleRetry} disabled={retrying} size="sm">
+            <Coins className="w-4 h-4 mr-1" /> Retenter pour 50 DC
+          </Button>
         </Card>
       )}
 
@@ -387,6 +438,37 @@ export default function WordlePage() {
         <span><b>4e+</b> : 50 DC</span>
         {variantMeta.elite && <Badge variant="default" className="text-[9px]"><Trophy className="w-2.5 h-2.5 mr-0.5" />Culture bonifié</Badge>}
       </div>
+
+      {/* Public leaderboard */}
+      <Card className="mt-6 p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Trophy className="w-4 h-4 text-primary" />
+          <h2 className="font-display text-lg">Classement du défi</h2>
+        </div>
+        {leaderboard.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-2">Personne n'a encore trouvé. Sois le premier !</p>
+        ) : (
+          <ol className="space-y-1.5">
+            {leaderboard.map((row: any) => (
+              <li key={row.user_id} className={`flex items-center gap-2 px-2 py-1.5 rounded-md ${
+                user && row.user_id === user.id ? 'bg-primary/10 border border-primary/30' : 'bg-muted/30'
+              }`}>
+                <span className={`w-6 text-center text-sm font-bold ${row.rank === 1 ? 'text-primary' : ''}`}>
+                  {row.rank === 1 ? '🥇' : row.rank === 2 ? '🥈' : row.rank === 3 ? '🥉' : `#${row.rank}`}
+                </span>
+                <span className="text-lg">{row.emoji || '👤'}</span>
+                <span className="flex-1 text-sm truncate">{row.display_name || 'Anonyme'}</span>
+                {row.attempts != null && (
+                  <span className="text-xs text-muted-foreground">{row.attempts} essai{row.attempts > 1 ? 's' : ''}</span>
+                )}
+                {row.amount_earned > 0 && (
+                  <span className="text-xs font-semibold text-primary">+{row.amount_earned}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </Card>
     </div>
   );
 }
