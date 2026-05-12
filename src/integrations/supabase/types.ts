@@ -1249,6 +1249,19 @@ export type Database = {
           status: Database["public"]["Enums"]["suggestion_status"]
         }[]
       }
+      get_wordle_leaderboard: {
+        Args: { p_date?: string; p_variant: string }
+        Returns: {
+          amount_earned: number
+          attempts: number
+          avatar_url: string
+          display_name: string
+          emoji: string
+          finished_at: string
+          rank: number
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1325,6 +1338,7 @@ export type Database = {
         Args: { p_completed?: boolean; p_score?: Json; p_variant: string }
         Returns: Json
       }
+      wordle_retry: { Args: { p_variant: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user"
