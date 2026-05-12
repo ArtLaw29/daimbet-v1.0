@@ -158,7 +158,14 @@ export default function WordlePage() {
         if (amount > 0) await refreshProfile();
         if (rank) {
           const ord = rank === 1 ? '1er' : `${rank}ème`;
-          toast.success(`Bravo ! ${ord} sur ce défi.${amount > 0 ? ` +${amount} DC` : ''}`);
+          if (activeVariant === 'culture' && amount === 0) {
+            toast.success(
+              `Bravo pour ta culture ! ${ord} sur le Défi Culture. Les récompenses sont épuisées pour aujourd'hui (limité au Top 5). Gain : 0 DC.`,
+              { duration: 6000 }
+            );
+          } else {
+            toast.success(`Bravo ! ${ord} sur ce défi.${amount > 0 ? ` +${amount} DC` : ''}`);
+          }
         }
         setCompleted((m) => ({ ...m, [activeVariant]: { rank, amount } }));
         setSubmitting(false);
@@ -289,6 +296,11 @@ export default function WordlePage() {
                     <div className="text-[10px] text-muted-foreground/80 italic mt-1 leading-snug">
                       Histoire, géographie, arts, sports… Teste ta culture générale.
                     </div>
+                  )}
+                  {v.elite && (
+                    <Badge variant="outline" className="mt-2 text-[9px] px-1.5 py-0 border-primary/60 text-primary">
+                      <Trophy className="w-2.5 h-2.5 mr-0.5" /> Top 5 récompensé
+                    </Badge>
                   )}
                   <div className="mt-2 flex items-center gap-1 text-xs">
                     {noWord ? (
