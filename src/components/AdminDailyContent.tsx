@@ -148,12 +148,12 @@ const WORDLE_VARIANTS: { key: string; label: string; minLen: number; maxLen: num
 ];
 
 const DEFAULT_VARIANT_REWARDS: Record<string, number[]> = {
-  '5': [500, 300, 200, 100, 50],
-  '6': [500, 300, 200, 100, 50],
-  '7': [500, 300, 200, 100, 50],
-  '8': [500, 300, 200, 100, 50],
-  '9': [500, 300, 200, 100, 50],
-  'culture': [800, 500, 300, 100, 50],
+  '5': [500, 300, 200, 50, 50],
+  '6': [500, 300, 200, 50, 50],
+  '7': [500, 300, 200, 50, 50],
+  '8': [500, 300, 200, 50, 50],
+  '9': [500, 300, 200, 50, 50],
+  'culture': [800, 500, 300, 200, 100],
 };
 
 function WordleEditor() {
@@ -237,6 +237,15 @@ function WordleEditor() {
                 {v.elite && <span className="ml-2 text-[10px] uppercase tracking-wider text-primary">Élite</span>}
               </Label>
             </div>
+            {v.elite ? (
+              <p className="text-[11px] text-primary/80 italic">
+                Barème Premium : 800 / 500 / 300 / 200 / 100 / 0 — limité au Top 5.
+              </p>
+            ) : (
+              <p className="text-[11px] text-muted-foreground italic">
+                Barème : 500 / 300 / 200 puis 50 DC de participation pour les suivants.
+              </p>
+            )}
             <Input
               value={words[v.key] || ''}
               onChange={(e) => setWords((s) => ({ ...s, [v.key]: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))}
