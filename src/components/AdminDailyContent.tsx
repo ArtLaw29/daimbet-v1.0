@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Check, X, Trash2, Trophy } from 'lucide-react';
+import { Check, X, Trash2, Trophy, Crown } from 'lucide-react';
 
 type DailyType = 'wordle' | 'sudoku' | 'mots_croisés';
 
@@ -42,7 +42,7 @@ function normalizeRewards(r: any): number[] {
 
 const RANK_LABELS = ['1er', '2ème', '3ème', '4ème', '5ème'];
 
-function RewardsSettings({ value, onChange }: { value: number[]; onChange: (v: number[]) => void }) {
+function RewardsSettings({ value, onChange, title }: { value: number[]; onChange: (v: number[]) => void; title?: string }) {
   const rewards = normalizeRewards(value);
   const update = (i: number, raw: string) => {
     const n = Math.max(0, parseInt(raw, 10) || 0);
@@ -54,7 +54,7 @@ function RewardsSettings({ value, onChange }: { value: number[]; onChange: (v: n
     <div className="space-y-2 border border-border/60 rounded-md p-3 bg-muted/20">
       <div className="flex items-center gap-2">
         <Trophy className="w-4 h-4 text-primary" />
-        <Label className="text-sm font-display">Récompenses des Top 5 (DC)</Label>
+        <Label className="text-sm font-display">{title || 'Récompenses des Top 5 (DC)'}</Label>
       </div>
       <div className="grid grid-cols-5 gap-2">
         {RANK_LABELS.map((label, i) => (
@@ -138,26 +138,67 @@ function useDailyItems(type: DailyType) {
   return { items, loading, reload: load };
 }
 
+const WORDLE_VARIANTS: { key: string; label: string; minLen: number; maxLen: number; elite?: boolean }[] = [
+  { key: '5', label: '5 lettres', minLen: 5, maxLen: 5 },
+  { key: '6', label: '6 lettres', minLen: 6, maxLen: 6 },
+  { key: '7', label: '7 lettres', minLen: 7, maxLen: 7 },
+  { key: '8', label: '8 lettres', minLen: 8, maxLen: 8 },
+  { key: '9', label: '9 lettres', minLen: 9, maxLen: 9 },
+  { key: 'culture', label: 'Culture (5–12)', minLen: 5, maxLen: 12, elite: true },
+];
+
+const DEFAULT_VARIANT_REWARDS: Record<string, number[]> = {
+  '5': [500, 300, 200, 50, 50],
+  '6': [500, 300, 200, 50, 50],
+  '7': [500, 300, 200, 50, 50],
+  '8': [500, 300, 200, 50, 50],
+  '9': [500, 300, 200, 50, 50],
+  'culture': [800, 500, 300, 100, 50],
+};
+
 function WordleEditor() {
   const { items, reload } = useDailyItems('wordle');
   const [date, setDate] = useState(next7Days()[0]);
-  const [word, setWord] = useState('');
-  const [rewards, setRewards] = useState<number[]>([500, 300, 200, 100, 50]);
+  const [words, setWords] = useState<Record<string, string>>({});
+  const [rewards, setRewards] = useState<Record<string, number[]>>({});
   const [revealAt, setRevealAt] = useState('09:30');
   const existing = items.find((it) => it.scheduled_date === date);
 
   useEffect(() => {
-    if (existing) {
-      setWord(String(existing.data?.word || ''));
-      setRewards(normalizeRewards(existing.data?.rewards));
-      setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
-    } else { setWord(''); setRewards([500, 300, 200, 100, 50]); setRevealAt('09:30'); }
+    const initWords: Record<string, string> = {};
+    const initRewards: Record<string, number[]> = {};
+    const data: any = existing?.data || {};
+    WORDLE_VARIANTS.forEach((v) => {
+      // Backward compat: legacy `word` -> word_5
+      const legacy = v.key === '5' && !data['word_5'] && typeof data.word === 'string' ? String(data.word) : '';
+      initWords[v.key] = String(data['word_' + v.key] || legacy || '').toUpperCase();
+      initRewards[v.key] = normalizeRewards(data['rewards_' + v.key] || data.rewards || DEFAULT_VARIANT_REWARDS[v.key]);
+    });
+    setWords(initWords);
+    setRewards(initRewards);
+    setRevealAt(((existing as any)?.reveal_at || '09:30:00').slice(0, 5));
   }, [date, existing?.id]);
 
   const save = async () => {
-    const w = word.trim().toUpperCase();
-    if (w.length !== 5 || !/^[A-Z]+$/.test(w)) return toast.error('Le mot doit faire exactement 5 lettres (A-Z)');
-    const payload = { word: w, rewards };
+    const payload: any = {};
+    for (const v of WORDLE_VARIANTS) {
+      const w = (words[v.key] || '').trim().toUpperCase();
+      if (!w) {
+        return toast.error(`Le mot « ${v.label} » est manquant`);
+      }
+      if (!/^[A-Z]+$/.test(w)) {
+        return toast.error(`« ${v.label} » : lettres A–Z uniquement`);
+      }
+      if (w.length < v.minLen || w.length > v.maxLen) {
+        return toast.error(
+          v.minLen === v.maxLen
+            ? `« ${v.label} » doit faire exactement ${v.minLen} lettres`
+            : `« ${v.label} » doit faire entre ${v.minLen} et ${v.maxLen} lettres`
+        );
+      }
+      payload['word_' + v.key] = w;
+      payload['rewards_' + v.key] = rewards[v.key] || DEFAULT_VARIANT_REWARDS[v.key];
+    }
     const reveal = `${revealAt}:00`;
     if (existing) {
       const { error } = await supabase.from('daily_content').update({ data: payload, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
@@ -166,32 +207,57 @@ function WordleEditor() {
       const { error } = await supabase.from('daily_content').insert({ type: 'wordle', scheduled_date: date, status: 'actif', data: payload, reveal_at: reveal } as any);
       if (error) return toast.error(error.message);
     }
-    toast.success('Mot du jour enregistré ✅');
+    toast.success('6 défis enregistrés ✅');
     await reload();
   };
 
   const remove = async () => {
     if (!existing) return;
-    if (!confirm('Supprimer ce Mot du jour ?')) return;
+    if (!confirm('Supprimer ces 6 défis du jour ?')) return;
     await supabase.from('daily_content').delete().eq('id', existing.id);
     toast.success('Supprimé');
     await reload();
   };
 
   return (
-    <Card className="p-4 space-y-3">
+    <Card className="p-4 space-y-4">
       <CalendarStrip items={items} selected={date} onSelect={setDate} />
-      <div>
-        <Label>Mot (5 lettres)</Label>
-        <Input value={word} onChange={(e) => setWord(e.target.value.toUpperCase())} maxLength={5} className="uppercase font-mono text-lg tracking-widest" />
+      <div className="space-y-4">
+        {WORDLE_VARIANTS.map((v) => (
+          <div
+            key={v.key}
+            className={`space-y-2 rounded-lg p-3 border ${
+              v.elite ? 'border-primary/60 bg-primary/5' : 'border-border bg-card'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {v.elite && <Crown className="w-4 h-4 text-primary" />}
+              <Label className="font-display">
+                Défi {v.label}
+                {v.elite && <span className="ml-2 text-[10px] uppercase tracking-wider text-primary">Élite</span>}
+              </Label>
+            </div>
+            <Input
+              value={words[v.key] || ''}
+              onChange={(e) => setWords((s) => ({ ...s, [v.key]: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))}
+              maxLength={v.maxLen}
+              placeholder={v.minLen === v.maxLen ? `${v.minLen} lettres` : `${v.minLen} à ${v.maxLen} lettres`}
+              className="uppercase font-mono text-lg tracking-widest"
+            />
+            <RewardsSettings
+              value={rewards[v.key] || DEFAULT_VARIANT_REWARDS[v.key]}
+              onChange={(r) => setRewards((s) => ({ ...s, [v.key]: r }))}
+              title={`Récompenses « ${v.label} »`}
+            />
+          </div>
+        ))}
       </div>
-      <RewardsSettings value={rewards} onChange={setRewards} />
       <div>
         <Label>Heure de dévoilement (Europe/Paris)</Label>
         <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
       </div>
       <div className="flex gap-2">
-        <Button onClick={save} className="flex-1">Enregistrer</Button>
+        <Button onClick={save} className="flex-1">Enregistrer les 6 défis</Button>
         {existing && <Button variant="outline" onClick={remove}><Trash2 className="w-4 h-4" /></Button>}
       </div>
       {existing && <Badge variant="secondary" className="text-xs">Déjà programmé</Badge>}

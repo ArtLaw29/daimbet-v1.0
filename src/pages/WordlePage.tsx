@@ -1,159 +1,177 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Coins, Trophy } from 'lucide-react';
+import { ArrowLeft, Coins, Trophy, Crown, CheckCircle2, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
 
 const ROWS = 6;
-const COLS = 5;
 const KB_ROWS = ['AZERTYUIOP', 'QSDFGHJKLM', 'WXCVBN'];
 
 type LetterState = 'correct' | 'present' | 'absent' | 'empty';
 
+const VARIANTS: { key: string; label: string; short: string; emoji: string; difficulty: string; color: string; elite?: boolean }[] = [
+  { key: '5', label: 'Défi 5 lettres', short: '5', emoji: '🟢', difficulty: 'Facile', color: 'border-success/60 bg-success/5' },
+  { key: '6', label: 'Défi 6 lettres', short: '6', emoji: '🔵', difficulty: 'Moyen', color: 'border-blue-500/60 bg-blue-500/5' },
+  { key: '7', label: 'Défi 7 lettres', short: '7', emoji: '🟣', difficulty: 'Costaud', color: 'border-purple-500/60 bg-purple-500/5' },
+  { key: '8', label: 'Défi 8 lettres', short: '8', emoji: '🟠', difficulty: 'Hardcore', color: 'border-warning/60 bg-warning/5' },
+  { key: '9', label: 'Défi 9 lettres', short: '9', emoji: '🔴', difficulty: 'Démoniaque', color: 'border-destructive/60 bg-destructive/5' },
+  { key: 'culture', label: 'Défi Culture', short: 'C', emoji: '👑', difficulty: 'Élite', color: 'border-primary/80 bg-primary/10', elite: true },
+];
+
 function evaluate(guess: string, target: string): LetterState[] {
-  const res: LetterState[] = Array(COLS).fill('absent');
+  const cols = target.length;
+  const res: LetterState[] = Array(cols).fill('absent');
   const tArr = target.split('');
   const gArr = guess.split('');
-  const used = Array(COLS).fill(false);
-  for (let i = 0; i < COLS; i++) {
+  const used = Array(cols).fill(false);
+  for (let i = 0; i < cols; i++) {
     if (gArr[i] === tArr[i]) { res[i] = 'correct'; used[i] = true; }
   }
-  for (let i = 0; i < COLS; i++) {
+  for (let i = 0; i < cols; i++) {
     if (res[i] === 'correct') continue;
-    for (let j = 0; j < COLS; j++) {
+    for (let j = 0; j < cols; j++) {
       if (!used[j] && gArr[i] === tArr[j]) { res[i] = 'present'; used[j] = true; break; }
     }
   }
   return res;
 }
 
+const lsKey = (date: string, variant: string) => `wordle:${date}:${variant}`;
+
 export default function WordlePage() {
-  const GAME_TYPE = 'wordle';
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState<any>(null);
-  const [target, setTarget] = useState<string>('');
+  const [completed, setCompleted] = useState<Record<string, { rank: number | null; amount: number }>>({});
+  const [activeVariant, setActiveVariant] = useState<string | null>(null);
+
+  // Per-variant game state
   const [guesses, setGuesses] = useState<string[]>([]);
   const [current, setCurrent] = useState('');
   const [finished, setFinished] = useState<'won' | 'lost' | null>(null);
-  const [alreadyPlayed, setAlreadyPlayed] = useState(false);
-  const [scores, setScores] = useState<any[]>([]);
-  const [startedAt] = useState<number>(Date.now());
+  const [submitting, setSubmitting] = useState(false);
+  const [startedAt, setStartedAt] = useState<number>(Date.now());
 
-  // Load today's content + check if already played
+  const today = todayStr();
+
+  // Load today's content + user's completion status for each variant
   useEffect(() => {
     (async () => {
       const { data: dc } = await supabase
         .from('daily_content')
         .select('*')
         .eq('type', 'wordle')
-        .eq('scheduled_date', todayStr())
+        .eq('scheduled_date', today)
         .eq('status', 'actif')
         .maybeSingle();
-      if (!dc) { setLoading(false); return; }
       setContent(dc);
-      const data = dc.data as any;
-      setTarget(String(data.word || '').toUpperCase());
       if (user) {
-        const { data: existing } = await supabase
-          .from('daily_scores').select('*')
-          .eq('game_type', GAME_TYPE)
-          .eq('played_on', todayStr())
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (existing) setAlreadyPlayed(true);
+        const { data: scores } = await supabase
+          .from('daily_scores').select('variant,rank,amount_earned')
+          .eq('game_type', 'wordle')
+          .eq('played_on', today)
+          .eq('user_id', user.id);
+        const map: Record<string, { rank: number | null; amount: number }> = {};
+        (scores || []).forEach((s: any) => {
+          if (s.variant) map[s.variant] = { rank: s.rank, amount: Number(s.amount_earned || 0) };
+        });
+        setCompleted(map);
       }
-      await loadScores();
       setLoading(false);
     })();
-  }, [user]);
+  }, [user, today]);
 
-  const loadScores = async () => {
-    const { data } = await supabase
-      .from('daily_scores')
-      .select('*')
-      .eq('game_type', GAME_TYPE)
-      .eq('played_on', todayStr())
-      .order('finished_at', { ascending: true })
-      .limit(20);
-    const rows = data || [];
-    const ids = Array.from(new Set(rows.map((r: any) => r.user_id)));
-    let profMap: Record<string, any> = {};
-    if (ids.length) {
-      const { data: profs } = await supabase
-        .from('profiles_public' as any).select('user_id, display_name, emoji').in('user_id', ids);
-      (profs || []).forEach((p: any) => { profMap[p.user_id] = p; });
-    }
-    setScores(rows.map((r: any) => ({ ...r, profiles: profMap[r.user_id] })));
-  };
+  const target = useMemo(() => {
+    if (!content || !activeVariant) return '';
+    return String((content.data as any)?.['word_' + activeVariant] || '').toUpperCase();
+  }, [content, activeVariant]);
+
+  // Load saved progress for active variant
+  useEffect(() => {
+    if (!activeVariant) return;
+    setStartedAt(Date.now());
+    setCurrent('');
+    try {
+      const raw = localStorage.getItem(lsKey(today, activeVariant));
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setGuesses(Array.isArray(saved.guesses) ? saved.guesses : []);
+        setFinished(saved.finished ?? null);
+        return;
+      }
+    } catch {}
+    setGuesses([]);
+    setFinished(null);
+  }, [activeVariant, today]);
+
+  // Persist progress
+  useEffect(() => {
+    if (!activeVariant) return;
+    try {
+      localStorage.setItem(lsKey(today, activeVariant), JSON.stringify({ guesses, finished }));
+    } catch {}
+  }, [guesses, finished, activeVariant, today]);
+
+  const alreadyDone = activeVariant ? !!completed[activeVariant] : false;
 
   const submitGuess = useCallback(async () => {
-    if (current.length !== COLS || finished || alreadyPlayed) return;
+    if (!activeVariant || !target) return;
+    if (current.length !== target.length || finished || alreadyDone || submitting) return;
     const guess = current.toUpperCase();
     const newGuesses = [...guesses, guess];
     setGuesses(newGuesses);
     setCurrent('');
     if (guess === target) {
       setFinished('won');
-      if (user && content) {
-        const { data: claim } = await supabase.rpc('submit_game_result' as any, {
-          p_user_id: user.id,
-          p_game_type: GAME_TYPE,
-          p_score: {
-            won: true,
-            attempts: newGuesses.length,
-            duration_ms: Date.now() - startedAt,
-          },
+      if (user) {
+        setSubmitting(true);
+        const { data: claim } = await supabase.rpc('submit_wordle_variant' as any, {
+          p_variant: activeVariant,
+          p_score: { won: true, attempts: newGuesses.length, duration_ms: Date.now() - startedAt },
           p_completed: true,
         });
         const c: any = claim || {};
-        if (c.error) {
-          toast.error(c.error);
-          return;
-        }
+        if (c.error) { toast.error(c.error); setSubmitting(false); return; }
         const rank = c.rank as number | null;
-        const amountEarned = Number(c.amount_earned ?? 0);
-        if (amountEarned > 0) await refreshProfile();
+        const amount = Number(c.amount_earned ?? 0);
+        if (amount > 0) await refreshProfile();
         if (rank) {
           const ord = rank === 1 ? '1er' : `${rank}ème`;
-          toast.success(`Bravo ! Tu as fini ${ord} aujourd'hui.${amountEarned > 0 ? ` Tu gagnes ${amountEarned} DC.` : ' Tu ne gagnes pas de DC.'}`);
+          toast.success(`Bravo ! ${ord} sur ce défi.${amount > 0 ? ` +${amount} DC` : ''}`);
         }
-        await loadScores();
-        setAlreadyPlayed(true);
+        setCompleted((m) => ({ ...m, [activeVariant]: { rank, amount } }));
+        setSubmitting(false);
       }
     } else if (newGuesses.length >= ROWS) {
       setFinished('lost');
-      if (user && content) {
-        await supabase.rpc('submit_game_result' as any, {
-          p_user_id: user.id,
-          p_game_type: GAME_TYPE,
-          p_score: {
-            won: false,
-            attempts: newGuesses.length,
-            duration_ms: Date.now() - startedAt,
-          },
+      if (user) {
+        await supabase.rpc('submit_wordle_variant' as any, {
+          p_variant: activeVariant,
+          p_score: { won: false, attempts: newGuesses.length, duration_ms: Date.now() - startedAt },
           p_completed: false,
         });
-        setAlreadyPlayed(true);
+        setCompleted((m) => ({ ...m, [activeVariant]: { rank: null, amount: 0 } }));
       }
     }
-  }, [GAME_TYPE, current, finished, alreadyPlayed, guesses, target, user, content, refreshProfile, startedAt]);
+  }, [activeVariant, target, current, finished, alreadyDone, submitting, guesses, user, refreshProfile, startedAt]);
 
   const pressKey = useCallback((k: string) => {
-    if (finished || alreadyPlayed) return;
+    if (!activeVariant || !target) return;
+    if (finished || alreadyDone) return;
     if (k === 'ENTER') { submitGuess(); return; }
     if (k === 'BACK') { setCurrent(c => c.slice(0, -1)); return; }
-    if (current.length < COLS && /^[A-Z]$/.test(k)) setCurrent(c => c + k);
-  }, [current, finished, alreadyPlayed, submitGuess]);
+    if (current.length < target.length && /^[A-Z]$/.test(k)) setCurrent(c => c + k);
+  }, [activeVariant, target, current, finished, alreadyDone, submitGuess]);
 
-  // Physical keyboard
   useEffect(() => {
+    if (!activeVariant) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter') pressKey('ENTER');
       else if (e.key === 'Backspace') pressKey('BACK');
@@ -161,158 +179,214 @@ export default function WordlePage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pressKey]);
+  }, [pressKey, activeVariant]);
 
-  // Per-letter state for keyboard
   const letterStates: Record<string, LetterState> = {};
-  guesses.forEach(g => {
-    const ev = evaluate(g, target);
-    g.split('').forEach((l, i) => {
-      const prev = letterStates[l];
-      const cur = ev[i];
-      const rank = { correct: 3, present: 2, absent: 1, empty: 0 } as const;
-      if (!prev || rank[cur] > rank[prev]) letterStates[l] = cur;
+  if (target) {
+    guesses.forEach(g => {
+      const ev = evaluate(g, target);
+      g.split('').forEach((l, i) => {
+        const prev = letterStates[l];
+        const cur = ev[i];
+        const rank = { correct: 3, present: 2, absent: 1, empty: 0 } as const;
+        if (!prev || rank[cur] > rank[prev]) letterStates[l] = cur;
+      });
     });
-  });
+  }
 
-  const reveal = useRevealCountdown((content as any)?.reveal_at, todayStr());
+  const reveal = useRevealCountdown((content as any)?.reveal_at, today);
 
   if (loading) return <div className="p-8 text-center text-muted-foreground">Chargement…</div>;
 
-  return (
-    <div className="container mx-auto px-4 py-6 pb-20 md:pb-6 max-w-md">
-      <button onClick={() => navigate('/jeux')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm">
-        <ArrowLeft className="w-4 h-4" /> Retour aux jeux
-      </button>
-      <div className="text-center mb-6">
-        <h1 className="text-4xl font-display gold-text">🔠 Mot du jour</h1>
-        <p className="text-sm text-muted-foreground mt-1">6 essais pour trouver le mot de 5 lettres</p>
-      </div>
+  // ── Selection screen ──
+  if (!activeVariant) {
+    return (
+      <div className="container mx-auto px-4 py-6 pb-20 md:pb-6 max-w-2xl">
+        <button onClick={() => navigate('/jeux')} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm">
+          <ArrowLeft className="w-4 h-4" /> Retour aux jeux
+        </button>
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-display gold-text">🔠 Mot du jour</h1>
+          <p className="text-sm text-muted-foreground mt-1">6 défis indépendants — choisis ton challenge</p>
+        </div>
 
-      {!content ? (
-        <Card className="p-8 text-center">
-          <p className="text-5xl mb-3">🌙</p>
-          <p className="font-display text-xl">Aucun mot disponible aujourd'hui, reviens demain</p>
-        </Card>
-      ) : !reveal.revealed ? (
-        <Card className="p-8 text-center">
-          <p className="text-5xl mb-3">⏳</p>
-          <p className="font-display text-xl">Disponible dans</p>
-          <p className="text-4xl font-mono gold-text mt-2 tabular-nums">{reveal.countdown}</p>
-        </Card>
-      ) : (
-        <>
-          {alreadyPlayed && !finished && (
-            <Card className="p-4 mb-4 text-center border-primary/30">
-              <p className="text-sm">Tu as déjà joué aujourd'hui. Reviens demain ! 🦌</p>
-            </Card>
-          )}
-
-          {/* Grid */}
-          <div className="grid gap-1.5 mb-5">
-            {Array.from({ length: ROWS }).map((_, r) => {
-              const guess = guesses[r] || (r === guesses.length ? current : '');
-              const ev = guesses[r] ? evaluate(guesses[r], target) : null;
+        {!content ? (
+          <Card className="p-8 text-center">
+            <p className="text-5xl mb-3">🌙</p>
+            <p className="font-display text-xl">Aucun défi disponible aujourd'hui, reviens demain</p>
+          </Card>
+        ) : !reveal.revealed ? (
+          <Card className="p-8 text-center">
+            <p className="text-5xl mb-3">⏳</p>
+            <p className="font-display text-xl">Disponible dans</p>
+            <p className="text-4xl font-mono gold-text mt-2 tabular-nums">{reveal.countdown}</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {VARIANTS.map((v) => {
+              const word = String((content.data as any)?.['word_' + v.key] || '');
+              const done = completed[v.key];
+              const won = done && done.rank !== null;
+              const lost = done && done.rank === null;
+              const noWord = !word;
               return (
-                <div key={r} className="grid grid-cols-5 gap-1.5">
-                  {Array.from({ length: COLS }).map((_, c) => {
-                    const letter = guess[c] || '';
-                    const state: LetterState = ev ? ev[c] : 'empty';
-                    return (
-                      <motion.div key={c}
-                        initial={false}
-                        animate={ev ? { rotateX: [0, 90, 0] } : {}}
-                        transition={{ delay: c * 0.1, duration: 0.4 }}
-                        className={`aspect-square flex items-center justify-center rounded-md text-2xl font-bold uppercase border-2 ${
-                          state === 'correct' ? 'bg-success text-success-foreground border-success' :
-                          state === 'present' ? 'bg-warning text-warning-foreground border-warning' :
-                          state === 'absent' ? 'bg-muted text-muted-foreground border-muted' :
-                          letter ? 'border-primary/50 bg-card' : 'border-border bg-card'
-                        }`}>
-                        {letter}
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                <button
+                  key={v.key}
+                  disabled={noWord}
+                  onClick={() => setActiveVariant(v.key)}
+                  className={`relative p-4 rounded-lg border-2 text-left transition hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed ${v.color} ${
+                    v.elite ? 'shadow-[0_0_20px_hsl(var(--primary)/0.3)]' : ''
+                  }`}
+                >
+                  {v.elite && (
+                    <Badge variant="default" className="absolute top-2 right-2 text-[9px] px-1.5 py-0 gap-0.5">
+                      <Crown className="w-2.5 h-2.5" /> Élite
+                    </Badge>
+                  )}
+                  <div className="text-3xl mb-1">{v.emoji}</div>
+                  <div className="font-display text-base">{v.label}</div>
+                  <div className="text-[11px] text-muted-foreground">{v.difficulty}</div>
+                  <div className="mt-2 flex items-center gap-1 text-xs">
+                    {noWord ? (
+                      <><Lock className="w-3 h-3" /> <span className="text-muted-foreground">À venir</span></>
+                    ) : won ? (
+                      <><CheckCircle2 className="w-3.5 h-3.5 text-success" /> <span className="text-success font-semibold">Trouvé · #{done!.rank}</span></>
+                    ) : lost ? (
+                      <span className="text-destructive font-semibold">💀 Raté</span>
+                    ) : (
+                      <span className="text-primary font-semibold">À jouer →</span>
+                    )}
+                  </div>
+                </button>
               );
             })}
           </div>
+        )}
+      </div>
+    );
+  }
 
-          {finished === 'won' && (
-            <Card className="p-4 mb-4 text-center border-success bg-success/10">
-              <p className="text-3xl mb-1">🏆</p>
-              <p className="font-display text-lg">Bravo ! Tu as trouvé le mot.</p>
-            </Card>
-          )}
-          {finished === 'lost' && (
-            <Card className="p-4 mb-4 text-center border-destructive bg-destructive/10">
-              <p className="text-3xl mb-1">💀</p>
-              <p className="font-display text-lg">Perdu ! Le mot était : <span className="gold-text">{target}</span></p>
-            </Card>
-          )}
+  // ── Game screen ──
+  if (!target) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-md text-center">
+        <p className="text-muted-foreground">Mot indisponible</p>
+        <Button variant="outline" className="mt-4" onClick={() => setActiveVariant(null)}>Retour aux défis</Button>
+      </div>
+    );
+  }
 
-          {/* Keyboard */}
-          {!finished && !alreadyPlayed && (
-            <div className="space-y-1.5">
-              {KB_ROWS.map((row, ri) => (
-                <div key={ri} className="flex gap-1 justify-center">
-                  {ri === 2 && (
-                    <Button onClick={() => pressKey('ENTER')} variant="secondary" className="h-12 px-2 text-xs">OK</Button>
-                  )}
-                  {row.split('').map(l => {
-                    const st = letterStates[l];
-                    return (
-                      <button key={l} onClick={() => pressKey(l)}
-                        className={`flex-1 h-12 rounded-md text-sm font-semibold transition-colors ${
-                          st === 'correct' ? 'bg-success text-success-foreground' :
-                          st === 'present' ? 'bg-warning text-warning-foreground' :
-                          st === 'absent' ? 'bg-muted text-muted-foreground' :
-                          'bg-card border border-border hover:bg-secondary'
-                        }`}>
-                        {l}
-                      </button>
-                    );
-                  })}
-                  {ri === 2 && (
-                    <Button onClick={() => pressKey('BACK')} variant="secondary" className="h-12 px-2 text-xs">⌫</Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+  const COLS = target.length;
+  const variantMeta = VARIANTS.find((v) => v.key === activeVariant)!;
+  const gridCellSize = COLS >= 9 ? 'text-base' : COLS >= 7 ? 'text-xl' : 'text-2xl';
+  const containerWidth = COLS >= 9 ? 'max-w-lg' : COLS >= 7 ? 'max-w-md' : 'max-w-md';
 
-          {/* Rewards (course à la victoire) */}
-          <div className="mt-6 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
-            <Coins className="w-4 h-4 text-primary" />
-            <span><b>1er</b> : 500 DC</span>
-            <span><b>2e</b> : 250 DC</span>
-            <span><b>3e</b> : 100 DC</span>
-            <span><b>4e+</b> : 0 DC</span>
-          </div>
+  return (
+    <div className={`container mx-auto px-4 py-6 pb-20 md:pb-6 ${containerWidth}`}>
+      <button onClick={() => setActiveVariant(null)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm">
+        <ArrowLeft className="w-4 h-4" /> Retour aux défis
+      </button>
+      <div className="text-center mb-4">
+        <div className="flex items-center justify-center gap-2 mb-1">
+          {variantMeta.elite && <Crown className="w-5 h-5 text-primary" />}
+          <h1 className="text-3xl font-display gold-text">{variantMeta.label}</h1>
+        </div>
+        <p className="text-xs text-muted-foreground">6 essais · mot de {COLS} lettres</p>
+      </div>
 
-          {/* Leaderboard */}
-          <div className="mt-8">
-            <h2 className="text-xl font-display flex items-center gap-2 mb-3"><Trophy className="w-5 h-5 text-primary" /> Classement du jour</h2>
-            {scores.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Sois le premier à finir !</p>
-            ) : (
-              <div className="space-y-1.5">
-                {scores.filter(s => s.rank).map((s) => (
-                  <div key={s.id} className="flex items-center justify-between p-2.5 rounded-md bg-card border border-border text-sm">
-                    <span className="flex items-center gap-2">
-                      <span className="font-bold w-6 text-center">{s.rank}</span>
-                      <span>{s.profiles?.emoji || '🦌'} {s.profiles?.display_name || '?'}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(s.finished_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
+      {alreadyDone && completed[activeVariant!]?.rank !== null && (
+        <Card className="p-3 mb-3 text-center border-success bg-success/10">
+          <p className="text-sm">Tu as terminé ce défi {completed[activeVariant!]!.rank === 1 ? '1er' : `${completed[activeVariant!]!.rank}ème`}.
+            {completed[activeVariant!]!.amount > 0 && ` +${completed[activeVariant!]!.amount} DC`}</p>
+        </Card>
       )}
+      {alreadyDone && completed[activeVariant!]?.rank === null && (
+        <Card className="p-3 mb-3 text-center border-destructive bg-destructive/10">
+          <p className="text-sm">Tu as déjà tenté ce défi aujourd'hui.</p>
+        </Card>
+      )}
+
+      {/* Grid */}
+      <div className="grid gap-1.5 mb-5">
+        {Array.from({ length: ROWS }).map((_, r) => {
+          const guess = guesses[r] || (r === guesses.length ? current : '');
+          const ev = guesses[r] ? evaluate(guesses[r], target) : null;
+          return (
+            <div key={r} className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}>
+              {Array.from({ length: COLS }).map((_, c) => {
+                const letter = guess[c] || '';
+                const state: LetterState = ev ? ev[c] : 'empty';
+                return (
+                  <motion.div key={c}
+                    initial={false}
+                    animate={ev ? { rotateX: [0, 90, 0] } : {}}
+                    transition={{ delay: c * 0.08, duration: 0.4 }}
+                    className={`aspect-square flex items-center justify-center rounded-md ${gridCellSize} font-bold uppercase border-2 ${
+                      state === 'correct' ? 'bg-success text-success-foreground border-success' :
+                      state === 'present' ? 'bg-warning text-warning-foreground border-warning' :
+                      state === 'absent' ? 'bg-muted text-muted-foreground border-muted' :
+                      letter ? 'border-primary/50 bg-card' : 'border-border bg-card'
+                    }`}>
+                    {letter}
+                  </motion.div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
+      {finished === 'won' && !alreadyDone && (
+        <Card className="p-4 mb-4 text-center border-success bg-success/10">
+          <p className="text-3xl mb-1">🏆</p>
+          <p className="font-display text-lg">Bravo ! Tu as trouvé le mot.</p>
+        </Card>
+      )}
+      {finished === 'lost' && (
+        <Card className="p-4 mb-4 text-center border-destructive bg-destructive/10">
+          <p className="text-3xl mb-1">💀</p>
+          <p className="font-display text-lg">Perdu ! Le mot était : <span className="gold-text">{target}</span></p>
+        </Card>
+      )}
+
+      {/* Keyboard */}
+      {!finished && !alreadyDone && (
+        <div className="space-y-1.5">
+          {KB_ROWS.map((row, ri) => (
+            <div key={ri} className="flex gap-1 justify-center">
+              {ri === 2 && (
+                <Button onClick={() => pressKey('ENTER')} variant="secondary" className="h-12 px-2 text-xs">OK</Button>
+              )}
+              {row.split('').map(l => {
+                const st = letterStates[l];
+                return (
+                  <button key={l} onClick={() => pressKey(l)}
+                    className={`flex-1 h-12 rounded-md text-sm font-semibold transition-colors ${
+                      st === 'correct' ? 'bg-success text-success-foreground' :
+                      st === 'present' ? 'bg-warning text-warning-foreground' :
+                      st === 'absent' ? 'bg-muted text-muted-foreground' :
+                      'bg-card border border-border hover:bg-secondary'
+                    }`}>
+                    {l}
+                  </button>
+                );
+              })}
+              {ri === 2 && (
+                <Button onClick={() => pressKey('BACK')} variant="secondary" className="h-12 px-2 text-xs">⌫</Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 p-3 rounded-lg bg-card border border-primary/20 text-xs flex items-center justify-center gap-3 flex-wrap">
+        <Coins className="w-4 h-4 text-primary" />
+        <span><b>1er</b> : 500 DC</span>
+        <span><b>2e</b> : 300 DC</span>
+        <span><b>3e</b> : 200 DC</span>
+        <span><b>4e+</b> : 50 DC</span>
+        {variantMeta.elite && <Badge variant="default" className="text-[9px]"><Trophy className="w-2.5 h-2.5 mr-0.5" />Culture bonifié</Badge>}
+      </div>
     </div>
   );
 }
