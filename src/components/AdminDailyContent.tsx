@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Check, X, Trash2, Trophy } from 'lucide-react';
+import { Check, X, Trash2, Trophy, Crown } from 'lucide-react';
 
 type DailyType = 'wordle' | 'sudoku' | 'mots_croisés';
 
@@ -42,7 +42,7 @@ function normalizeRewards(r: any): number[] {
 
 const RANK_LABELS = ['1er', '2ème', '3ème', '4ème', '5ème'];
 
-function RewardsSettings({ value, onChange }: { value: number[]; onChange: (v: number[]) => void }) {
+function RewardsSettings({ value, onChange, title }: { value: number[]; onChange: (v: number[]) => void; title?: string }) {
   const rewards = normalizeRewards(value);
   const update = (i: number, raw: string) => {
     const n = Math.max(0, parseInt(raw, 10) || 0);
@@ -54,7 +54,7 @@ function RewardsSettings({ value, onChange }: { value: number[]; onChange: (v: n
     <div className="space-y-2 border border-border/60 rounded-md p-3 bg-muted/20">
       <div className="flex items-center gap-2">
         <Trophy className="w-4 h-4 text-primary" />
-        <Label className="text-sm font-display">Récompenses des Top 5 (DC)</Label>
+        <Label className="text-sm font-display">{title || 'Récompenses des Top 5 (DC)'}</Label>
       </div>
       <div className="grid grid-cols-5 gap-2">
         {RANK_LABELS.map((label, i) => (
