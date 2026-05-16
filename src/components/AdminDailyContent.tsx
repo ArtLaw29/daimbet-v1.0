@@ -9,6 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Check, X, Trash2, Trophy, Crown } from 'lucide-react';
+import { Plus, Wand2 } from 'lucide-react';
+import { generateSudoku, type SudokuDifficulty } from '@/lib/sudokuGenerator';
+import {
+  generateMotsFleches,
+  type MotsFlechesDifficulty,
+  type MotSuggestion,
+} from '@/lib/motsFlechesGenerator';
 
 type DailyType = 'wordle' | 'sudoku' | 'mots_croisés';
 
@@ -110,8 +117,8 @@ export default function AdminDailyContent() {
           <TabsTrigger value="controles" className="text-xs">⚙️ Contrôles</TabsTrigger>
         </TabsList>
         <TabsContent value="wordle"><WordleEditor /></TabsContent>
-        <TabsContent value="sudoku"><JsonEditor type="sudoku" placeholder='{"puzzle":[0,0,0,...,81 valeurs],"solution":[...,81 valeurs],"rewards":[500,300,200,100,50]}' /></TabsContent>
-        <TabsContent value="mots_croisés"><JsonEditor type="mots_croisés" placeholder='{"grille":[[{"type":"definition","text":"Animal","direction":"right"},{"type":"lettre","correct":"C"},{"type":"lettre","correct":"H"},{"type":"lettre","correct":"A"},{"type":"lettre","correct":"T"}],[{"type":"vide"},{"type":"lettre","correct":"O"},...]],"rewards":[500,300,200,100,50]}' /></TabsContent>
+        <TabsContent value="sudoku"><SudokuEditor /></TabsContent>
+        <TabsContent value="mots_croisés"><MotsFlechesEditor /></TabsContent>
         <TabsContent value="stats"><CasinoStats /></TabsContent>
         <TabsContent value="controles"><CasinoControls /></TabsContent>
       </Tabs>
