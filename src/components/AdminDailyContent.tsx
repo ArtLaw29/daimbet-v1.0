@@ -348,6 +348,351 @@ function JsonEditor({ type, placeholder }: { type: DailyType; placeholder: strin
     </Card>
   );
 }
+
+// ───────── Sudoku editor (auto-generated) ─────────
+const SUDOKU_DIFFICULTIES: { key: SudokuDifficulty; label: string; clues: number }[] = [
+  { key: 'facile', label: 'Facile', clues: 42 },
+  { key: 'moyen', label: 'Moyen', clues: 34 },
+  { key: 'difficile', label: 'Difficile', clues: 26 },
+];
+
+function SudokuEditor() {
+  const { items, reload } = useDailyItems('sudoku');
+  const [date, setDate] = useState(next7Days()[0]);
+  const [difficulty, setDifficulty] = useState<SudokuDifficulty>('moyen');
+  const [puzzle, setPuzzle] = useState<number[] | null>(null);
+  const [solution, setSolution] = useState<number[] | null>(null);
+  const [rewards, setRewards] = useState<number[]>([500, 300, 200, 100, 50]);
+  const [revealAt, setRevealAt] = useState('09:30');
+  const [generating, setGenerating] = useState(false);
+  const existing = items.find((it) => it.scheduled_date === date);
+
+  useEffect(() => {
+    if (existing) {
+      const data: any = existing.data || {};
+      setPuzzle(Array.isArray(data.puzzle) ? data.puzzle.map((n: any) => Number(n) || 0) : null);
+      setSolution(Array.isArray(data.solution) ? data.solution.map((n: any) => Number(n) || 0) : null);
+      setDifficulty((data.difficulty as SudokuDifficulty) || 'moyen');
+      setRewards(normalizeRewards(data.rewards));
+      setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
+    } else {
+      setPuzzle(null);
+      setSolution(null);
+      setDifficulty('moyen');
+      setRewards([500, 300, 200, 100, 50]);
+      setRevealAt('09:30');
+    }
+  }, [date, existing?.id]);
+
+  const generate = () => {
+    setGenerating(true);
+    // Small async tick to let the UI update
+    setTimeout(() => {
+      try {
+        const { puzzle: p, solution: s, cluesCount } = generateSudoku(difficulty);
+        setPuzzle(p);
+        setSolution(s);
+        toast.success(`Grille générée ✅ (${cluesCount} indices)`);
+      } catch (e: any) {
+        toast.error('Erreur de génération : ' + (e?.message || e));
+      } finally {
+        setGenerating(false);
+      }
+    }, 30);
+  };
+
+  const save = async () => {
+    if (!puzzle || !solution || puzzle.length !== 81 || solution.length !== 81) {
+      return toast.error('Génère une grille avant d\'enregistrer');
+    }
+    const payload = { puzzle, solution, difficulty, rewards };
+    const reveal = `${revealAt}:00`;
+    if (existing) {
+      const { error } = await supabase.from('daily_content').update({ data: payload, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
+      if (error) return toast.error(error.message);
+    } else {
+      const { error } = await supabase.from('daily_content').insert({ type: 'sudoku', scheduled_date: date, status: 'actif', data: payload, reveal_at: reveal } as any);
+      if (error) return toast.error(error.message);
+    }
+    toast.success('Sudoku enregistré ✅');
+    await reload();
+  };
+
+  const remove = async () => {
+    if (!existing) return;
+    if (!confirm('Supprimer ?')) return;
+    await supabase.from('daily_content').delete().eq('id', existing.id);
+    toast.success('Supprimé');
+    await reload();
+  };
+
+  const cluesCount = puzzle ? puzzle.filter((n) => n !== 0).length : 0;
+
+  return (
+    <Card className="p-4 space-y-4">
+      <CalendarStrip items={items} selected={date} onSelect={setDate} />
+      <div>
+        <Label className="font-display">Difficulté</Label>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          {SUDOKU_DIFFICULTIES.map((d) => (
+            <button
+              key={d.key}
+              onClick={() => setDifficulty(d.key)}
+              className={`p-2 rounded-md border text-sm transition ${
+                difficulty === d.key ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:border-primary/40'
+              }`}
+            >
+              <div className="font-display">{d.label}</div>
+              <div className="text-[10px] text-muted-foreground">~{d.clues} indices</div>
+            </button>
+          ))}
+        </div>
+      </div>
+      <Button onClick={generate} disabled={generating} className="w-full" variant="secondary">
+        <Wand2 className="w-4 h-4 mr-2" />
+        {generating ? 'Génération en cours…' : 'Générer automatiquement la grille'}
+      </Button>
+      {puzzle && solution ? (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">
+            Aperçu — {cluesCount} cases visibles / 81
+          </div>
+          <div className="grid grid-cols-9 gap-px bg-border p-px rounded-md overflow-hidden max-w-md mx-auto">
+            {puzzle.map((v, i) => {
+              const r = Math.floor(i / 9), c = i % 9;
+              const borderR = (c % 3 === 2 && c < 8) ? 'border-r-2 border-r-primary/40' : '';
+              const borderB = (r % 3 === 2 && r < 8) ? 'border-b-2 border-b-primary/40' : '';
+              return (
+                <div
+                  key={i}
+                  className={`aspect-square text-xs sm:text-sm font-semibold flex items-center justify-center bg-card ${borderR} ${borderB} ${v === 0 ? 'text-muted-foreground/40' : 'text-foreground'}`}
+                >
+                  {v !== 0 ? v : ''}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground italic text-center py-4">
+          Aucune grille générée pour ce jour.
+        </p>
+      )}
+      <RewardsSettings value={rewards} onChange={setRewards} />
+      <div>
+        <Label>Heure de dévoilement (Europe/Paris)</Label>
+        <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={save} className="flex-1">Enregistrer</Button>
+        {existing && <Button variant="outline" onClick={remove}><Trash2 className="w-4 h-4" /></Button>}
+      </div>
+      {existing && <Badge variant="secondary" className="text-xs">Déjà programmé</Badge>}
+    </Card>
+  );
+}
+
+// ───────── Mots fléchés editor (auto-generated from admin suggestions) ─────────
+const MF_DIFFICULTIES: { key: MotsFlechesDifficulty; label: string; size: number }[] = [
+  { key: 'facile', label: 'Facile', size: 8 },
+  { key: 'moyen', label: 'Moyen', size: 10 },
+  { key: 'difficile', label: 'Difficile', size: 12 },
+];
+
+function MotsFlechesEditor() {
+  const { items, reload } = useDailyItems('mots_croisés');
+  const [date, setDate] = useState(next7Days()[0]);
+  const [difficulty, setDifficulty] = useState<MotsFlechesDifficulty>('moyen');
+  const [suggestions, setSuggestions] = useState<MotSuggestion[]>([{ mot: '', definition: '' }]);
+  const [grid, setGrid] = useState<any | null>(null);
+  const [rewards, setRewards] = useState<number[]>([500, 300, 200, 100, 50]);
+  const [revealAt, setRevealAt] = useState('09:30');
+  const existing = items.find((it) => it.scheduled_date === date);
+
+  useEffect(() => {
+    if (existing) {
+      const data: any = existing.data || {};
+      setDifficulty((data.difficulty as MotsFlechesDifficulty) || 'moyen');
+      setSuggestions(
+        Array.isArray(data.suggestions) && data.suggestions.length
+          ? data.suggestions.map((s: any) => ({ mot: String(s.mot || ''), definition: String(s.definition || '') }))
+          : [{ mot: '', definition: '' }]
+      );
+      setGrid(data.grid || null);
+      setRewards(normalizeRewards(data.rewards));
+      setRevealAt(((existing as any).reveal_at || '09:30:00').slice(0, 5));
+    } else {
+      setDifficulty('moyen');
+      setSuggestions([{ mot: '', definition: '' }]);
+      setGrid(null);
+      setRewards([500, 300, 200, 100, 50]);
+      setRevealAt('09:30');
+    }
+  }, [date, existing?.id]);
+
+  const addRow = () => setSuggestions((s) => [...s, { mot: '', definition: '' }]);
+  const removeRow = (i: number) => setSuggestions((s) => s.filter((_, idx) => idx !== i));
+  const updateRow = (i: number, key: 'mot' | 'definition', value: string) =>
+    setSuggestions((s) => s.map((row, idx) => (idx === i ? { ...row, [key]: value } : row)));
+
+  const compile = () => {
+    const cleaned = suggestions
+      .map((s) => ({ mot: s.mot.trim(), definition: s.definition.trim() }))
+      .filter((s) => s.mot && s.definition);
+    if (!cleaned.length) {
+      return toast.error('Ajoute au moins un mot avec sa définition');
+    }
+    try {
+      const result = generateMotsFleches(difficulty, cleaned);
+      setGrid(result);
+      const placed = result.words.length;
+      const skipped = cleaned.length - placed;
+      if (placed === 0) {
+        toast.error('Impossible de placer ces mots — change la difficulté ou les suggestions');
+      } else {
+        toast.success(
+          `Grille compilée ✅ ${placed} mot${placed > 1 ? 's' : ''} placé${placed > 1 ? 's' : ''}` +
+            (skipped > 0 ? ` (${skipped} non placé${skipped > 1 ? 's' : ''})` : '')
+        );
+      }
+    } catch (e: any) {
+      toast.error('Erreur de compilation : ' + (e?.message || e));
+    }
+  };
+
+  const save = async () => {
+    if (!grid) return toast.error('Compile la grille avant d\'enregistrer');
+    const payload = {
+      difficulty,
+      suggestions: suggestions.filter((s) => s.mot.trim() && s.definition.trim()),
+      grid,
+      rewards,
+    };
+    const reveal = `${revealAt}:00`;
+    if (existing) {
+      const { error } = await supabase.from('daily_content').update({ data: payload, status: 'actif', reveal_at: reveal } as any).eq('id', existing.id);
+      if (error) return toast.error(error.message);
+    } else {
+      const { error } = await supabase.from('daily_content').insert({ type: 'mots_croisés', scheduled_date: date, status: 'actif', data: payload, reveal_at: reveal } as any);
+      if (error) return toast.error(error.message);
+    }
+    toast.success('Mots fléchés enregistrés ✅');
+    await reload();
+  };
+
+  const remove = async () => {
+    if (!existing) return;
+    if (!confirm('Supprimer ?')) return;
+    await supabase.from('daily_content').delete().eq('id', existing.id);
+    toast.success('Supprimé');
+    await reload();
+  };
+
+  return (
+    <Card className="p-4 space-y-4">
+      <CalendarStrip items={items} selected={date} onSelect={setDate} />
+
+      <div>
+        <Label className="font-display">Difficulté (taille de la grille)</Label>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          {MF_DIFFICULTIES.map((d) => (
+            <button
+              key={d.key}
+              onClick={() => setDifficulty(d.key)}
+              className={`p-2 rounded-md border text-sm transition ${
+                difficulty === d.key ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:border-primary/40'
+              }`}
+            >
+              <div className="font-display">{d.label}</div>
+              <div className="text-[10px] text-muted-foreground">{d.size}×{d.size}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="font-display">Mots & définitions imposés</Label>
+          <Button type="button" size="sm" variant="ghost" onClick={addRow}>
+            <Plus className="w-4 h-4 mr-1" /> Ajouter
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground italic">
+          Le générateur priorise ces mots et maximise les croisements.
+        </p>
+        {suggestions.map((row, i) => (
+          <div key={i} className="grid grid-cols-[1fr_2fr_auto] gap-2 items-start">
+            <Input
+              value={row.mot}
+              onChange={(e) => updateRow(i, 'mot', e.target.value.toUpperCase().replace(/[^A-ZÀ-ÿ\s-]/gi, ''))}
+              placeholder="MOT"
+              className="uppercase font-mono"
+            />
+            <Input
+              value={row.definition}
+              onChange={(e) => updateRow(i, 'definition', e.target.value)}
+              placeholder="Définition"
+            />
+            <Button type="button" size="icon" variant="ghost" onClick={() => removeRow(i)} disabled={suggestions.length === 1}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      <Button onClick={compile} variant="secondary" className="w-full">
+        <Wand2 className="w-4 h-4 mr-2" />
+        Compiler la grille automatique
+      </Button>
+
+      {grid && Array.isArray(grid.cells) ? (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">
+            Aperçu — {grid.size}×{grid.size} — {grid.words?.length || 0} mots placés
+          </div>
+          <div
+            className="grid gap-px bg-border p-px rounded-md overflow-hidden max-w-md mx-auto"
+            style={{ gridTemplateColumns: `repeat(${grid.size}, minmax(0, 1fr))` }}
+          >
+            {grid.cells.flat().map((cell: any, idx: number) => {
+              if (cell.type === 'lettre') {
+                return (
+                  <div key={idx} className="aspect-square bg-card text-foreground text-[10px] sm:text-xs font-bold flex items-center justify-center">
+                    {cell.letter}
+                  </div>
+                );
+              }
+              if (cell.type === 'definition') {
+                return (
+                  <div key={idx} className="aspect-square bg-primary/20 text-[8px] leading-tight p-0.5 overflow-hidden text-primary" title={[cell.definitions?.horizontal, cell.definitions?.vertical].filter(Boolean).join(' / ')}>
+                    ◧
+                  </div>
+                );
+              }
+              return <div key={idx} className="aspect-square bg-muted/40" />;
+            })}
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground italic text-center py-4">
+          Aucune grille compilée pour ce jour.
+        </p>
+      )}
+
+      <RewardsSettings value={rewards} onChange={setRewards} />
+      <div>
+        <Label>Heure de dévoilement (Europe/Paris)</Label>
+        <Input type="time" value={revealAt} onChange={(e) => setRevealAt(e.target.value)} />
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={save} className="flex-1">Enregistrer</Button>
+        {existing && <Button variant="outline" onClick={remove}><Trash2 className="w-4 h-4" /></Button>}
+      </div>
+      {existing && <Badge variant="secondary" className="text-xs">Déjà programmé</Badge>}
+    </Card>
+  );
+}
+
 // ───────── Casino stats (7 derniers jours) ─────────
 const GAME_DEFS: { id: string; label: string; emoji: string }[] = [
   { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
