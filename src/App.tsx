@@ -153,7 +153,7 @@ function AppRoutes() {
           <Route path="/jeux/pendu/:sessionId"     element={<><Navbar /><ResolutionNotifier /><PenduPage /></>} />
           <Route path="/jeux/puissance4/:sessionId" element={<><Navbar /><ResolutionNotifier /><Puissance4Page /></>} />
           <Route path="/jeux/echecs/:sessionId"     element={<><Navbar /><ResolutionNotifier /><EchecsPage /></>} />
-          <Route path="/room/:roomId" element={<ResolutionNotifier /> && <RoomPage />} />
+          <Route path="/room/:roomId" element={<RoomPage />} />
 
           {/* ─── Backward-compat redirects ─── */}
           <Route path="/communaute"        element={<Navigate to="/la-promo" replace />} />
