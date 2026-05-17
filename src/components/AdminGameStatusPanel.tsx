@@ -9,18 +9,18 @@ import { useAllGameStatus } from '@/hooks/useGameStatus';
 import { useNavConfig } from '@/contexts/NavConfigContext';
 
 const NAV_TABS = [
-  { key: 'paris',     label: 'Paris',          emoji: '💸', gameKey: 'section_paris' },
-  { key: 'promo',     label: 'Jeux de promo',  emoji: '🏛️', gameKey: 'section_promo' },
-  { key: 'jeux',      label: 'Jeux',           emoji: '🎮', gameKey: 'section_jeux' },
-  { key: 'mini-jeux', label: 'Mini-jeux',      emoji: '🧩', gameKey: 'section_mini_jeux' },
-  { key: 'casino',    label: 'Casino',         emoji: '🎰', gameKey: 'section_casino' },
-  { key: 'la-promo',  label: 'La promo',       emoji: '📰', gameKey: 'section_la_promo' },
+  { key: 'paris',     label: 'Paris',          emoji: '💸', gameKey: 'section_paris',     group: 'Paris' },
+  { key: 'promo',     label: 'Jeux de promo',  emoji: '🏛️', gameKey: 'section_promo',     group: 'Jeux de promo' },
+  { key: 'jeux',      label: 'Jeux',           emoji: '🎮', gameKey: 'section_jeux',      group: 'Jeux' },
+  { key: 'mini-jeux', label: 'Mini-jeux',      emoji: '🧩', gameKey: 'section_mini_jeux', group: 'Mini-jeux' },
+  { key: 'casino',    label: 'Casino',         emoji: '🎰', gameKey: 'section_casino',    group: 'Casino' },
+  { key: 'la-promo',  label: 'La promo',       emoji: '📰', gameKey: 'section_la_promo',  group: 'La promo' },
 ] as const;
 
 export default function AdminGameStatusPanel() {
   const { statuses } = useAllGameStatus();
   const { visibleTabs: navConfig, toggleTab } = useNavConfig();
-  const [resetTarget, setResetTarget] = useState<{ key: string; label: string } | null>(null);
+  const [resetTarget, setResetTarget] = useState<{ key: string; label: string; gameKeys?: string[] } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const toggle = async (key: string, field: 'suspended' | 'hidden', current: boolean) => {
@@ -38,17 +38,16 @@ export default function AdminGameStatusPanel() {
     if (!resetTarget) return;
     setBusy(`reset:${resetTarget.key}`);
     try {
-      // Delete unfinished game_state_sessions
+      const keys = resetTarget.gameKeys ?? [resetTarget.key];
       await supabase.from('game_state_sessions').delete()
-        .eq('game_type', resetTarget.key)
+        .in('game_type', keys)
         .is('completed_at', null);
-      // Delete unfinished games_sessions (multi)
       await supabase.from('games_sessions').delete()
-        .eq('game_type', resetTarget.key)
+        .in('game_type', keys)
         .neq('status', 'termine');
       await supabase.from('game_status')
         .update({ last_reset_at: new Date().toISOString() })
-        .eq('game_key', resetTarget.key);
+        .in('game_key', keys);
       toast.success(`${resetTarget.label} réinitialisé 🔄`);
     } catch (e: any) {
       toast.error(e.message || 'Erreur');
@@ -79,6 +78,8 @@ export default function AdminGameStatusPanel() {
             const s = statuses[tab.gameKey] || { suspended: false, hidden: false };
             const suspBusy = busy === `${tab.gameKey}:suspended`;
             const visBusy  = busy === `${tab.key}:nav`;
+            const resetBusy = busy === `reset:section_${tab.key}`;
+            const groupGameKeys = GAME_KEYS.filter(g => g.group === tab.group).map(g => g.key);
             return (
               <div key={tab.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/40 border border-border/50 flex-wrap gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -111,6 +112,11 @@ export default function AdminGameStatusPanel() {
                       toast.success(isVisible ? 'Onglet caché 🙈' : 'Onglet visible 👁️');
                     }}>
                     {isVisible ? <><EyeOff className="w-3 h-3 mr-1" /> Cacher</> : <><Eye className="w-3 h-3 mr-1" /> Afficher</>}
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    disabled={resetBusy || groupGameKeys.length === 0}
+                    onClick={() => setResetTarget({ key: `section_${tab.key}`, label: tab.label, gameKeys: groupGameKeys })}>
+                    <RefreshCw className="w-3 h-3 mr-1" /> Réinitialiser
                   </Button>
                 </div>
               </div>
