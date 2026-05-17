@@ -551,20 +551,27 @@ export default function BlackjackPage() {
           {phase === 'joueur' && activeHand && (
             <>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                <Button onClick={hit} disabled={drawing} size="lg">
-                  {drawing ? '…' : 'Tirer'}
-                </Button>
-                <Button onClick={stand} disabled={drawing} variant="outline" size="lg">Stop</Button>
-                <Button onClick={doubleDown} disabled={drawing || !canDouble()} variant="secondary" size="lg">
-                  Doubler
-                </Button>
-                <Button onClick={split} disabled={drawing || !canSplit()} variant="secondary" size="lg">
-                  Séparer
-                </Button>
+                <div className="flex flex-col gap-1">
+                  <Button onClick={hit} disabled={drawing} size="lg">{drawing ? '…' : 'Tirer'}</Button>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Recevoir une carte de plus pour s'approcher de 21 sans dépasser.</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Button onClick={stand} disabled={drawing} variant="outline" size="lg">Stop</Button>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Garder votre main actuelle et laisser le croupier jouer.</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Button onClick={doubleDown} disabled={drawing || !canDouble()} variant="secondary" size="lg">Doubler</Button>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Doubler votre mise et recevoir une seule carte supplémentaire.</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Button onClick={split} disabled={drawing || !canSplit()} variant="secondary" size="lg">Séparer</Button>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Si vos deux cartes ont la même valeur, jouer chacune comme une main distincte (mise doublée).</p>
+                </div>
                 {canSurrender() && (
-                  <Button onClick={surrender} disabled={drawing} variant="destructive" size="lg">
-                    Abandonner
-                  </Button>
+                  <div className="flex flex-col gap-1">
+                    <Button onClick={surrender} disabled={drawing} variant="destructive" size="lg">Abandonner</Button>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Renoncer à la main et récupérer la moitié de la mise.</p>
+                  </div>
                 )}
               </div>
               {activeHand.cards.some(c => c.rank === 'A') && (

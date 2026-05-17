@@ -267,6 +267,27 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_plays: {
+        Row: {
+          game_key: string
+          id: string
+          played_at: string
+          user_id: string
+        }
+        Insert: {
+          game_key: string
+          id?: string
+          played_at?: string
+          user_id: string
+        }
+        Update: {
+          game_key?: string
+          id?: string
+          played_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_scores: {
         Row: {
           amount_earned: number
@@ -457,6 +478,24 @@ export type Database = {
           result_player1?: string | null
           result_player2?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      game_config: {
+        Row: {
+          config: Json
+          game_key: string
+          updated_at: string
+        }
+        Insert: {
+          config?: Json
+          game_key: string
+          updated_at?: string
+        }
+        Update: {
+          config?: Json
+          game_key?: string
+          updated_at?: string
         }
         Relationships: []
       }
