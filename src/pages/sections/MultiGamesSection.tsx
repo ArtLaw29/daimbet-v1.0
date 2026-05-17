@@ -2,8 +2,14 @@ import SectionTabs from '@/components/SectionTabs';
 import GameUnderConstruction from '@/components/GameUnderConstruction';
 import GameLobby from '@/components/multiplayer/GameLobby';
 import '@/lib/multiplayer/games/uno';
+import { useGameStatus } from '@/hooks/useGameStatus';
+import { useAuth } from '@/contexts/AuthContext';
+import SectionSuspendedMessage from '@/components/SectionSuspendedMessage';
 
 export default function MultiGamesSection() {
+  const { suspended } = useGameStatus('section_jeux');
+  const { isAdmin } = useAuth();
+  if (suspended && !isAdmin) return <SectionSuspendedMessage />;
   return (
     <SectionTabs
       title="Jeux"

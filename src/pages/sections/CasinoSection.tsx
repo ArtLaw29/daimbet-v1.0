@@ -4,8 +4,14 @@ import RoulettePage from '@/pages/RoulettePage';
 import SlotMachinePage from '@/pages/SlotMachinePage';
 import GameLobby from '@/components/multiplayer/GameLobby';
 import '@/lib/multiplayer/games/poker';
+import { useGameStatus } from '@/hooks/useGameStatus';
+import { useAuth } from '@/contexts/AuthContext';
+import SectionSuspendedMessage from '@/components/SectionSuspendedMessage';
 
 export default function CasinoSection() {
+  const { suspended } = useGameStatus('section_casino');
+  const { isAdmin } = useAuth();
+  if (suspended && !isAdmin) return <SectionSuspendedMessage />;
   return (
     <SectionTabs
       title="Casino"
