@@ -394,6 +394,36 @@ export type Database = {
           },
         ]
       }
+      dc_ledger: {
+        Row: {
+          amount: number
+          created_at: string
+          from_user_id: string | null
+          id: string
+          metadata: Json
+          reason: string
+          to_user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          metadata?: Json
+          reason: string
+          to_user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          metadata?: Json
+          reason?: string
+          to_user_id?: string | null
+        }
+        Relationships: []
+      }
       external_bets: {
         Row: {
           created_at: string
@@ -461,6 +491,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      game_rooms: {
+        Row: {
+          created_at: string
+          creator_id: string
+          finished_at: string | null
+          game_type: string
+          id: string
+          max_players: number
+          min_players: number
+          settings: Json
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          finished_at?: string | null
+          game_type: string
+          id?: string
+          max_players?: number
+          min_players?: number
+          settings?: Json
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          finished_at?: string | null
+          game_type?: string
+          id?: string
+          max_players?: number
+          min_players?: number
+          settings?: Json
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       game_sessions: {
         Row: {
@@ -927,6 +996,67 @@ export type Database = {
         }
         Relationships: []
       }
+      room_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "game_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_players: {
+        Row: {
+          is_connected: boolean
+          joined_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          is_connected?: boolean
+          joined_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          is_connected?: boolean
+          joined_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "game_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       solde_history: {
         Row: {
           created_at: string
@@ -1329,6 +1459,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_room_member: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
       join_challenge: { Args: { p_code: string }; Returns: Json }
       normalize_daily_game_type: { Args: { p_type: string }; Returns: string }
       place_sondage_vote: {
@@ -1356,6 +1490,16 @@ export type Database = {
           p_montant_dc: number
           p_option_id: string
           p_user_id: string
+        }
+        Returns: Json
+      }
+      process_dc_transaction: {
+        Args: {
+          p_amount: number
+          p_from: string
+          p_metadata?: Json
+          p_reason: string
+          p_to: string
         }
         Returns: Json
       }

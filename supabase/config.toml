@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.expire-challenges]
 verify_jwt = false
+
+[functions.dc-transaction]
+verify_jwt = false
