@@ -32,6 +32,7 @@ import AdminModeration from '@/components/AdminModeration';
 import AdminModerationLog from '@/components/AdminModerationLog';
 import { logModerationAction } from '@/lib/moderationLog';
 import AdminPublicContacts from '@/components/AdminPublicContacts';
+import AdminGameStatusPanel from '@/components/AdminGameStatusPanel';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type Profile = Tables<'profiles'>;
@@ -2114,7 +2115,7 @@ export default function AdminPage() {
 
             {/* Emergency per-game suspension */}
             <div className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-5 space-y-4">
-              <h3 className="text-sm font-display flex items-center gap-2 text-destructive">🚨 Suspension par jeu</h3>
+              <h3 className="text-sm font-display flex items-center gap-2 text-destructive">🚨 Suspension par jeu (legacy)</h3>
               <p className="text-xs text-muted-foreground">Suspendre ou réactiver instantanément un jeu ou les paris. Aucune donnée n'est supprimée.</p>
               <div className="space-y-2">
                 {[
@@ -2179,6 +2180,9 @@ export default function AdminPage() {
                 })}
               </div>
             </div>
+
+            {/* NEW game_status panel */}
+            <AdminGameStatusPanel />
 
             {/* Game subtitles */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">

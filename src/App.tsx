@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
+import { NavConfigProvider } from "./contexts/NavConfigContext";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "./components/Navbar";
@@ -14,10 +14,13 @@ const LandingPage = lazy(() => import("./pages/LandingPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
-const EventsPage = lazy(() => import("./pages/EventsPage"));
+const ParisSection = lazy(() => import("./pages/sections/ParisSection"));
+const PromoGamesSection = lazy(() => import("./pages/sections/PromoGamesSection"));
+const MultiGamesSection = lazy(() => import("./pages/sections/MultiGamesSection"));
+const MiniGamesSection = lazy(() => import("./pages/sections/MiniGamesSection"));
+const CasinoSection = lazy(() => import("./pages/sections/CasinoSection"));
+const LaPromoSection = lazy(() => import("./pages/sections/LaPromoSection"));
 const BetDetailPage = lazy(() => import("./pages/BetDetailPage"));
-const KissMarryPage = lazy(() => import("./pages/KissMarryPage"));
-const GamesPage = lazy(() => import("./pages/GamesPage"));
 const ProposalsPage = lazy(() => import("./pages/ProposalsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
@@ -25,21 +28,12 @@ const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const WelcomePage = lazy(() => import("./pages/WelcomePage"));
-const BlackjackPage = lazy(() => import("./pages/BlackjackPage"));
-const WordlePage = lazy(() => import("./pages/WordlePage"));
-const SudokuPage = lazy(() => import("./pages/SudokuPage"));
-const PariExternePage = lazy(() => import("./pages/PariExternePage"));
-const MotsFlechesPage = lazy(() => import("./pages/MotsFlechesPage"));
-const DuelsPage = lazy(() => import("./pages/DuelsPage"));
 const PenduPage = lazy(() => import("./pages/PenduPage"));
 const Puissance4Page = lazy(() => import("./pages/Puissance4Page"));
 const EchecsPage = lazy(() => import("./pages/EchecsPage"));
-const CommunautePage = lazy(() => import("./pages/CommunautePage"));
-const CasinoPage = lazy(() => import("./pages/CasinoPage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 import RulesScreen from "./components/RulesScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { CasinoGate } from "./hooks/useCasinoSuspended";
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -48,15 +42,6 @@ const PageLoader = () => (
 );
 
 const queryClient = new QueryClient();
-
-/** Route guard: redirects to /feed if tab is hidden by admin */
-function GuardedRoute({ tabKey, children }: { tabKey: string; children: React.ReactNode }) {
-  const { visibleTabs } = useNavConfig();
-  if (visibleTabs[tabKey] === false) {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-}
 
 function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, rulesAccepted, refreshProfile } = useAuth();
@@ -150,31 +135,41 @@ function AppRoutes() {
           <Route path="/welcome" element={<WelcomePage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/" element={<Navigate to="/paris" replace />} />
-          <Route path="/paris" element={<><Navbar /><ResolutionNotifier /><EventsPage /></>} />
-          <Route path="/bet/:id" element={<><Navbar /><ResolutionNotifier /><BetDetailPage /></>} />
           <Route path="/connexion" element={<Navigate to="/" replace />} />
           <Route path="/inscription" element={<Navigate to="/" replace />} />
-          <Route path="/communaute" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="classement"><CommunautePage /></GuardedRoute></>} />
-          <Route path="/gazette" element={<Navigate to="/communaute" replace state={{ tab: 'gazette' }} />} />
-          <Route path="/classement" element={<Navigate to="/communaute" replace state={{ tab: 'classement' }} />} />
-          <Route path="/casino" element={<><Navbar /><ResolutionNotifier /><CasinoPage /></>} />
-          <Route path="/jeux" element={<><Navbar /><ResolutionNotifier /><GuardedRoute tabKey="jeux"><GamesPage /></GuardedRoute></>} />
-          <Route path="/jeux/blackjack" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="blackjack" label="Blackjack"><BlackjackPage /></CasinoGate></>} />
-          <Route path="/jeux/wordle" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="wordle" label="Mot du jour"><WordlePage /></CasinoGate></>} />
-          <Route path="/jeux/sudoku" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="sudoku" label="Sudoku"><SudokuPage /></CasinoGate></>} />
-          <Route path="/jeux/pari-externe" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="pari-externe" label="Pari externe"><PariExternePage /></CasinoGate></>} />
-          <Route path="/jeux/mots-fleches" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="mots-fleches" label="Mots fléchés"><MotsFlechesPage /></CasinoGate></>} />
-          <Route path="/jeux/mots-croises" element={<Navigate to="/jeux/mots-fleches" replace />} />
-          <Route path="/jeux/duels" element={<><Navbar /><ResolutionNotifier /><CasinoGate gameId="duels" label="Duels"><ErrorBoundary label="DuelsPage"><DuelsPage /></ErrorBoundary></CasinoGate></>} />
-          <Route path="/jeux/pendu/:sessionId" element={<><Navbar /><ResolutionNotifier /><PenduPage /></>} />
+
+          {/* ─── 7 main sections ─── */}
+          <Route path="/paris"     element={<><Navbar /><ResolutionNotifier /><ErrorBoundary label="ParisSection"><ParisSection /></ErrorBoundary></>} />
+          <Route path="/promo"     element={<><Navbar /><ResolutionNotifier /><ErrorBoundary label="PromoGamesSection"><PromoGamesSection /></ErrorBoundary></>} />
+          <Route path="/jeux"      element={<><Navbar /><ResolutionNotifier /><ErrorBoundary label="MultiGamesSection"><MultiGamesSection /></ErrorBoundary></>} />
+          <Route path="/mini-jeux" element={<><Navbar /><ResolutionNotifier /><ErrorBoundary label="MiniGamesSection"><MiniGamesSection /></ErrorBoundary></>} />
+          <Route path="/casino"    element={<><Navbar /><ResolutionNotifier /><ErrorBoundary label="CasinoSection"><CasinoSection /></ErrorBoundary></>} />
+          <Route path="/la-promo"  element={<><Navbar /><ResolutionNotifier /><ErrorBoundary label="LaPromoSection"><LaPromoSection /></ErrorBoundary></>} />
+          <Route path="/profil"    element={<><Navbar /><ResolutionNotifier /><ProfilePage /></>} />
+
+          {/* ─── Detail / session routes ─── */}
+          <Route path="/bet/:id" element={<><Navbar /><ResolutionNotifier /><BetDetailPage /></>} />
+          <Route path="/jeux/pendu/:sessionId"     element={<><Navbar /><ResolutionNotifier /><PenduPage /></>} />
           <Route path="/jeux/puissance4/:sessionId" element={<><Navbar /><ResolutionNotifier /><Puissance4Page /></>} />
-          <Route path="/jeux/echecs/:sessionId" element={<><Navbar /><ResolutionNotifier /><EchecsPage /></>} />
-          <Route path="/kiss-marry" element={<Navigate to="/jeux" replace />} />
-          <Route path="/profil" element={<><Navbar /><ResolutionNotifier /><ProfilePage /></>} />
-          <Route path="/proposals" element={<><Navbar /><ResolutionNotifier /><ProposalsPage /></>} />
-          <Route path="/admin" element={<><Navbar /><ResolutionNotifier /><AdminPage /></>} />
+          <Route path="/jeux/echecs/:sessionId"     element={<><Navbar /><ResolutionNotifier /><EchecsPage /></>} />
+
+          {/* ─── Backward-compat redirects ─── */}
+          <Route path="/communaute"        element={<Navigate to="/la-promo" replace />} />
+          <Route path="/gazette"           element={<Navigate to="/la-promo" replace />} />
+          <Route path="/classement"        element={<Navigate to="/la-promo" replace />} />
+          <Route path="/kiss-marry"        element={<Navigate to="/promo" replace />} />
+          <Route path="/jeux/blackjack"    element={<Navigate to="/casino" replace />} />
+          <Route path="/jeux/wordle"       element={<Navigate to="/mini-jeux" replace />} />
+          <Route path="/jeux/sudoku"       element={<Navigate to="/mini-jeux" replace />} />
+          <Route path="/jeux/mots-fleches" element={<Navigate to="/mini-jeux" replace />} />
+          <Route path="/jeux/mots-croises" element={<Navigate to="/mini-jeux" replace />} />
+          <Route path="/jeux/duels"        element={<Navigate to="/mini-jeux" replace />} />
+          <Route path="/jeux/pari-externe" element={<Navigate to="/paris" replace />} />
+
+          <Route path="/proposals"  element={<><Navbar /><ResolutionNotifier /><ProposalsPage /></>} />
+          <Route path="/admin"      element={<><Navbar /><ResolutionNotifier /><AdminPage /></>} />
           <Route path="/admin/login" element={<><Navbar /><ResolutionNotifier /><AdminPage /></>} />
-          <Route path="/archives" element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
+          <Route path="/archives"   element={isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />} />
           <Route path="/reset-password" element={<><Navbar /><ResolutionNotifier /><ResetPasswordPage /></>} />
           <Route path="*" element={<><Navbar /><NotFound /></>} />
         </Routes>
