@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type GameStatus = { suspended: boolean; hidden: boolean; loading: boolean };
 
@@ -18,7 +19,11 @@ async function loadAll() {
   if (allLoaded) return;
   if (allLoadingPromise) return allLoadingPromise;
   allLoadingPromise = (async () => {
-    const { data } = await supabase.from('game_status').select('game_key, suspended, hidden');
+    const { data, error } = await supabase.from('game_status').select('game_key, suspended, hidden');
+    if (error) {
+      allLoadingPromise = null;
+      throw error;
+    }
     (data || []).forEach((row: any) => {
       cache.set(row.game_key, { suspended: !!row.suspended, hidden: !!row.hidden });
     });
@@ -51,38 +56,60 @@ function startChannel() {
 }
 
 export function useGameStatus(gameKey: string | null | undefined): GameStatus {
+  const { user, loading: authLoading } = useAuth();
   const [state, setState] = useState<{ suspended: boolean; hidden: boolean }>(
     gameKey ? cache.get(gameKey) || { suspended: false, hidden: false } : { suspended: false, hidden: false }
   );
-  const [loading, setLoading] = useState(!allLoaded);
+  const [loading, setLoading] = useState(authLoading || !allLoaded);
 
   useEffect(() => {
-    if (!gameKey) { setLoading(false); return; }
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+    if (!user || !gameKey) { setLoading(false); return; }
     let alive = true;
     const fn = (s: { suspended: boolean; hidden: boolean }) => { if (alive) setState(s); };
     if (!listeners.has(gameKey)) listeners.set(gameKey, new Set());
     listeners.get(gameKey)!.add(fn);
     startChannel();
-    loadAll().then(() => {
-      if (!alive) return;
-      setState(cache.get(gameKey) || { suspended: false, hidden: false });
-      setLoading(false);
-    });
+    loadAll()
+      .then(() => {
+        if (!alive) return;
+        setState(cache.get(gameKey) || { suspended: false, hidden: false });
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Erreur chargement game_status:', error);
+        if (alive) setLoading(false);
+      });
     return () => {
       alive = false;
       listeners.get(gameKey)?.delete(fn);
     };
-  }, [gameKey]);
+  }, [authLoading, user?.id, gameKey]);
 
   return { ...state, loading };
 }
 
 /** Returns a map of all known game_keys → status. Re-renders on realtime updates. */
 export function useAllGameStatus() {
+  const { user, loading: authLoading } = useAuth();
   const [snapshot, setSnapshot] = useState<Record<string, { suspended: boolean; hidden: boolean }>>(() => Object.fromEntries(cache));
-  const [loading, setLoading] = useState(!allLoaded);
+  const [loading, setLoading] = useState(authLoading || !allLoaded);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!user) {
+      setSnapshot({});
+      setLoading(false);
+      return;
+    }
+
     let alive = true;
     startChannel();
     const refresh = () => { if (alive) setSnapshot(Object.fromEntries(cache)); };
@@ -96,12 +123,17 @@ export function useAllGameStatus() {
         wrappers.push({ key, fn });
       });
     };
-    loadAll().then(() => {
-      if (!alive) return;
-      subscribeAll();
-      refresh();
-      setLoading(false);
-    });
+    loadAll()
+      .then(() => {
+        if (!alive) return;
+        subscribeAll();
+        refresh();
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Erreur chargement game_status:', error);
+        if (alive) setLoading(false);
+      });
     // Re-subscribe periodically for new keys (cheap)
     const interval = setInterval(refresh, 5000);
     return () => {
@@ -109,7 +141,7 @@ export function useAllGameStatus() {
       clearInterval(interval);
       wrappers.forEach(w => listeners.get(w.key)?.delete(w.fn));
     };
-  }, []);
+  }, [authLoading, user?.id]);
 
   return { statuses: snapshot, loading };
 }
