@@ -4,9 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, Smile } from 'lucide-react';
+import { Send, Plus, Smile, Handshake, Coins } from 'lucide-react';
 import { INTRO_GAZETTE } from '@/components/TabIntro';
 import type { Tables } from '@/integrations/supabase/types';
+import LoanFeed from '@/components/loans/LoanFeed';
+import { RequestLoanDialog, OfferLoanDialog } from '@/components/loans/LoanDialogs';
 
 type GazetteMessage = Tables<'gazette_messages'>;
 type GazetteReaction = Tables<'gazette_reactions'>;
@@ -23,6 +25,8 @@ export default function GazettePage() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null);
+  const [openRequestDlg, setOpenRequestDlg] = useState(false);
+  const [openOfferDlg, setOpenOfferDlg] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const [msgRes, reactRes, profilesRes] = await Promise.all([
