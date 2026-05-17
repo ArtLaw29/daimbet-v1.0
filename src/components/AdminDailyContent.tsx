@@ -844,7 +844,3 @@ function CasinoStats() {
     </div>
   );
 }
-
-// ───────── Casino controls : reset + suspend ─────────
-const CONTROL_GAMES: { id: string; label: string; emoji: string; gameTypes?: string[] }[] = [
-  { id: 'blackjack', label: 'Blackjack', emoji: '🃏' },
