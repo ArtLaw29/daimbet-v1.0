@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavConfig } from '@/contexts/NavConfigContext';
 import { supabase } from '@/integrations/supabase/client';
 import daimcoinLogo from '@/assets/daimcoin-logo.png';
-import { Target, Users, Gamepad2, Dice5, User, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ResumeGameBanner from '@/components/ResumeGameBanner';
 import { useUnreadGazette } from '@/hooks/useUnreadGazette';
@@ -14,21 +14,20 @@ interface NavTab {
   label: string;
   shortLabel: string;
   emoji: string;
-  icon: React.ElementType;
-  configKey?: string; // if set, can be hidden by admin
 }
 
 const ALL_TABS: NavTab[] = [
-  { to: '/paris', label: 'Paris', shortLabel: 'Paris', emoji: '🎯', icon: Target },
-  { to: '/communaute', label: 'Communauté', shortLabel: 'Commu.', emoji: '💬', icon: Users, configKey: 'classement' },
-  { to: '/jeux', label: 'Jeux Promo', shortLabel: 'Jeux', emoji: '🎮', icon: Gamepad2, configKey: 'jeux' },
-  { to: '/casino', label: 'Casino', shortLabel: 'Casino', emoji: '🎰', icon: Dice5 },
-  { to: '/profil', label: 'Profil', shortLabel: 'Profil', emoji: '👤', icon: User },
+  { to: '/paris',     label: 'Paris',         shortLabel: 'Paris',  emoji: '💸' },
+  { to: '/promo',     label: 'Jeux de promo', shortLabel: 'Promo',  emoji: '🏛️' },
+  { to: '/jeux',      label: 'Jeux',          shortLabel: 'Jeux',   emoji: '🎮' },
+  { to: '/mini-jeux', label: 'Mini-jeux',     shortLabel: 'Mini',   emoji: '🧩' },
+  { to: '/casino',    label: 'Casino',        shortLabel: 'Casino', emoji: '🎰' },
+  { to: '/la-promo',  label: 'La promo',      shortLabel: 'Promo',  emoji: '📰' },
+  { to: '/profil',    label: 'Profil',        shortLabel: 'Profil', emoji: '👤' },
 ];
 
 export default function Navbar() {
   const { profile, signOut, user } = useAuth();
-  const { visibleTabs } = useNavConfig();
   const location = useLocation();
   const [rank, setRank] = useState<number | null>(null);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -114,11 +113,7 @@ export default function Navbar() {
     return () => { supabase.removeChannel(channel); };
   }, [user, location.pathname]);
 
-  // Filter tabs based on admin config
-  const visibleNavTabs = ALL_TABS.filter((tab) => {
-    if (!tab.configKey) return true; // non-maskable tabs always show
-    return visibleTabs[tab.configKey] !== false;
-  });
+  const visibleNavTabs = ALL_TABS;
 
   const rankText = rank && totalUsers > 0 ? `${rank}${rank === 1 ? 'er' : 'ème'} / ${totalUsers}` : '';
 
@@ -137,13 +132,13 @@ export default function Navbar() {
           <nav className="hidden md:flex items-center gap-1" aria-label="Navigation principale">
             {visibleNavTabs.map((tab) => {
               const showDot = tab.to === '/profil' && hasUnreadTicket;
-              const showGazetteDot = tab.to === '/communaute' && hasUnreadGazette;
+              const showGazetteDot = tab.to === '/la-promo' && hasUnreadGazette;
               return (
                 <Link
                   key={tab.to}
                   to={tab.to}
                   className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    location.pathname === tab.to
+                    location.pathname.startsWith(tab.to)
                       ? 'bg-primary/10 text-primary'
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                   }`}
@@ -193,9 +188,9 @@ export default function Navbar() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border" role="navigation" aria-label="Navigation mobile">
         <div className="flex justify-around py-1.5">
           {visibleNavTabs.map((tab) => {
-            const isActive = location.pathname === tab.to;
+            const isActive = location.pathname.startsWith(tab.to);
             const showDot = tab.to === '/profil' && hasUnreadTicket;
-            const showGazetteDot = tab.to === '/communaute' && hasUnreadGazette;
+            const showGazetteDot = tab.to === '/la-promo' && hasUnreadGazette;
             return (
               <Link
                 key={tab.to}
