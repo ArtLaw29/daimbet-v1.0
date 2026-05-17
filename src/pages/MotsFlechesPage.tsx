@@ -43,10 +43,26 @@ export default function MotsFlechesPage() {
         .from('daily_content').select('*')
         .eq('type', 'mots_croisés').eq('scheduled_date', todayStr()).eq('status', 'actif').maybeSingle();
       if (!dc) { setLoading(false); return; }
-      setContent(dc);
-      const g = (dc.data as any).grille as Cell[][];
-      setGrid(g.map((row) => row.map(() => '')));
-      setVerified(g.map((row) => row.map(() => false)));
+      // Normalize: support both legacy { grille } and new generator { grid: { cells } } formats
+      const raw: any = dc.data || {};
+      let grille: Cell[][] | null = raw.grille || null;
+      if (!grille && raw.grid && Array.isArray(raw.grid.cells)) {
+        grille = (raw.grid.cells as any[][]).map((row) => row.map((cell: any) => {
+          if (!cell || cell.type === 'vide') return { type: 'vide' } as Cell;
+          if (cell.type === 'lettre') return { type: 'lettre', correct: (cell.letter || '').toUpperCase() } as Cell;
+          if (cell.type === 'definition') {
+            const defs: Array<{ text: string; direction: Direction }> = [];
+            if (cell.definitions?.horizontal) defs.push({ text: cell.definitions.horizontal, direction: 'right' });
+            if (cell.definitions?.vertical) defs.push({ text: cell.definitions.vertical, direction: 'down' });
+            return { type: 'definition', definitions: defs } as Cell;
+          }
+          return { type: 'vide' } as Cell;
+        }));
+      }
+      if (!grille || grille.length === 0) { setLoading(false); return; }
+      setContent({ ...dc, data: { ...raw, grille } });
+      setGrid(grille.map((row) => row.map(() => '')));
+      setVerified(grille.map((row) => row.map(() => false)));
       if (user) {
         const { data: existing } = await supabase.from('daily_scores')
           .select('*').eq('game_type', GAME_TYPE).eq('played_on', todayStr()).eq('user_id', user.id).maybeSingle();
