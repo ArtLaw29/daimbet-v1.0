@@ -25,7 +25,7 @@ const TYPE_LABELS: Record<DailyType, string> = {
   mots_croisés: '📝 Mots fléchés',
 };
 
-type TabKey = DailyType | 'stats' | 'controles';
+type TabKey = DailyType | 'stats';
 
 function next7Days() {
   const out: string[] = [];
@@ -109,18 +109,16 @@ export default function AdminDailyContent() {
   return (
     <div>
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <TabsList className="grid grid-cols-5 mb-4 h-auto">
+        <TabsList className="grid grid-cols-4 mb-4 h-auto">
           {(Object.keys(TYPE_LABELS) as DailyType[]).map((t) => (
             <TabsTrigger key={t} value={t} className="text-xs">{TYPE_LABELS[t]}</TabsTrigger>
           ))}
           <TabsTrigger value="stats" className="text-xs">📊 Stats</TabsTrigger>
-          <TabsTrigger value="controles" className="text-xs">⚙️ Contrôles</TabsTrigger>
         </TabsList>
         <TabsContent value="wordle"><WordleEditor /></TabsContent>
         <TabsContent value="sudoku"><SudokuEditor /></TabsContent>
         <TabsContent value="mots_croisés"><MotsFlechesEditor /></TabsContent>
         <TabsContent value="stats"><CasinoStats /></TabsContent>
-        <TabsContent value="controles"><CasinoControls /></TabsContent>
       </Tabs>
     </div>
   );
