@@ -33,6 +33,7 @@ import AdminModerationLog from '@/components/AdminModerationLog';
 import { logModerationAction } from '@/lib/moderationLog';
 import AdminPublicContacts from '@/components/AdminPublicContacts';
 import AdminGameStatusPanel from '@/components/AdminGameStatusPanel';
+import AdminGameConfigPanel from '@/components/AdminGameConfigPanel';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type Profile = Tables<'profiles'>;
