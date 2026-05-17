@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { NavConfigProvider, useNavConfig } from "./contexts/NavConfigContext";
+import { NavConfigProvider } from "./contexts/NavConfigContext";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "./components/Navbar";
@@ -42,15 +42,6 @@ const PageLoader = () => (
 );
 
 const queryClient = new QueryClient();
-
-/** Route guard: redirects to /feed if tab is hidden by admin */
-function GuardedRoute({ tabKey, children }: { tabKey: string; children: React.ReactNode }) {
-  const { visibleTabs } = useNavConfig();
-  if (visibleTabs[tabKey] === false) {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-}
 
 function AppRoutes() {
   const { user, loading, hasAcceptedCharter, isAdmin, rulesAccepted, refreshProfile } = useAuth();
