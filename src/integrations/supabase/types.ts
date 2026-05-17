@@ -534,6 +534,30 @@ export type Database = {
         }
         Relationships: []
       }
+      game_status: {
+        Row: {
+          game_key: string
+          hidden: boolean
+          last_reset_at: string | null
+          suspended: boolean
+          updated_at: string
+        }
+        Insert: {
+          game_key: string
+          hidden?: boolean
+          last_reset_at?: string | null
+          suspended?: boolean
+          updated_at?: string
+        }
+        Update: {
+          game_key?: string
+          hidden?: boolean
+          last_reset_at?: string | null
+          suspended?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       games_sessions: {
         Row: {
           created_at: string
