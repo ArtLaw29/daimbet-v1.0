@@ -92,7 +92,7 @@ export default function SectionTabs({ title, titleEmoji, subtitle, tabs, initial
             {active && activeStatus?.suspended && !isAdmin ? (
               <SuspendedScreen label={active.label} />
             ) : active ? (
-              <active.render />
+              active.render()
             ) : null}
           </div>
         </>
