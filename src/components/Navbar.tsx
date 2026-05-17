@@ -7,6 +7,7 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ResumeGameBanner from '@/components/ResumeGameBanner';
 import { useUnreadGazette } from '@/hooks/useUnreadGazette';
+import { useNavConfig } from '@/contexts/NavConfigContext';
 
 interface NavTab {
   to: string;
@@ -112,7 +113,10 @@ export default function Navbar() {
     return () => { supabase.removeChannel(channel); };
   }, [user, location.pathname]);
 
-  const visibleNavTabs = ALL_TABS;
+  const { visibleTabs: navConfig, loading: navLoading } = useNavConfig();
+  const visibleNavTabs = navLoading
+    ? ALL_TABS
+    : ALL_TABS.filter(t => navConfig[t.to] !== false);
 
   const rankText = rank && totalUsers > 0 ? `${rank}${rank === 1 ? 'er' : 'ème'} / ${totalUsers}` : '';
 
