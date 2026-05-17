@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
+import { useGameSession } from '@/hooks/useGameSession';
 
 type Direction = 'right' | 'down' | 'right-down' | 'down-right';
 type Cell =
@@ -22,13 +23,31 @@ export default function MotsFlechesPage() {
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState<any>(null);
-  const [grid, setGrid] = useState<string[][]>([]);
-  const [verified, setVerified] = useState<boolean[][]>([]);
   const [cursor, setCursor] = useState<{ r: number; c: number } | null>(null);
   const [dir, setDir] = useState<FocusDir>('H');
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
-  const [finished, setFinished] = useState(false);
   const [scores, setScores] = useState<any[]>([]);
+
+  const today = todayStr();
+  const {
+    state: persisted,
+    setState: setPersisted,
+  } = useGameSession<{ grid: string[][] | null; verified: boolean[][] | null; finished: boolean }>({
+    gameType: `mots_fleches:${today}`,
+    initialState: { grid: null, verified: null, finished: false },
+  });
+  const grid: string[][] = persisted.grid ?? [];
+  const verified: boolean[][] = persisted.verified ?? [];
+  const finished = persisted.finished;
+  const setGrid = (updater: string[][] | ((g: string[][]) => string[][])) => {
+    setPersisted((s) => {
+      const prev = s.grid ?? [];
+      const next = typeof updater === 'function' ? (updater as (g: string[][]) => string[][])(prev) : updater;
+      return { ...s, grid: next };
+    });
+  };
+  const setVerified = (v: boolean[][]) => setPersisted((s) => ({ ...s, verified: v }));
+  const setFinished = (v: boolean) => setPersisted((s) => ({ ...s, finished: v }));
 
   const grille: Cell[][] = (content?.data?.grille || []) as Cell[][];
   const rows = grille.length;
@@ -61,8 +80,6 @@ export default function MotsFlechesPage() {
       }
       if (!grille || grille.length === 0) { setLoading(false); return; }
       setContent({ ...dc, data: { ...raw, grille } });
-      setGrid(grille.map((row) => row.map(() => '')));
-      setVerified(grille.map((row) => row.map(() => false)));
       if (user) {
         const { data: existing } = await supabase.from('daily_scores')
           .select('*').eq('game_type', GAME_TYPE).eq('played_on', todayStr()).eq('user_id', user.id).maybeSingle();
@@ -72,6 +89,23 @@ export default function MotsFlechesPage() {
       setLoading(false);
     })();
   }, [user]);
+
+  // Bootstrap empty grid + verified arrays when content arrives and nothing is persisted yet.
+  useEffect(() => {
+    if (!content) return;
+    const grille: Cell[][] = (content?.data?.grille || []) as Cell[][];
+    if (grille.length === 0) return;
+    const dimsMatch = persisted.grid
+      && persisted.grid.length === grille.length
+      && (persisted.grid[0]?.length ?? 0) === (grille[0]?.length ?? 0);
+    if (dimsMatch) return;
+    setPersisted({
+      grid: grille.map((row) => row.map(() => '')),
+      verified: grille.map((row) => row.map(() => false)),
+      finished: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
 
   const loadScores = async () => {
     const { data } = await supabase.from('daily_scores').select('*')

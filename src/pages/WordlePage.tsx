@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Coins, Trophy, Crown, CheckCircle2, Lock, Library } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
+import { useGameSession } from '@/hooks/useGameSession';
 
 const ROWS = 6;
 const KB_ROWS = ['AZERTYUIOP', 'QSDFGHJKLM', 'WXCVBN'];
@@ -42,8 +43,6 @@ function evaluate(guess: string, target: string): LetterState[] {
   return res;
 }
 
-const lsKey = (date: string, variant: string) => `wordle:${date}:${variant}`;
-
 export default function WordlePage() {
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
@@ -62,6 +61,21 @@ export default function WordlePage() {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
 
   const today = todayStr();
+
+  // Persistent per-variant session (server + localStorage fallback).
+  const wordleKey = activeVariant ? `wordle:${activeVariant}:${today}` : 'wordle:none';
+  const {
+    state: persistedGame,
+    setState: setPersistedGame,
+    resetSession: resetWordleSession,
+    isLoading: wgLoading,
+  } = useGameSession<{ guesses: string[]; finished: 'won' | 'lost' | null }>({
+    gameType: wordleKey,
+    initialState: { guesses: [], finished: null },
+    enabled: !!activeVariant,
+  });
+  const hydratedKeyRef = useRef<string | null>(null);
+  useEffect(() => { hydratedKeyRef.current = null; }, [wordleKey]);
 
   // Load today's content + user's completion status for each variant
   useEffect(() => {
@@ -107,31 +121,24 @@ export default function WordlePage() {
     return String((content.data as any)?.['word_' + activeVariant] || '').toUpperCase();
   }, [content, activeVariant]);
 
-  // Load saved progress for active variant
+  // Hydrate local state from the persisted session (once per variant key).
   useEffect(() => {
-    if (!activeVariant) return;
+    if (!activeVariant || wgLoading) return;
+    if (hydratedKeyRef.current === wordleKey) return;
+    hydratedKeyRef.current = wordleKey;
     setStartedAt(Date.now());
     setCurrent('');
-    try {
-      const raw = localStorage.getItem(lsKey(today, activeVariant));
-      if (raw) {
-        const saved = JSON.parse(raw);
-        setGuesses(Array.isArray(saved.guesses) ? saved.guesses : []);
-        setFinished(saved.finished ?? null);
-        return;
-      }
-    } catch {}
-    setGuesses([]);
-    setFinished(null);
-  }, [activeVariant, today]);
+    setGuesses(persistedGame.guesses ?? []);
+    setFinished(persistedGame.finished ?? null);
+  }, [activeVariant, wgLoading, persistedGame, wordleKey]);
 
-  // Persist progress
+  // Persist on local change (only after hydration).
   useEffect(() => {
-    if (!activeVariant) return;
-    try {
-      localStorage.setItem(lsKey(today, activeVariant), JSON.stringify({ guesses, finished }));
-    } catch {}
-  }, [guesses, finished, activeVariant, today]);
+    if (!activeVariant || wgLoading) return;
+    if (hydratedKeyRef.current !== wordleKey) return;
+    setPersistedGame({ guesses, finished });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guesses, finished]);
 
   // Recovery: if local state says "won" but the server has no record yet
   // (e.g. the user refreshed during the previous claim), retry the claim.
@@ -255,13 +262,13 @@ export default function WordlePage() {
       delete n[activeVariant];
       return n;
     });
+    await resetWordleSession();
     setGuesses([]);
     setCurrent('');
     setFinished(null);
     setStartedAt(Date.now());
-    try { localStorage.removeItem(lsKey(today, activeVariant)); } catch {}
     setRetrying(false);
-  }, [activeVariant, retrying, refreshProfile, today]);
+  }, [activeVariant, retrying, refreshProfile, resetWordleSession]);
 
   useEffect(() => {
     if (!activeVariant) return;
