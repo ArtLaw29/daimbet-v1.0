@@ -31,6 +31,7 @@ const WelcomePage = lazy(() => import("./pages/WelcomePage"));
 const PenduPage = lazy(() => import("./pages/PenduPage"));
 const Puissance4Page = lazy(() => import("./pages/Puissance4Page"));
 const EchecsPage = lazy(() => import("./pages/EchecsPage"));
+const RoomPage = lazy(() => import("./pages/RoomPage"));
 import ResolutionNotifier from "./components/ResolutionNotifier";
 import RulesScreen from "./components/RulesScreen";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -152,6 +153,7 @@ function AppRoutes() {
           <Route path="/jeux/pendu/:sessionId"     element={<><Navbar /><ResolutionNotifier /><PenduPage /></>} />
           <Route path="/jeux/puissance4/:sessionId" element={<><Navbar /><ResolutionNotifier /><Puissance4Page /></>} />
           <Route path="/jeux/echecs/:sessionId"     element={<><Navbar /><ResolutionNotifier /><EchecsPage /></>} />
+          <Route path="/room/:roomId" element={<ResolutionNotifier /> && <RoomPage />} />
 
           {/* ─── Backward-compat redirects ─── */}
           <Route path="/communaute"        element={<Navigate to="/la-promo" replace />} />
