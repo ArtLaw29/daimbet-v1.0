@@ -3,8 +3,14 @@ import WordlePage from '@/pages/WordlePage';
 import SudokuPage from '@/pages/SudokuPage';
 import MotsFlechesPage from '@/pages/MotsFlechesPage';
 import DuelsPage from '@/pages/DuelsPage';
+import { useGameStatus } from '@/hooks/useGameStatus';
+import { useAuth } from '@/contexts/AuthContext';
+import SectionSuspendedMessage from '@/components/SectionSuspendedMessage';
 
 export default function MiniGamesSection() {
+  const { suspended } = useGameStatus('section_mini_jeux');
+  const { isAdmin } = useAuth();
+  if (suspended && !isAdmin) return <SectionSuspendedMessage />;
   return (
     <SectionTabs
       title="Mini-jeux"

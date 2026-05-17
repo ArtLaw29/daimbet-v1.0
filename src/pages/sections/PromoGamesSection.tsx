@@ -5,8 +5,14 @@ import GouvernementPage from '@/components/GouvernementPage';
 import FantasyFirmPage from '@/components/FantasyFirmPage';
 import KissMarryPage from '@/pages/KissMarryPage';
 import GameUnderConstruction from '@/components/GameUnderConstruction';
+import { useGameStatus } from '@/hooks/useGameStatus';
+import { useAuth } from '@/contexts/AuthContext';
+import SectionSuspendedMessage from '@/components/SectionSuspendedMessage';
 
 export default function PromoGamesSection() {
+  const { suspended } = useGameStatus('section_promo');
+  const { isAdmin } = useAuth();
+  if (suspended && !isAdmin) return <SectionSuspendedMessage />;
   return (
     <SectionTabs
       title="Jeux de promo"
