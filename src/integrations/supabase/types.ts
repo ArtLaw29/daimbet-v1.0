@@ -501,6 +501,39 @@ export type Database = {
         }
         Relationships: []
       }
+      game_state_sessions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          game_type: string
+          id: string
+          room_id: string | null
+          state: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          game_type: string
+          id?: string
+          room_id?: string | null
+          state?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          game_type?: string
+          id?: string
+          room_id?: string | null
+          state?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       games_sessions: {
         Row: {
           created_at: string
