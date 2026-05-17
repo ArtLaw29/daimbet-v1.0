@@ -1058,6 +1058,39 @@ export type Database = {
         }
         Relationships: []
       }
+      poker_actions: {
+        Row: {
+          action: string
+          amount: number | null
+          created_at: string
+          id: string
+          phase: string
+          room_id: string
+          round_number: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          amount?: number | null
+          created_at?: string
+          id?: string
+          phase: string
+          room_id: string
+          round_number: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          amount?: number | null
+          created_at?: string
+          id?: string
+          phase?: string
+          room_id?: string
+          round_number?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

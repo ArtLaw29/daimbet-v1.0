@@ -1,8 +1,9 @@
 import SectionTabs from '@/components/SectionTabs';
 import BlackjackPage from '@/pages/BlackjackPage';
-import GameUnderConstruction from '@/components/GameUnderConstruction';
 import RoulettePage from '@/pages/RoulettePage';
 import SlotMachinePage from '@/pages/SlotMachinePage';
+import GameLobby from '@/components/multiplayer/GameLobby';
+import '@/lib/multiplayer/games/poker';
 
 export default function CasinoSection() {
   return (
@@ -13,7 +14,7 @@ export default function CasinoSection() {
       tabs={[
         { key: 'blackjack',      label: 'Blackjack',      emoji: '🂡', render: () => <BlackjackPage /> },
         { key: 'machine_a_sous', label: 'Machine à sous', emoji: '🎰', render: () => <SlotMachinePage /> },
-        { key: 'poker',          label: 'Poker',          emoji: '♠️', render: () => <GameUnderConstruction gameName="Poker" /> },
+        { key: 'poker',          label: 'Poker',          emoji: '♠️', render: () => <GameLobby gameType="poker" minPlayers={2} maxPlayers={8} /> },
         { key: 'roulette',       label: 'Roulette',       emoji: '🎡', render: () => <RoulettePage /> },
       ]}
     />
