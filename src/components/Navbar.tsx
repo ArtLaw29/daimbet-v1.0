@@ -116,7 +116,7 @@ export default function Navbar() {
   const { visibleTabs: navConfig, loading: navLoading } = useNavConfig();
   const visibleNavTabs = navLoading
     ? ALL_TABS
-    : ALL_TABS.filter(t => navConfig[t.to] !== false);
+    : ALL_TABS.filter(t => navConfig[t.to.replace(/^\//, '')] !== false);
 
   const rankText = rank && totalUsers > 0 ? `${rank}${rank === 1 ? 'er' : 'ème'} / ${totalUsers}` : '';
 
