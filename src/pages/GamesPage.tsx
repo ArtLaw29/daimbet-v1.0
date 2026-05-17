@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Lock, ShieldAlert } from 'lucide-react';
+import { useAllGameStatus } from '@/hooks/useGameStatus';
+import { useAuth } from '@/contexts/AuthContext';
 import KissMarryPage from './KissMarryPage';
 import GameSessionsList from '@/components/GameSessionsList';
 import SondagePage from '@/components/SondagePage';
@@ -26,44 +28,40 @@ const GAME_TABS: GameTab[] = [
   { id: 'kiss-marry', emoji: '💋', label: 'Kiss/Marry', subtitleKey: 'game_subtitle_kiss_marry', defaultSubtitle: 'Vote mensuel anonyme', available: true },
 ];
 
+const TAB_TO_GAME_KEY: Record<string, string> = {
+  'daimocratie': 'daimocratie',
+  'you-decide': 'tournois',
+  'gouvernement': 'gouvernement',
+  'fantasy-firm': 'fantasy_firm',
+  'kiss-marry': 'kiss_marry',
+};
+
 export default function GamesPage() {
   const [activeTab, setActiveTab] = useState('daimocratie');
   const [subtitles, setSubtitles] = useState<Record<string, string>>({});
-  const [suspended, setSuspended] = useState<Record<string, boolean>>({});
-  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const { statuses } = useAllGameStatus();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchSubtitles = async () => {
       const subtitleKeys = GAME_TABS.map(t => t.subtitleKey);
-      const suspendKeys = GAME_TABS.map(t => `suspend_${t.id}`);
-      const hideKeys = GAME_TABS.map(t => `hide_${t.id}`);
-      const allKeys = [...subtitleKeys, ...suspendKeys, ...hideKeys];
       const { data } = await supabase
         .from('platform_settings')
         .select('key, value')
-        .in('key', allKeys);
+        .in('key', subtitleKeys);
       if (data) {
         const subs: Record<string, string> = {};
-        const susp: Record<string, boolean> = {};
-        const hid: Record<string, boolean> = {};
-        data.forEach(r => {
-          if (r.key.startsWith('suspend_')) {
-            susp[r.key.replace('suspend_', '')] = r.value === 'true';
-          } else if (r.key.startsWith('hide_')) {
-            hid[r.key.replace('hide_', '')] = r.value === 'true';
-          } else {
-            subs[r.key] = r.value;
-          }
-        });
+        data.forEach(r => { subs[r.key] = r.value; });
         setSubtitles(subs);
-        setSuspended(susp);
-        setHidden(hid);
       }
     };
-    fetchSettings();
+    fetchSubtitles();
   }, []);
 
-  const visibleTabs = GAME_TABS.filter(t => !hidden[t.id]);
+  const isHidden = (tabId: string) => !!statuses[TAB_TO_GAME_KEY[tabId]]?.hidden;
+  const isSuspended = (tabId: string) => !!statuses[TAB_TO_GAME_KEY[tabId]]?.suspended;
+
+  const visibleTabs = GAME_TABS.filter(t => isAdmin || !isHidden(t.id));
 
   // If active tab becomes hidden, switch to first visible
   useEffect(() => {
@@ -93,16 +91,16 @@ export default function GamesPage() {
           <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:justify-center">
             {visibleTabs.map(tab => {
               const isActive = activeTab === tab.id;
-              const isSuspended = suspended[tab.id];
+              const tabSuspended = isSuspended(tab.id);
               const subtitle = getSubtitle(tab);
-              const isDisabled = !tab.available || isSuspended;
+              const isDisabled = !tab.available || (tabSuspended && !isAdmin);
               return (
                 <button
                   key={tab.id}
                   onClick={() => !isDisabled && setActiveTab(tab.id)}
                   disabled={isDisabled}
                   className={`flex-shrink-0 flex items-center gap-2.5 px-4 py-3 rounded-xl border transition-all text-left min-w-[160px] ${
-                    isSuspended
+                    tabSuspended
                       ? 'border-destructive/30 bg-destructive/5 opacity-60 cursor-not-allowed'
                       : isActive
                         ? 'border-primary bg-primary/10 shadow-md'
@@ -113,10 +111,10 @@ export default function GamesPage() {
                 >
                   <span className="text-2xl">{tab.emoji}</span>
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isSuspended ? 'text-destructive' : isActive ? 'text-primary' : ''}`}>
+                    <p className={`text-sm font-semibold truncate ${tabSuspended ? 'text-destructive' : isActive ? 'text-primary' : ''}`}>
                       {tab.label}
                     </p>
-                    {isSuspended ? (
+                    {tabSuspended ? (
                       <p className="text-[10px] text-destructive flex items-center gap-1">
                         <ShieldAlert className="w-2.5 h-2.5" /> Suspendu
                       </p>
@@ -140,7 +138,7 @@ export default function GamesPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        {suspended[activeTab] ? (
+        {isSuspended(activeTab) && !isAdmin ? (
           <SuspendedMessage />
         ) : (
           <>
