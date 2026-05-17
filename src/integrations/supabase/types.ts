@@ -503,6 +503,7 @@ export type Database = {
           min_players: number
           settings: Json
           started_at: string | null
+          state_version: number
           status: string
         }
         Insert: {
@@ -515,6 +516,7 @@ export type Database = {
           min_players?: number
           settings?: Json
           started_at?: string | null
+          state_version?: number
           status?: string
         }
         Update: {
@@ -527,6 +529,7 @@ export type Database = {
           min_players?: number
           settings?: Json
           started_at?: string | null
+          state_version?: number
           status?: string
         }
         Relationships: []
