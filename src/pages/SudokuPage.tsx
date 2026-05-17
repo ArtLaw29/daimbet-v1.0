@@ -170,7 +170,7 @@ export default function SudokuPage() {
         <ArrowLeft className="w-4 h-4" /> Retour aux jeux
       </button>
       <div className="text-center mb-4">
-        <h1 className="text-4xl font-display gold-text">🔢 Sudoku Race</h1>
+        <h1 className="text-4xl font-display gold-text">🔢 Sudoku</h1>
         <p className="text-sm text-muted-foreground mt-1">Le plus rapide remporte la mise</p>
       </div>
 
