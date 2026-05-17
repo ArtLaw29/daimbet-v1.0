@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
 import { Lock, ShieldAlert } from 'lucide-react';
 import { useAllGameStatus } from '@/hooks/useGameStatus';
@@ -15,17 +14,16 @@ interface GameTab {
   id: string;
   emoji: string;
   label: string;
-  subtitleKey: string;
   defaultSubtitle: string;
   available: boolean;
 }
 
 const GAME_TABS: GameTab[] = [
-  { id: 'daimocratie', emoji: '🗳️', label: 'Daimocratie', subtitleKey: 'game_subtitle_daimocratie', defaultSubtitle: 'Sondages', available: true },
-  { id: 'you-decide', emoji: '⚔️', label: 'Tournois', subtitleKey: 'game_subtitle_you_decide', defaultSubtitle: 'Tournois', available: true },
-  { id: 'gouvernement', emoji: '🏛️', label: 'Gouvernement', subtitleKey: 'game_subtitle_gouvernement', defaultSubtitle: '', available: true },
-  { id: 'fantasy-firm', emoji: '⚖️', label: 'Fantasy Firm', subtitleKey: 'game_subtitle_fantasy_firm', defaultSubtitle: '', available: true },
-  { id: 'kiss-marry', emoji: '💋', label: 'Kiss/Marry', subtitleKey: 'game_subtitle_kiss_marry', defaultSubtitle: 'Vote mensuel anonyme', available: true },
+  { id: 'daimocratie', emoji: '🗳️', label: 'Daimocratie', defaultSubtitle: 'Sondages', available: true },
+  { id: 'you-decide', emoji: '⚔️', label: 'Tournois', defaultSubtitle: 'Tournois', available: true },
+  { id: 'gouvernement', emoji: '🏛️', label: 'Gouvernement', defaultSubtitle: '', available: true },
+  { id: 'fantasy-firm', emoji: '⚖️', label: 'Fantasy Firm', defaultSubtitle: '', available: true },
+  { id: 'kiss-marry', emoji: '💋', label: 'Kiss/Marry', defaultSubtitle: 'Vote mensuel anonyme', available: true },
 ];
 
 const TAB_TO_GAME_KEY: Record<string, string> = {
@@ -38,25 +36,8 @@ const TAB_TO_GAME_KEY: Record<string, string> = {
 
 export default function GamesPage() {
   const [activeTab, setActiveTab] = useState('daimocratie');
-  const [subtitles, setSubtitles] = useState<Record<string, string>>({});
   const { statuses } = useAllGameStatus();
   const { isAdmin } = useAuth();
-
-  useEffect(() => {
-    const fetchSubtitles = async () => {
-      const subtitleKeys = GAME_TABS.map(t => t.subtitleKey);
-      const { data } = await supabase
-        .from('platform_settings')
-        .select('key, value')
-        .in('key', subtitleKeys);
-      if (data) {
-        const subs: Record<string, string> = {};
-        data.forEach(r => { subs[r.key] = r.value; });
-        setSubtitles(subs);
-      }
-    };
-    fetchSubtitles();
-  }, []);
 
   const isHidden = (tabId: string) => !!statuses[TAB_TO_GAME_KEY[tabId]]?.hidden;
   const isSuspended = (tabId: string) => !!statuses[TAB_TO_GAME_KEY[tabId]]?.suspended;
@@ -69,8 +50,6 @@ export default function GamesPage() {
       setActiveTab(visibleTabs[0].id);
     }
   }, [visibleTabs, activeTab]);
-
-  const getSubtitle = (tab: GameTab) => subtitles[tab.subtitleKey] || tab.defaultSubtitle;
 
   return (
     <div className="container mx-auto px-4 py-6 pb-20 md:pb-6">
@@ -92,7 +71,7 @@ export default function GamesPage() {
             {visibleTabs.map(tab => {
               const isActive = activeTab === tab.id;
               const tabSuspended = isSuspended(tab.id);
-              const subtitle = getSubtitle(tab);
+              const subtitle = tab.defaultSubtitle;
               const isDisabled = !tab.available || (tabSuspended && !isAdmin);
               return (
                 <button
