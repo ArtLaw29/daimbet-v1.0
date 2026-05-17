@@ -2115,7 +2115,7 @@ export default function AdminPage() {
 
             {/* Emergency per-game suspension */}
             <div className="rounded-xl border-2 border-destructive/40 bg-destructive/5 p-5 space-y-4">
-              <h3 className="text-sm font-display flex items-center gap-2 text-destructive">🚨 Suspension par jeu</h3>
+              <h3 className="text-sm font-display flex items-center gap-2 text-destructive">🚨 Suspension par jeu (legacy)</h3>
               <p className="text-xs text-muted-foreground">Suspendre ou réactiver instantanément un jeu ou les paris. Aucune donnée n'est supprimée.</p>
               <div className="space-y-2">
                 {[
