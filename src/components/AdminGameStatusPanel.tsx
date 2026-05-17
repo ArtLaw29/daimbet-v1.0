@@ -6,9 +6,20 @@ import { Pause, Play, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { GAME_KEYS, GAME_KEY_GROUPS } from '@/lib/gameKeys';
 import { useAllGameStatus } from '@/hooks/useGameStatus';
+import { useNavConfig } from '@/contexts/NavConfigContext';
+
+const NAV_TABS = [
+  { key: 'paris',     label: 'Paris',          emoji: '💸', gameKey: 'section_paris' },
+  { key: 'promo',     label: 'Jeux de promo',  emoji: '🏛️', gameKey: 'section_promo' },
+  { key: 'jeux',      label: 'Jeux',           emoji: '🎮', gameKey: 'section_jeux' },
+  { key: 'mini-jeux', label: 'Mini-jeux',      emoji: '🧩', gameKey: 'section_mini_jeux' },
+  { key: 'casino',    label: 'Casino',         emoji: '🎰', gameKey: 'section_casino' },
+  { key: 'la-promo',  label: 'La promo',       emoji: '📰', gameKey: 'section_la_promo' },
+] as const;
 
 export default function AdminGameStatusPanel() {
   const { statuses } = useAllGameStatus();
+  const { visibleTabs: navConfig, toggleTab } = useNavConfig();
   const [resetTarget, setResetTarget] = useState<{ key: string; label: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -54,6 +65,59 @@ export default function AdminGameStatusPanel() {
       <p className="text-xs text-muted-foreground">
         Active / suspend / cache instantanément chaque jeu ou sous-onglet. La réinitialisation supprime les parties en cours.
       </p>
+
+      <div className="space-y-2 pb-3 border-b border-border/50">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          🗂️ Configuration des onglets de navigation
+        </p>
+        <p className="text-[11px] text-muted-foreground italic">
+          "Cacher" retire l'onglet du menu. "Suspendre" maintient l'onglet visible dans la navbar mais bloque l'accès à la section.
+        </p>
+        <div className="space-y-1.5">
+          {NAV_TABS.map(tab => {
+            const isVisible = navConfig[tab.key] !== false;
+            const s = statuses[tab.gameKey] || { suspended: false, hidden: false };
+            const suspBusy = busy === `${tab.gameKey}:suspended`;
+            const visBusy  = busy === `${tab.key}:nav`;
+            return (
+              <div key={tab.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/40 border border-border/50 flex-wrap gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.suspended ? 'bg-destructive' : isVisible ? 'bg-primary' : 'bg-muted'}`} />
+                  <span className="text-sm">{tab.emoji} {tab.label}</span>
+                  {!isVisible && <span className="text-[10px] text-muted-foreground font-semibold">CACHÉ</span>}
+                  {s.suspended && isVisible && <span className="text-[10px] text-destructive font-semibold">SUSPENDU</span>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button size="sm" variant={s.suspended ? 'outline' : 'destructive'} className="text-xs h-7"
+                    disabled={suspBusy}
+                    onClick={async () => {
+                      setBusy(`${tab.gameKey}:suspended`);
+                      const { error } = await supabase
+                        .from('game_status')
+                        .update({ suspended: !s.suspended })
+                        .eq('game_key', tab.gameKey);
+                      setBusy(null);
+                      if (error) toast.error(error.message);
+                      else toast.success(!s.suspended ? 'Section suspendue 🚨' : 'Section réactivée ✅');
+                    }}>
+                    {s.suspended ? <><Play className="w-3 h-3 mr-1" /> Réactiver</> : <><Pause className="w-3 h-3 mr-1" /> Suspendre</>}
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7"
+                    disabled={visBusy}
+                    onClick={async () => {
+                      setBusy(`${tab.key}:nav`);
+                      await toggleTab(tab.key, !isVisible);
+                      setBusy(null);
+                      toast.success(isVisible ? 'Onglet caché 🙈' : 'Onglet visible 👁️');
+                    }}>
+                    {isVisible ? <><EyeOff className="w-3 h-3 mr-1" /> Cacher</> : <><Eye className="w-3 h-3 mr-1" /> Afficher</>}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {GAME_KEY_GROUPS.map(group => {
         const items = GAME_KEYS.filter(g => g.group === group);
