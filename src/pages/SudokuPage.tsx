@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Coins, Trophy, Timer } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { todayStr, useRevealCountdown } from '@/lib/dailyReveal';
+import { useGameSession } from '@/hooks/useGameSession';
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -18,14 +19,35 @@ export default function SudokuPage() {
   const [content, setContent] = useState<any>(null);
   const [puzzle, setPuzzle] = useState<number[]>([]);
   const [solution, setSolution] = useState<number[]>([]);
-  const [grid, setGrid] = useState<number[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [errors, setErrors] = useState<Set<number>>(new Set());
-  const [seconds, setSeconds] = useState(0);
-  const [finished, setFinished] = useState(false);
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [scores, setScores] = useState<any[]>([]);
-  const startRef = useRef<number>(Date.now());
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  const today = todayStr();
+  const {
+    state: persisted,
+    setState: setPersisted,
+    resetSession,
+  } = useGameSession<{ grid: number[] | null; finished: boolean; startedAt: number | null }>({
+    gameType: `sudoku:${today}`,
+    initialState: { grid: null, finished: false, startedAt: null },
+  });
+
+  const grid = persisted.grid ?? [];
+  const finished = persisted.finished;
+  const startedAt = persisted.startedAt;
+  const seconds = startedAt ? Math.max(0, Math.floor((nowMs - startedAt) / 1000)) : 0;
+
+  const setGrid = (updater: number[] | ((g: number[]) => number[])) => {
+    setPersisted((s) => {
+      const prev = s.grid ?? [];
+      const next = typeof updater === 'function' ? (updater as (g: number[]) => number[])(prev) : updater;
+      return { ...s, grid: next };
+    });
+  };
+  const setFinished = (v: boolean) => setPersisted((s) => ({ ...s, finished: v }));
 
   useEffect(() => {
     (async () => {
@@ -36,7 +58,7 @@ export default function SudokuPage() {
       const data = dc.data as any;
       const p = (data.puzzle || []).map((v: any) => Number(v) || 0);
       const s = (data.solution || []).map((v: any) => Number(v) || 0);
-      setPuzzle(p); setSolution(s); setGrid([...p]);
+      setPuzzle(p); setSolution(s);
       if (user) {
         const { data: existing } = await supabase.from('daily_scores').select('*')
           .eq('game_type', GAME_TYPE).eq('played_on', todayStr()).eq('user_id', user.id).maybeSingle();
@@ -44,9 +66,17 @@ export default function SudokuPage() {
       }
       await loadScores();
       setLoading(false);
-      startRef.current = Date.now();
     })();
   }, [user]);
+
+  // Bootstrap the persisted state once the puzzle is loaded.
+  useEffect(() => {
+    if (loading || alreadyPlayed) return;
+    if (puzzle.length === 0) return;
+    if (persisted.grid && persisted.grid.length === puzzle.length) return;
+    setPersisted({ grid: [...puzzle], finished: false, startedAt: Date.now() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, alreadyPlayed, puzzle]);
 
   const loadScores = async () => {
     const { data } = await supabase
@@ -70,9 +100,10 @@ export default function SudokuPage() {
   // Timer
   useEffect(() => {
     if (loading || finished || alreadyPlayed || !content) return;
-    const id = setInterval(() => setSeconds(Math.floor((Date.now() - startRef.current) / 1000)), 500);
+    if (!startedAt) return;
+    const id = setInterval(() => setNowMs(Date.now()), 500);
     return () => clearInterval(id);
-  }, [loading, finished, alreadyPlayed, content]);
+  }, [loading, finished, alreadyPlayed, content, startedAt]);
 
   // Physical keyboard
   useEffect(() => {
