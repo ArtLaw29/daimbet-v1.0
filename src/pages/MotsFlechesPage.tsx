@@ -90,6 +90,23 @@ export default function MotsFlechesPage() {
     })();
   }, [user]);
 
+  // Bootstrap empty grid + verified arrays when content arrives and nothing is persisted yet.
+  useEffect(() => {
+    if (!content) return;
+    const grille: Cell[][] = (content?.data?.grille || []) as Cell[][];
+    if (grille.length === 0) return;
+    const dimsMatch = persisted.grid
+      && persisted.grid.length === grille.length
+      && (persisted.grid[0]?.length ?? 0) === (grille[0]?.length ?? 0);
+    if (dimsMatch) return;
+    setPersisted({
+      grid: grille.map((row) => row.map(() => '')),
+      verified: grille.map((row) => row.map(() => false)),
+      finished: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content]);
+
   const loadScores = async () => {
     const { data } = await supabase.from('daily_scores').select('*')
       .eq('game_type', GAME_TYPE).eq('played_on', todayStr()).order('finished_at', { ascending: true }).limit(20);
