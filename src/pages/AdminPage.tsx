@@ -2185,6 +2185,9 @@ export default function AdminPage() {
             {/* NEW game_status panel */}
             <AdminGameStatusPanel />
 
+            {/* Game config (casino) */}
+            <AdminGameConfigPanel />
+
             {/* Game subtitles */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-display flex items-center gap-2">🎮 Sous-titres des jeux</h3>
