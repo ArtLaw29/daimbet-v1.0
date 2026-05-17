@@ -855,6 +855,134 @@ export type Database = {
         }
         Relationships: []
       }
+      loan_offers: {
+        Row: {
+          amount: number
+          created_at: string
+          deadline: string | null
+          id: string
+          lender_id: string
+          rate_percent: number
+          request_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          lender_id: string
+          rate_percent: number
+          request_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          lender_id?: string
+          rate_percent?: number
+          request_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_offers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "loan_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_requests: {
+        Row: {
+          amount: number
+          borrower_id: string
+          created_at: string
+          id: string
+          motive: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          borrower_id: string
+          created_at?: string
+          id?: string
+          motive?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          borrower_id?: string
+          created_at?: string
+          id?: string
+          motive?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      loans: {
+        Row: {
+          borrower_id: string
+          created_at: string
+          deadline: string | null
+          id: string
+          lender_id: string
+          offer_id: string | null
+          principal: number
+          rate_percent: number
+          repaid_at: string | null
+          request_id: string | null
+          status: string
+          total_due: number | null
+        }
+        Insert: {
+          borrower_id: string
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          lender_id: string
+          offer_id?: string | null
+          principal: number
+          rate_percent: number
+          repaid_at?: string | null
+          request_id?: string | null
+          status?: string
+          total_due?: number | null
+        }
+        Update: {
+          borrower_id?: string
+          created_at?: string
+          deadline?: string | null
+          id?: string
+          lender_id?: string
+          offer_id?: string | null
+          principal?: number
+          rate_percent?: number
+          repaid_at?: string | null
+          request_id?: string | null
+          status?: string
+          total_due?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loans_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "loan_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "loan_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       moderation_log: {
         Row: {
           action_type: string

@@ -4,9 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, Smile } from 'lucide-react';
+import { Send, Plus, Smile, Handshake, Coins } from 'lucide-react';
 import { INTRO_GAZETTE } from '@/components/TabIntro';
 import type { Tables } from '@/integrations/supabase/types';
+import LoanFeed from '@/components/loans/LoanFeed';
+import { RequestLoanDialog, OfferLoanDialog } from '@/components/loans/LoanDialogs';
 
 type GazetteMessage = Tables<'gazette_messages'>;
 type GazetteReaction = Tables<'gazette_reactions'>;
@@ -23,6 +25,8 @@ export default function GazettePage() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null);
+  const [openRequestDlg, setOpenRequestDlg] = useState(false);
+  const [openOfferDlg, setOpenOfferDlg] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const [msgRes, reactRes, profilesRes] = await Promise.all([
@@ -113,6 +117,21 @@ export default function GazettePage() {
         <h1 className="text-3xl font-display gold-text">📰 La Gazette du Daim</h1>
       </div>
       {INTRO_GAZETTE}
+
+      {/* Loan action buttons */}
+      {user && (
+        <div className="flex flex-wrap gap-2 justify-center mb-4">
+          <Button variant="outline" size="sm" onClick={() => setOpenRequestDlg(true)}>
+            <Handshake className="w-4 h-4 mr-1.5" /> 🙏 Demander un emprunt
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenOfferDlg(true)}>
+            <Coins className="w-4 h-4 mr-1.5" /> 💰 Proposer un prêt
+          </Button>
+        </div>
+      )}
+
+      {/* Active loan requests & spontaneous offers, pinned at top */}
+      <LoanFeed profiles={profiles as any} />
 
       {/* Input — top on desktop */}
       <div className="hidden md:block mb-6">
@@ -225,6 +244,9 @@ export default function GazettePage() {
           />
         </div>
       )}
+
+      <RequestLoanDialog open={openRequestDlg} onClose={() => setOpenRequestDlg(false)} />
+      <OfferLoanDialog open={openOfferDlg} onClose={() => setOpenOfferDlg(false)} />
     </div>
   );
 }
