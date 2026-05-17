@@ -118,6 +118,21 @@ export default function GazettePage() {
       </div>
       {INTRO_GAZETTE}
 
+      {/* Loan action buttons */}
+      {user && (
+        <div className="flex flex-wrap gap-2 justify-center mb-4">
+          <Button variant="outline" size="sm" onClick={() => setOpenRequestDlg(true)}>
+            <Handshake className="w-4 h-4 mr-1.5" /> 🙏 Demander un emprunt
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenOfferDlg(true)}>
+            <Coins className="w-4 h-4 mr-1.5" /> 💰 Proposer un prêt
+          </Button>
+        </div>
+      )}
+
+      {/* Active loan requests & spontaneous offers, pinned at top */}
+      <LoanFeed profiles={profiles as any} />
+
       {/* Input — top on desktop */}
       <div className="hidden md:block mb-6">
         {user ? (
@@ -229,6 +244,9 @@ export default function GazettePage() {
           />
         </div>
       )}
+
+      <RequestLoanDialog open={openRequestDlg} onClose={() => setOpenRequestDlg(false)} />
+      <OfferLoanDialog open={openOfferDlg} onClose={() => setOpenOfferDlg(false)} />
     </div>
   );
 }
