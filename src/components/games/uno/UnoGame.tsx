@@ -93,6 +93,19 @@ export default function UnoGame({ roomId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.uno_window?.expires_at, state?.uno_window?.resolved]);
 
+  const me = user?.id ?? '';
+  const myHand = state?.your_hand ?? [];
+  const top = state?.discard_top ?? null;
+
+  const playable = useMemo(() => {
+    if (!top || !state) return new Set<string>();
+    const set = new Set<string>();
+    for (const c of myHand) {
+      if (canPlayClient(c, top, state.current_color, state.pending_draw)) set.add(c.id);
+    }
+    return set;
+  }, [myHand, top, state?.current_color, state?.pending_draw]);
+
   if (!state) {
     return (
       <div className="p-8 flex items-center justify-center gap-2 text-muted-foreground">
@@ -101,19 +114,7 @@ export default function UnoGame({ roomId }: Props) {
     );
   }
 
-  const me = user?.id ?? '';
   const isMyTurn = state.current_player === me;
-  const myHand = state.your_hand;
-  const top = state.discard_top;
-
-  const playable = useMemo(() => {
-    if (!top) return new Set<string>();
-    const set = new Set<string>();
-    for (const c of myHand) {
-      if (canPlayClient(c, top, state.current_color, state.pending_draw)) set.add(c.id);
-    }
-    return set;
-  }, [myHand, top, state.current_color, state.pending_draw]);
 
   const onPlay = async (cardId: string) => {
     if (busy) return;
