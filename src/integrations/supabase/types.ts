@@ -1547,6 +1547,10 @@ export type Database = {
     }
     Functions: {
       auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
+      ballon_dor_score: {
+        Args: { p_config: Json; p_data: Json }
+        Returns: number
+      }
       claim_daily_rank: {
         Args: { p_completed: boolean; p_content_id: string }
         Returns: Json
@@ -1568,6 +1572,18 @@ export type Database = {
       finish_duel: {
         Args: { p_session_id: string; p_winner_id: string }
         Returns: Json
+      }
+      get_ballon_dor_pronostics: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          data: Json
+          display_name: string
+          emoji: string
+          score: number
+          user_id: string
+        }[]
       }
       get_bet_participant_counts: {
         Args: { p_bet_ids: string[] }
@@ -1714,6 +1730,7 @@ export type Database = {
           positives: number
         }[]
       }
+      resolve_ballon_dor: { Args: never; Returns: Json }
       resolve_bet: {
         Args: { p_bet_id: string; p_winning_option_ids: string[] }
         Returns: Json
@@ -1730,6 +1747,10 @@ export type Database = {
       }
       retract_wager: {
         Args: { p_user_id: string; p_wager_id: string }
+        Returns: Json
+      }
+      submit_ballon_dor: {
+        Args: { p_kopa: string; p_top10: string[]; p_yashin: string }
         Returns: Json
       }
       submit_game_result: {
