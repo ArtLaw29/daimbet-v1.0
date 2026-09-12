@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789211548445,
+      "tag": "0000_ballon_dor_game_type",
+      "breakpoints": true
+    }
+  ]
+}

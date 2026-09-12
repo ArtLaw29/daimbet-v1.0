@@ -1762,7 +1762,12 @@ export type Database = {
         | "tranches_multiples"
         | "tierce_du_daim"
       game_session_status: "draft" | "active" | "voting" | "closed" | "archived"
-      game_type: "sondage" | "tournoi" | "gouvernement" | "fantasy"
+      game_type:
+        | "sondage"
+        | "tournoi"
+        | "gouvernement"
+        | "fantasy"
+        | "ballon_dor"
       km_category: "kiss" | "marry" | "coup_soir" | "plan_q"
       proposal_status: "en_attente" | "valide" | "rejete"
       resolution_mode: "admin" | "tirage_sort"
@@ -1911,7 +1916,13 @@ export const Constants = {
         "tierce_du_daim",
       ],
       game_session_status: ["draft", "active", "voting", "closed", "archived"],
-      game_type: ["sondage", "tournoi", "gouvernement", "fantasy"],
+      game_type: [
+        "sondage",
+        "tournoi",
+        "gouvernement",
+        "fantasy",
+        "ballon_dor",
+      ],
       km_category: ["kiss", "marry", "coup_soir", "plan_q"],
       proposal_status: ["en_attente", "valide", "rejete"],
       resolution_mode: ["admin", "tirage_sort"],
