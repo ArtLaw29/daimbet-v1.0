@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -1547,6 +1547,10 @@ export type Database = {
     }
     Functions: {
       auto_close_bet: { Args: { p_bet_id: string }; Returns: undefined }
+      ballon_dor_score: {
+        Args: { p_config: Json; p_data: Json }
+        Returns: number
+      }
       claim_daily_rank: {
         Args: { p_completed: boolean; p_content_id: string }
         Returns: Json
@@ -1568,6 +1572,18 @@ export type Database = {
       finish_duel: {
         Args: { p_session_id: string; p_winner_id: string }
         Returns: Json
+      }
+      get_ballon_dor_pronostics: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          data: Json
+          display_name: string
+          emoji: string
+          score: number
+          user_id: string
+        }[]
       }
       get_bet_participant_counts: {
         Args: { p_bet_ids: string[] }
@@ -1714,6 +1730,7 @@ export type Database = {
           positives: number
         }[]
       }
+      resolve_ballon_dor: { Args: never; Returns: Json }
       resolve_bet: {
         Args: { p_bet_id: string; p_winning_option_ids: string[] }
         Returns: Json
@@ -1730,6 +1747,10 @@ export type Database = {
       }
       retract_wager: {
         Args: { p_user_id: string; p_wager_id: string }
+        Returns: Json
+      }
+      submit_ballon_dor: {
+        Args: { p_kopa: string; p_top10: string[]; p_yashin: string }
         Returns: Json
       }
       submit_game_result: {
@@ -1762,7 +1783,12 @@ export type Database = {
         | "tranches_multiples"
         | "tierce_du_daim"
       game_session_status: "draft" | "active" | "voting" | "closed" | "archived"
-      game_type: "sondage" | "tournoi" | "gouvernement" | "fantasy"
+      game_type:
+        | "sondage"
+        | "tournoi"
+        | "gouvernement"
+        | "fantasy"
+        | "ballon_dor"
       km_category: "kiss" | "marry" | "coup_soir" | "plan_q"
       proposal_status: "en_attente" | "valide" | "rejete"
       resolution_mode: "admin" | "tirage_sort"
@@ -1783,12 +1809,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1812,11 +1838,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1837,11 +1863,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1862,11 +1888,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1879,11 +1905,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1911,7 +1937,13 @@ export const Constants = {
         "tierce_du_daim",
       ],
       game_session_status: ["draft", "active", "voting", "closed", "archived"],
-      game_type: ["sondage", "tournoi", "gouvernement", "fantasy"],
+      game_type: [
+        "sondage",
+        "tournoi",
+        "gouvernement",
+        "fantasy",
+        "ballon_dor",
+      ],
       km_category: ["kiss", "marry", "coup_soir", "plan_q"],
       proposal_status: ["en_attente", "valide", "rejete"],
       resolution_mode: ["admin", "tirage_sort"],
