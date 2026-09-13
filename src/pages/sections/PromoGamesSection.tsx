@@ -4,6 +4,7 @@ import TournoiPage from '@/components/TournoiPage';
 import GouvernementPage from '@/components/GouvernementPage';
 import FantasyFirmPage from '@/components/FantasyFirmPage';
 import KissMarryPage from '@/pages/KissMarryPage';
+import BallonDorPage from '@/components/BallonDorPage';
 import GameUnderConstruction from '@/components/GameUnderConstruction';
 import { useGameStatus } from '@/hooks/useGameStatus';
 import { useAuth } from '@/contexts/AuthContext';
