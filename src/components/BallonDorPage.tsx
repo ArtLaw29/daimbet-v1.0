@@ -43,7 +43,8 @@ const DEFAULT_CFG: BallonDorConfig = {
 };
 
 export default function BallonDorPage() {
-  const { user, isAdmin, refreshProfile } = useAuth();
+  const { user, profile, isAdmin, refreshProfile } = useAuth();
+  const balance = profile?.balance ?? 0;
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>('active');
   const [cfg, setCfg] = useState<BallonDorConfig>(DEFAULT_CFG);
@@ -108,7 +109,7 @@ export default function BallonDorPage() {
       </div>
 
       {tab === 'pronostic' && (
-        <PronosticForm cfg={cfg} locked={locked} mine={mine?.data} onSaved={async () => { await refreshProfile(); await loadAll(); }} />
+        <PronosticForm cfg={cfg} locked={locked} mine={mine?.data} balance={balance} onSaved={async () => { await refreshProfile(); await loadAll(); }} />
       )}
       {tab === 'classement' && <Ranking entries={entries} cfg={cfg} meId={user?.id} closed={status === 'closed'} />}
       {tab === 'promo' && <PromoList entries={entries} cfg={cfg} locked={locked} />}
