@@ -4,6 +4,7 @@ import TournoiPage from '@/components/TournoiPage';
 import GouvernementPage from '@/components/GouvernementPage';
 import FantasyFirmPage from '@/components/FantasyFirmPage';
 import KissMarryPage from '@/pages/KissMarryPage';
+import BallonDorPage from '@/components/BallonDorPage';
 import GameUnderConstruction from '@/components/GameUnderConstruction';
 import { useGameStatus } from '@/hooks/useGameStatus';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +25,7 @@ export default function PromoGamesSection() {
         { key: 'gouvernement', label: 'Gouvernement', emoji: '🏛️', render: () => <GouvernementPage /> },
         { key: 'fantasy_firm', label: 'Fantasy Firm', emoji: '💼', render: () => <FantasyFirmPage /> },
         { key: 'kiss_marry',   label: 'Kiss / Marry', emoji: '💋', render: () => <KissMarryPage /> },
+        { key: 'ballon_dor',   label: "Ballon d'Or 2026", emoji: '⚽', render: () => <BallonDorPage /> },
         { key: 'destins',      label: 'Destins',      emoji: '🔮', render: () => <GameUnderConstruction gameName="Destins" /> },
         { key: 'quizz',        label: 'Quizz',        emoji: '❓', render: () => <GameUnderConstruction gameName="Quizz" /> },
         { key: 'bingo',        label: 'Bingo',        emoji: '🎱', render: () => <GameUnderConstruction gameName="Bingo" /> },
