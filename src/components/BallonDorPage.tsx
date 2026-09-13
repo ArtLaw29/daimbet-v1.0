@@ -134,33 +134,47 @@ function Countdown({ ms }: { ms: number }) {
 function Header({ cfg, locked, closed, now, deadline, pot, count }: {
   cfg: BallonDorConfig; locked: boolean; closed: boolean; now: number; deadline: number; pot: number; count: number;
 }) {
+  const p1 = Math.floor(pot * cfg.payout_percentages.first / 100);
+  const p2 = Math.floor(pot * cfg.payout_percentages.second / 100);
+  const p3 = Math.floor(pot * cfg.payout_percentages.third / 100);
   return (
-    <Card className="p-5 text-center border-primary/40 bg-gradient-to-b from-primary/10 to-transparent">
+    <Card className={`p-5 text-center border-2 ${locked && !closed ? 'border-destructive/60' : 'border-primary/50'} bg-gradient-to-b from-primary/15 via-primary/5 to-transparent shadow-[0_0_40px_hsl(var(--primary)/0.15)]`}>
       <p className="text-4xl mb-1">🏆</p>
-      <h2 className="text-2xl font-display gold-text">Ballon d'Or 2026</h2>
+      <h2 className="text-3xl font-display gold-text tracking-wide">Ballon d'Or 2026</h2>
       <p className="text-sm text-muted-foreground mt-1">
         Pronostique le Top 10 officiel, le trophée Kopa et le trophée Yachine.
       </p>
-      <div className="flex flex-wrap gap-2 justify-center mt-4">
-        <Badge variant="outline">Mise : {cfg.buy_in} DC</Badge>
-        <Badge variant="outline">Cagnotte : {pot.toLocaleString('fr-FR')} DC</Badge>
+
+      <div className="mt-4 rounded-xl border border-primary/40 bg-primary/10 py-3 px-4">
+        <p className="font-display text-xl gold-text">
+          🏆 Cagnotte Garantie : {pot.toLocaleString('fr-FR')} DC
+        </p>
+        <div className="flex flex-wrap gap-2 justify-center mt-2 text-sm">
+          <Badge variant="secondary">🥇 1er : {p1.toLocaleString('fr-FR')} DC</Badge>
+          <Badge variant="secondary">🥈 2e : {p2.toLocaleString('fr-FR')} DC</Badge>
+          <Badge variant="secondary">🥉 3e : {p3.toLocaleString('fr-FR')} DC</Badge>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 justify-center mt-3">
+        <Badge variant="outline">Buy-in : {cfg.buy_in} DC</Badge>
         <Badge variant="outline">{count} participant{count > 1 ? 's' : ''}</Badge>
         <Badge variant="outline">Rake 5 % sur les gains nets</Badge>
       </div>
+
       <div className="mt-4 text-sm">
         {closed ? (
           <span className="text-primary font-medium">Concours terminé — résultats officiels ci-dessous.</span>
         ) : locked ? (
-          <span className="text-destructive font-medium inline-flex items-center gap-1">
-            <Lock className="w-4 h-4" /> Pronostics verrouillés, la cérémonie est en cours.
+          <span className="inline-flex items-center gap-1 font-display text-lg text-destructive">
+            <Lock className="w-5 h-5" /> Saisie verrouillée — la cérémonie est en cours
           </span>
         ) : deadline > 0 ? (
-          <span className="text-muted-foreground">Verrouillage dans <Countdown ms={deadline - now} /></span>
+          <span className="text-muted-foreground">⏳ Verrouillage des pronostics dans <span className="text-primary font-medium"><Countdown ms={deadline - now} /></span></span>
         ) : null}
       </div>
       <p className="text-xs text-muted-foreground mt-3">
         Barème : 10 pts position exacte · 5 pts à ±1 place · 2 pts joueur présent dans le Top 10 · 5 pts par trophée Kopa / Yachine.
-        Podium : 50 % / 30 % / 20 % de la cagnotte.
       </p>
     </Card>
   );
@@ -269,30 +283,50 @@ function PronosticForm({ cfg, locked, mine, onSaved }: {
           </p>
         )}
         <ol className="space-y-2">
-          {top10.map((p, i) => (
-            <li
-              key={p}
-              draggable
-              onDragStart={() => setDragIdx(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => drop(i)}
-              className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card cursor-grab active:cursor-grabbing"
-            >
-              <span className="w-7 h-7 rounded-full bg-primary/15 text-primary grid place-items-center text-sm font-display shrink-0">
-                {i + 1}
-              </span>
-              <div className="flex-1 min-w-0"><PlayerLine name={p} /></div>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, -1)} disabled={i === 0}>
-                <ArrowUp className="w-4 h-4" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, 1)} disabled={i === top10.length - 1}>
-                <ArrowDown className="w-4 h-4" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setTop10(top10.filter((x) => x !== p))}>
-                <X className="w-4 h-4" />
-              </Button>
-            </li>
-          ))}
+          {Array.from({ length: 10 }, (_, i) => {
+            const p = top10[i];
+            if (!p) {
+              return (
+                <li
+                  key={`empty-${i}`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => drop(i)}
+                  className="flex items-center gap-2 p-2 rounded-lg border border-dashed border-border text-muted-foreground"
+                >
+                  <span className="w-7 h-7 rounded-full bg-secondary grid place-items-center text-sm font-display shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-xs italic">Emplacement libre</span>
+                </li>
+              );
+            }
+            return (
+              <li
+                key={p}
+                draggable
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => drop(i)}
+                className={`flex items-center gap-2 p-2 rounded-lg border bg-card cursor-grab active:cursor-grabbing transition-colors ${
+                  dragIdx === i ? 'border-primary opacity-60' : 'border-border hover:border-primary/40'
+                }`}
+              >
+                <span className="w-7 h-7 rounded-full bg-primary/15 text-primary grid place-items-center text-sm font-display shrink-0">
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0"><PlayerLine name={p} /></div>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, -1)} disabled={i === 0}>
+                  <ArrowUp className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => move(i, 1)} disabled={i === top10.length - 1}>
+                  <ArrowDown className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setTop10(top10.filter((x) => x !== p))}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </li>
+            );
+          })}
         </ol>
 
         <div className="space-y-2 pt-2">
