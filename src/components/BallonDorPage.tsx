@@ -403,37 +403,67 @@ function Ranking({ entries, cfg, meId, closed }: { entries: Entry[]; cfg: Ballon
     Math.floor(cfg.total_prize_pool * cfg.payout_percentages.third / 100),
   ];
   const medals = ['🥇', '🥈', '🥉'];
+  const official = (cfg.official_top10 || []).filter(Boolean);
   return (
-    <Card className="p-4 space-y-3">
-      <h3 className="font-display text-lg">📊 Classement {closed ? 'final' : 'en direct'}</h3>
-      {cfg.official_top10.filter(Boolean).length === 0 && !closed && (
-        <p className="text-sm text-muted-foreground">
-          Aucun résultat officiel annoncé pour l'instant — les scores évolueront pendant la cérémonie.
-        </p>
-      )}
-      <div className="space-y-2">
-        {entries.map((e, i) => (
-          <div
-            key={e.user_id}
-            className={`flex items-center gap-3 p-3 rounded-lg border ${
-              e.user_id === meId ? 'border-primary bg-primary/5' : 'border-border'
-            }`}
-          >
-            <span className="w-8 text-center font-display text-primary">{medals[i] ?? i + 1}</span>
-            <span className="text-xl">{e.emoji ?? '🦌'}</span>
-            <span className="flex-1 truncate text-sm font-medium">{e.display_name ?? 'Anonyme'}</span>
-            {i < 3 && <span className="text-xs text-muted-foreground hidden sm:inline">{prizes[i].toLocaleString('fr-FR')} DC</span>}
-            <Badge variant="secondary">{e.score} pts</Badge>
-          </div>
-        ))}
-        {entries.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Personne n'a encore participé.</p>}
-      </div>
-    </Card>
+    <div className="space-y-4">
+      <Card className="p-4">
+        <h3 className="font-display text-lg mb-2">🧮 Barème des points</h3>
+        <div className="grid gap-2 sm:grid-cols-2 text-sm">
+          <div className="flex items-center gap-2"><Badge className="bg-primary text-primary-foreground">+10</Badge> Joueur placé à la position exacte</div>
+          <div className="flex items-center gap-2"><Badge variant="secondary">+5</Badge> Joueur décalé d'une seule place</div>
+          <div className="flex items-center gap-2"><Badge variant="outline">+2</Badge> Joueur présent dans le Top 10</div>
+          <div className="flex items-center gap-2"><Badge variant="secondary">+5</Badge> Bon lauréat Kopa · <Badge variant="secondary">+5</Badge> Yachine</div>
+        </div>
+      </Card>
+
+      <Card className="p-4">
+        <h3 className="font-display text-lg mb-2">🎙️ Résultats officiels</h3>
+        {official.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Aucune position annoncée pour l'instant — le classement évoluera en direct pendant la cérémonie.</p>
+        ) : (
+          <ol className="space-y-1">
+            {(cfg.official_top10 || []).map((p, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm">
+                <span className="w-6 text-primary font-display">{i + 1}</span>
+                {p ? <PlayerLine name={p} /> : <span className="text-xs italic text-muted-foreground">Non annoncé</span>}
+              </li>
+            ))}
+          </ol>
+        )}
+        <div className="flex flex-wrap gap-2 mt-3 text-sm">
+          <Badge variant="outline">🌟 Kopa : {cfg.official_kopa || 'non annoncé'}</Badge>
+          <Badge variant="outline">🧤 Yachine : {cfg.official_yashin || 'non annoncé'}</Badge>
+        </div>
+      </Card>
+
+      <Card className="p-4 space-y-3">
+        <h3 className="font-display text-lg">📊 Classement {closed ? 'final' : 'en direct'}</h3>
+        <div className="space-y-2">
+          {entries.map((e, i) => (
+            <div
+              key={e.user_id}
+              className={`flex items-center gap-3 p-3 rounded-lg border ${
+                e.user_id === meId ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+            >
+              <span className="w-8 text-center font-display text-primary">{medals[i] ?? i + 1}</span>
+              <span className="text-xl">{e.emoji ?? '🦌'}</span>
+              <span className="flex-1 truncate text-sm font-medium">{e.display_name ?? 'Anonyme'}</span>
+              {i < 3 && <span className="text-xs text-muted-foreground hidden sm:inline">{prizes[i].toLocaleString('fr-FR')} DC</span>}
+              <Badge variant="secondary">{e.score} pts</Badge>
+            </div>
+          ))}
+          {entries.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Personne n'a encore participé.</p>}
+        </div>
+      </Card>
+    </div>
   );
 }
 
 function PromoList({ entries, cfg, locked }: { entries: Entry[]; cfg: BallonDorConfig; locked: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [filter, setFilter] = useState('');
+  const shown = entries.filter((e) => (e.display_name ?? 'Anonyme').toLowerCase().includes(filter.toLowerCase()));
   if (!locked) {
     return (
       <Card className="p-6 text-center space-y-2">
@@ -447,7 +477,11 @@ function PromoList({ entries, cfg, locked }: { entries: Entry[]; cfg: BallonDorC
   }
   return (
     <div className="space-y-3">
-      {entries.map((e) => (
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input className="pl-9" placeholder="Filtrer par participant…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+      </div>
+      {shown.map((e) => (
         <Card key={e.user_id} className="p-4">
           <button className="w-full flex items-center gap-3" onClick={() => setOpen(open === e.user_id ? null : e.user_id)}>
             <span className="text-xl">{e.emoji ?? '🦌'}</span>
@@ -460,24 +494,41 @@ function PromoList({ entries, cfg, locked }: { entries: Entry[]; cfg: BallonDorC
                 {e.data.top10?.map((p, i) => {
                   const pts = positionPoints(p, i + 1, cfg.official_top10 || []);
                   return (
-                    <li key={p} className="flex items-center gap-2 text-sm">
+                    <li
+                      key={p}
+                      className={`flex items-center gap-2 text-sm rounded-md px-1 ${pts === 10 ? 'bg-primary/10 border border-primary/40' : ''}`}
+                    >
                       <span className="w-6 text-primary font-display">{i + 1}</span>
                       <span className="flex-1 min-w-0"><PlayerLine name={p} /></span>
-                      {pts !== null && <Badge variant="outline" className="text-xs">+{pts}</Badge>}
+                      {pts !== null && (
+                        <Badge
+                          variant={pts === 10 ? 'default' : 'outline'}
+                          className={`text-xs ${pts === 10 ? 'bg-primary text-primary-foreground' : ''}`}
+                        >
+                          {pts === 10 ? '🎯 ' : ''}+{pts}
+                        </Badge>
+                      )}
                     </li>
                   );
                 })}
               </ol>
-              <p className="text-sm pt-2">🌟 Kopa : <b>{e.data.kopa}</b></p>
-              <p className="text-sm">🧤 Yachine : <b>{e.data.yashin}</b></p>
+              <p className="text-sm pt-2">
+                🌟 Kopa : <b>{e.data.kopa}</b>{' '}
+                {cfg.official_kopa && cfg.official_kopa === e.data.kopa && <Badge className="bg-primary text-primary-foreground text-xs">+5</Badge>}
+              </p>
+              <p className="text-sm">
+                🧤 Yachine : <b>{e.data.yashin}</b>{' '}
+                {cfg.official_yashin && cfg.official_yashin === e.data.yashin && <Badge className="bg-primary text-primary-foreground text-xs">+5</Badge>}
+              </p>
             </div>
           )}
         </Card>
       ))}
-      {entries.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Aucun pronostic enregistré.</p>}
+      {shown.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Aucun pronostic trouvé.</p>}
     </div>
   );
 }
+
 
 function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: string; onDone: () => void }) {
   const [open, setOpen] = useState(false);
@@ -486,6 +537,15 @@ function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: 
   const [yashin, setYashin] = useState(cfg.official_yashin || '');
   const [deadline, setDeadline] = useState(cfg.deadline_iso ? cfg.deadline_iso.slice(0, 16) : '');
   const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const unlockAt = cfg.admin_unlock_iso ? new Date(cfg.admin_unlock_iso).getTime() : 0;
+  const adminLocked = unlockAt > 0 && tick < unlockAt;
 
   useEffect(() => {
     setTop10(Array.from({ length: 10 }, (_, i) => cfg.official_top10?.[i] ?? ''));
@@ -528,15 +588,27 @@ function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: 
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>🎙️ Direct Cérémonie — Ballon d'Or 2026</DialogTitle></DialogHeader>
 
+        {adminLocked ? (
+          <div className="py-8 text-center space-y-3">
+            <Lock className="w-10 h-10 mx-auto text-muted-foreground" />
+            <p className="font-display text-lg">Panneau verrouillé</p>
+            <p className="text-sm text-muted-foreground">
+              La saisie des résultats officiels s'ouvrira le{' '}
+              {new Date(unlockAt).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}.
+            </p>
+            <p className="text-sm">Ouverture dans <span className="text-primary font-medium"><Countdown ms={unlockAt - tick} /></span></p>
+          </div>
+        ) : (
         <div className="space-y-3">
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="secondary" onClick={lockNow} disabled={busy}>
               <Lock className="w-4 h-4 mr-1" /> Verrouiller maintenant
             </Button>
             <Button size="sm" onClick={distribute} disabled={busy || status === 'closed'}>
-              <Trophy className="w-4 h-4 mr-1" /> Clôturer et distribuer
+              <Trophy className="w-4 h-4 mr-1" /> Clôturer et distribuer les {cfg.total_prize_pool.toLocaleString('fr-FR')} DC
             </Button>
           </div>
+
 
           <div>
             <label className="text-sm font-medium">Date limite des pronostics</label>
@@ -597,13 +669,15 @@ function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: 
             disabled={busy}
             onClick={() => saveConfig(
               { official_top10: top10, official_kopa: kopa, official_yashin: yashin },
-              'Résultats officiels publiés en direct ⚡',
+              'Avancement sauvegardé — points recalculés ⚡',
             )}
           >
             {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Publier les résultats en direct
+            Sauvegarder l'avancement
           </Button>
         </div>
+        )}
+
       </DialogContent>
     </Dialog>
   );
