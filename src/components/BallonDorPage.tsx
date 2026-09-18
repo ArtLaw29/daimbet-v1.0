@@ -363,7 +363,7 @@ function PronosticForm({ cfg, locked, mine, balance, onSaved }: {
 
         <Button className="w-full" onClick={save} disabled={saving || top10.length !== 10}>
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          {mine ? 'Mettre à jour mon pronostic' : `Valider et payer ${cfg.buy_in} DC`}
+          {mine ? 'Mettre à jour mon pronostic (gratuit)' : `Valider mon pronostic (${cfg.buy_in} DC)`}
         </Button>
         {!mine && <p className="text-xs text-muted-foreground text-center">La mise n'est prélevée qu'une seule fois.</p>}
       </Card>
