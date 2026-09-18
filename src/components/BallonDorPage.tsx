@@ -537,6 +537,15 @@ function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: 
   const [yashin, setYashin] = useState(cfg.official_yashin || '');
   const [deadline, setDeadline] = useState(cfg.deadline_iso ? cfg.deadline_iso.slice(0, 16) : '');
   const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const unlockAt = cfg.admin_unlock_iso ? new Date(cfg.admin_unlock_iso).getTime() : 0;
+  const adminLocked = unlockAt > 0 && tick < unlockAt;
 
   useEffect(() => {
     setTop10(Array.from({ length: 10 }, (_, i) => cfg.official_top10?.[i] ?? ''));
