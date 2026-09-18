@@ -192,8 +192,8 @@ function PlayerLine({ name }: { name: string }) {
   );
 }
 
-function PronosticForm({ cfg, locked, mine, onSaved }: {
-  cfg: BallonDorConfig; locked: boolean; mine?: Pronostic; onSaved: () => void;
+function PronosticForm({ cfg, locked, mine, balance, onSaved }: {
+  cfg: BallonDorConfig; locked: boolean; mine?: Pronostic; balance: number; onSaved: () => void;
 }) {
   const [top10, setTop10] = useState<string[]>(mine?.top10 ?? []);
   const [kopa, setKopa] = useState(mine?.kopa ?? '');
@@ -234,6 +234,10 @@ function PronosticForm({ cfg, locked, mine, onSaved }: {
   const save = async () => {
     if (top10.length !== 10) { toast.error('Sélectionne exactement 10 joueurs'); return; }
     if (!kopa || !yashin) { toast.error('Choisis un lauréat Kopa et un lauréat Yachine'); return; }
+    if (!mine && balance < cfg.buy_in) {
+      toast.error(`Solde insuffisant : il te faut ${cfg.buy_in} DC (solde actuel : ${balance} DC)`);
+      return;
+    }
     setSaving(true);
     const { data, error } = await supabase.rpc('submit_ballon_dor' as any, {
       p_top10: top10, p_kopa: kopa, p_yashin: yashin,
@@ -359,7 +363,7 @@ function PronosticForm({ cfg, locked, mine, onSaved }: {
 
         <Button className="w-full" onClick={save} disabled={saving || top10.length !== 10}>
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          {mine ? 'Mettre à jour mon pronostic' : `Valider et payer ${cfg.buy_in} DC`}
+          {mine ? 'Mettre à jour mon pronostic (gratuit)' : `Valider mon pronostic (${cfg.buy_in} DC)`}
         </Button>
         {!mine && <p className="text-xs text-muted-foreground text-center">La mise n'est prélevée qu'une seule fois.</p>}
       </Card>
