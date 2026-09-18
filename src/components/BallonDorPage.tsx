@@ -588,15 +588,27 @@ function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: 
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>🎙️ Direct Cérémonie — Ballon d'Or 2026</DialogTitle></DialogHeader>
 
+        {adminLocked ? (
+          <div className="py-8 text-center space-y-3">
+            <Lock className="w-10 h-10 mx-auto text-muted-foreground" />
+            <p className="font-display text-lg">Panneau verrouillé</p>
+            <p className="text-sm text-muted-foreground">
+              La saisie des résultats officiels s'ouvrira le{' '}
+              {new Date(unlockAt).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}.
+            </p>
+            <p className="text-sm">Ouverture dans <span className="text-primary font-medium"><Countdown ms={unlockAt - tick} /></span></p>
+          </div>
+        ) : (
         <div className="space-y-3">
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="secondary" onClick={lockNow} disabled={busy}>
               <Lock className="w-4 h-4 mr-1" /> Verrouiller maintenant
             </Button>
             <Button size="sm" onClick={distribute} disabled={busy || status === 'closed'}>
-              <Trophy className="w-4 h-4 mr-1" /> Clôturer et distribuer
+              <Trophy className="w-4 h-4 mr-1" /> Clôturer et distribuer les {cfg.total_prize_pool.toLocaleString('fr-FR')} DC
             </Button>
           </div>
+
 
           <div>
             <label className="text-sm font-medium">Date limite des pronostics</label>
