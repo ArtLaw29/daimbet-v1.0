@@ -669,13 +669,15 @@ function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: 
             disabled={busy}
             onClick={() => saveConfig(
               { official_top10: top10, official_kopa: kopa, official_yashin: yashin },
-              'Résultats officiels publiés en direct ⚡',
+              'Avancement sauvegardé — points recalculés ⚡',
             )}
           >
             {busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Publier les résultats en direct
+            Sauvegarder l'avancement
           </Button>
         </div>
+        )}
+
       </DialogContent>
     </Dialog>
   );
