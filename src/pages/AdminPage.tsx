@@ -80,7 +80,24 @@ const ADMIN_SECTIONS = [
   { id: 'pipeline', label: 'Pipeline', emoji: '📋' },
   { id: 'lexique', label: 'Lexique', emoji: '📖' },
   { id: 'exports', label: 'Exports / Rapports', emoji: '📥' },
+  { id: 'multi', label: 'Jeux multijoueurs', emoji: '🎮' },
+  { id: 'casino', label: 'Casino', emoji: '🎰' },
 ] as const;
+
+// Onglets principaux calqués sur la navigation utilisateur.
+// Chaque onglet pointe vers les sections (composants) existantes.
+const ADMIN_TABS: { id: string; label: string; emoji: string; subs: string[] }[] = [
+  { id: 'paris', label: 'Paris', emoji: '💸', subs: ['paris'] },
+  { id: 'promo', label: 'Jeux de promo', emoji: '🏛️', subs: ['jeux', 'gouvernements', 'pipeline'] },
+  { id: 'jeux-multi', label: 'Jeux multijoueurs', emoji: '🎮', subs: ['multi'] },
+  { id: 'mini-jeux', label: 'Mini-jeux', emoji: '🧩', subs: ['jeux_dc'] },
+  { id: 'casino', label: 'Casino', emoji: '🎰', subs: ['casino'] },
+  { id: 'outils', label: 'La Promo & Outils', emoji: '🛠️', subs: ['dashboard', 'gazette', 'users', 'tickets', 'contacts_publics', 'moderation', 'journal', 'urgence', 'lexique', 'exports'] },
+];
+
+const TAB_OF_SECTION: Record<string, string> = Object.fromEntries(
+  ADMIN_TABS.flatMap(t => t.subs.map(s => [s, t.id])),
+);
 
 export default function AdminPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
