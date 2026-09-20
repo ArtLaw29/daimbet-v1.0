@@ -1808,6 +1808,18 @@ export default function AdminPage() {
 
         {activeSection === 'jeux_dc' && <AdminDailyContent />}
 
+        {activeSection === 'casino' && <AdminGameConfigPanel />}
+
+        {activeSection === 'multi' && (
+          <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
+            <div className="text-4xl">🎮</div>
+            <p className="font-display text-lg">Jeux multijoueurs</p>
+            <p className="text-sm text-muted-foreground">
+              Le panneau d'administration des jeux multijoueurs (Uno, Poker, Loup-Garou, Monopoly) arrive bientôt.
+            </p>
+          </div>
+        )}
+
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════════ GOUVERNEMENTS ═══════════════ */}
         {/* ═══════════════════════════════════════════════ */}
