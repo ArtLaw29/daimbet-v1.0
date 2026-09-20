@@ -530,7 +530,7 @@ function PromoList({ entries, cfg, locked }: { entries: Entry[]; cfg: BallonDorC
 }
 
 
-function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: string; onDone: () => void }) {
+export function AdminCeremony({ cfg, status, onDone }: { cfg: BallonDorConfig; status: string; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [top10, setTop10] = useState<string[]>(() => Array.from({ length: 10 }, (_, i) => cfg.official_top10?.[i] ?? ''));
   const [kopa, setKopa] = useState(cfg.official_kopa || '');
