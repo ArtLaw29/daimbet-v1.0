@@ -988,6 +988,39 @@ export default function AdminPage() {
             {activeSection === 'pipeline' && 'Propositions de la communauté.'}
             {activeSection === 'lexique' && 'Glossaire des termes DaimBet.'}
             {activeSection === 'exports' && 'Télécharger les données et envoyer des emails.'}
+            {activeSection === 'multi' && 'Administration des jeux multijoueurs (Uno, Poker, etc.).'}
+            {activeSection === 'casino' && 'Configuration des jeux du casino (mises, limites, cooldowns).'}
+          </p>
+        </div>
+
+        {/* Sous-onglets de la section active */}
+        {(ADMIN_TABS.find(t => t.id === TAB_OF_SECTION[activeSection])?.subs.length ?? 0) > 1 && (
+          <div className="flex flex-wrap gap-2 mb-6 ml-10 md:ml-0">
+            {ADMIN_TABS.find(t => t.id === TAB_OF_SECTION[activeSection])!.subs.map(subId => {
+              const sub = ADMIN_SECTIONS.find(s => s.id === subId);
+              const badge = sectionBadge(subId);
+              return (
+                <button
+                  key={subId}
+                  onClick={() => navigateTo(subId)}
+                  className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 border transition-colors ${
+                    activeSection === subId
+                      ? 'border-primary bg-primary/10 text-primary font-medium'
+                      : 'border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                  }`}
+                >
+                  <span>{sub?.emoji}</span>
+                  <span>{sub?.label}</span>
+                  {badge > 0 && (
+                    <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
           </p>
         </div>
 
