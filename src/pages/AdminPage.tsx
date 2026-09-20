@@ -927,20 +927,21 @@ export default function AdminPage() {
         )}
 
         <nav className="p-2 space-y-0.5">
-          {ADMIN_SECTIONS.map(s => {
-            const badge = sectionBadge(s.id);
+          {ADMIN_TABS.map(t => {
+            const badge = t.subs.reduce((sum, s) => sum + sectionBadge(s), 0);
+            const isActive = TAB_OF_SECTION[activeSection] === t.id;
             return (
               <button
-                key={s.id}
-                onClick={() => navigateTo(s.id)}
+                key={t.id}
+                onClick={() => navigateTo(t.subs[0])}
                 className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5 transition-colors ${
-                  activeSection === s.id
+                  isActive
                     ? 'bg-primary/10 text-primary font-medium border border-primary/20'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
-                <span className="text-base">{s.emoji}</span>
-                <span className="flex-1 truncate">{s.label}</span>
+                <span className="text-base">{t.emoji}</span>
+                <span className="flex-1 truncate">{t.label}</span>
                 {badge > 0 && (
                   <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
                     {badge}
