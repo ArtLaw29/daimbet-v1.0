@@ -80,7 +80,24 @@ const ADMIN_SECTIONS = [
   { id: 'pipeline', label: 'Pipeline', emoji: '📋' },
   { id: 'lexique', label: 'Lexique', emoji: '📖' },
   { id: 'exports', label: 'Exports / Rapports', emoji: '📥' },
+  { id: 'multi', label: 'Jeux multijoueurs', emoji: '🎮' },
+  { id: 'casino', label: 'Casino', emoji: '🎰' },
 ] as const;
+
+// Onglets principaux calqués sur la navigation utilisateur.
+// Chaque onglet pointe vers les sections (composants) existantes.
+const ADMIN_TABS: { id: string; label: string; emoji: string; subs: string[] }[] = [
+  { id: 'paris', label: 'Paris', emoji: '💸', subs: ['paris'] },
+  { id: 'promo', label: 'Jeux de promo', emoji: '🏛️', subs: ['jeux', 'gouvernements', 'pipeline'] },
+  { id: 'jeux-multi', label: 'Jeux multijoueurs', emoji: '🎮', subs: ['multi'] },
+  { id: 'mini-jeux', label: 'Mini-jeux', emoji: '🧩', subs: ['jeux_dc'] },
+  { id: 'casino', label: 'Casino', emoji: '🎰', subs: ['casino'] },
+  { id: 'outils', label: 'La Promo & Outils', emoji: '🛠️', subs: ['dashboard', 'gazette', 'users', 'tickets', 'contacts_publics', 'moderation', 'journal', 'urgence', 'lexique', 'exports'] },
+];
+
+const TAB_OF_SECTION: Record<string, string> = Object.fromEntries(
+  ADMIN_TABS.flatMap(t => t.subs.map(s => [s, t.id])),
+);
 
 export default function AdminPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -910,20 +927,21 @@ export default function AdminPage() {
         )}
 
         <nav className="p-2 space-y-0.5">
-          {ADMIN_SECTIONS.map(s => {
-            const badge = sectionBadge(s.id);
+          {ADMIN_TABS.map(t => {
+            const badge = t.subs.reduce((sum, s) => sum + sectionBadge(s), 0);
+            const isActive = TAB_OF_SECTION[activeSection] === t.id;
             return (
               <button
-                key={s.id}
-                onClick={() => navigateTo(s.id)}
+                key={t.id}
+                onClick={() => navigateTo(t.subs[0])}
                 className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5 transition-colors ${
-                  activeSection === s.id
+                  isActive
                     ? 'bg-primary/10 text-primary font-medium border border-primary/20'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
-                <span className="text-base">{s.emoji}</span>
-                <span className="flex-1 truncate">{s.label}</span>
+                <span className="text-base">{t.emoji}</span>
+                <span className="flex-1 truncate">{t.label}</span>
                 {badge > 0 && (
                   <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[18px] text-center">
                     {badge}
@@ -970,8 +988,39 @@ export default function AdminPage() {
             {activeSection === 'pipeline' && 'Propositions de la communauté.'}
             {activeSection === 'lexique' && 'Glossaire des termes DaimBet.'}
             {activeSection === 'exports' && 'Télécharger les données et envoyer des emails.'}
+            {activeSection === 'multi' && 'Administration des jeux multijoueurs (Uno, Poker, etc.).'}
+            {activeSection === 'casino' && 'Configuration des jeux du casino (mises, limites, cooldowns).'}
           </p>
         </div>
+
+        {/* Sous-onglets de la section active */}
+        {(ADMIN_TABS.find(t => t.id === TAB_OF_SECTION[activeSection])?.subs.length ?? 0) > 1 && (
+          <div className="flex flex-wrap gap-2 mb-6 ml-10 md:ml-0">
+            {ADMIN_TABS.find(t => t.id === TAB_OF_SECTION[activeSection])!.subs.map(subId => {
+              const sub = ADMIN_SECTIONS.find(s => s.id === subId);
+              const badge = sectionBadge(subId);
+              return (
+                <button
+                  key={subId}
+                  onClick={() => navigateTo(subId)}
+                  className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 border transition-colors ${
+                    activeSection === subId
+                      ? 'border-primary bg-primary/10 text-primary font-medium'
+                      : 'border-border bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                  }`}
+                >
+                  <span>{sub?.emoji}</span>
+                  <span>{sub?.label}</span>
+                  {badge > 0 && (
+                    <span className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 rounded-full font-bold min-w-[16px] text-center">
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════════ DASHBOARD ═══════════════ */}
@@ -1759,6 +1808,18 @@ export default function AdminPage() {
 
         {activeSection === 'jeux_dc' && <AdminDailyContent />}
 
+        {activeSection === 'casino' && <AdminGameConfigPanel />}
+
+        {activeSection === 'multi' && (
+          <div className="rounded-xl border border-border bg-card p-8 text-center space-y-2">
+            <div className="text-4xl">🎮</div>
+            <p className="font-display text-lg">Jeux multijoueurs</p>
+            <p className="text-sm text-muted-foreground">
+              Le panneau d'administration des jeux multijoueurs (Uno, Poker, Loup-Garou, Monopoly) arrive bientôt.
+            </p>
+          </div>
+        )}
+
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════════ GOUVERNEMENTS ═══════════════ */}
         {/* ═══════════════════════════════════════════════ */}
@@ -2187,9 +2248,6 @@ export default function AdminPage() {
 
             {/* NEW game_status panel */}
             <AdminGameStatusPanel />
-
-            {/* Game config (casino) */}
-            <AdminGameConfigPanel />
 
             {/* Game subtitles */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
