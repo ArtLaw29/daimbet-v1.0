@@ -23,6 +23,7 @@ import TicketThread from '@/components/TicketThread';
 import AdminCreateTicketDialog from '@/components/AdminCreateTicketDialog';
 import AdminGlossary from '@/components/AdminGlossary';
 import AdminGameSessions from '@/components/AdminGameSessions';
+import AdminBallonDor from '@/components/AdminBallonDor';
 import AdminDailyContent from '@/components/AdminDailyContent';
 import AdminKmFullResults from '@/components/AdminKmFullResults';
 import AdminGouvernements from '@/components/AdminGouvernements';
@@ -1743,14 +1744,16 @@ export default function AdminPage() {
         {/* ═══════════════════════════════════════════════ */}
         {activeSection === 'jeux' && (
           <Tabs defaultValue="sessions" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 bg-secondary">
+            <TabsList className="grid w-full grid-cols-4 bg-secondary">
               <TabsTrigger value="sessions" className="font-display text-xs"><Sparkles className="w-4 h-4 mr-1" /> Sessions</TabsTrigger>
               <TabsTrigger value="sondages" className="font-display text-xs">🗳️ Sondages</TabsTrigger>
               <TabsTrigger value="tournois" className="font-display text-xs">⚔️ Tournois</TabsTrigger>
+              <TabsTrigger value="ballon-or" className="font-display text-xs">🏆 Ballon d'Or</TabsTrigger>
             </TabsList>
             <TabsContent value="sessions"><AdminGameSessions /></TabsContent>
             <TabsContent value="sondages"><AdminSondages /></TabsContent>
             <TabsContent value="tournois"><AdminTournois /></TabsContent>
+            <TabsContent value="ballon-or"><AdminBallonDor /></TabsContent>
           </Tabs>
         )}
 
