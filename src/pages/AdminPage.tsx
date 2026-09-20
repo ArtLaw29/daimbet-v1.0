@@ -1021,8 +1021,6 @@ export default function AdminPage() {
             })}
           </div>
         )}
-          </p>
-        </div>
 
         {/* ═══════════════════════════════════════════════ */}
         {/* ═══════════════ DASHBOARD ═══════════════ */}
@@ -2238,9 +2236,6 @@ export default function AdminPage() {
 
             {/* NEW game_status panel */}
             <AdminGameStatusPanel />
-
-            {/* Game config (casino) */}
-            <AdminGameConfigPanel />
 
             {/* Game subtitles */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
